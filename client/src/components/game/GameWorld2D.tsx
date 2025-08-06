@@ -53,12 +53,15 @@ export default function GameWorld2D() {
 
   // Draw functions
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
-    ctx.strokeStyle = '#CCCCCC';
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = 0.5;
+    // Save context state
+    ctx.save();
     
-    // Smaller grid for better focus
-    const gridSize = 8; // Reduced from GRID_SIZE
+    ctx.strokeStyle = '#AAAAAA';
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.6;
+    
+    // Fixed grid size for stability
+    const gridSize = 10;
     const halfGrid = Math.floor(gridSize / 2);
     
     for (let x = -halfGrid; x <= halfGrid; x++) {
@@ -68,53 +71,77 @@ export default function GameWorld2D() {
         const screenDown = gridToScreen(x, z + 1, canvasWidth, canvasHeight);
         const screenDiag = gridToScreen(x + 1, z + 1, canvasWidth, canvasHeight);
         
-        // Draw diamond shape for each grid cell
-        ctx.beginPath();
-        ctx.moveTo(screen.x, screen.y);
-        ctx.lineTo(screenRight.x, screenRight.y);
-        ctx.lineTo(screenDiag.x, screenDiag.y);
-        ctx.lineTo(screenDown.x, screenDown.y);
-        ctx.closePath();
-        ctx.stroke();
+        // Only draw if cell is visible on screen
+        if (screen.x > -100 && screen.x < canvasWidth + 100 && 
+            screen.y > -100 && screen.y < canvasHeight + 100) {
+          
+          // Draw diamond shape for each grid cell
+          ctx.beginPath();
+          ctx.moveTo(Math.round(screen.x), Math.round(screen.y));
+          ctx.lineTo(Math.round(screenRight.x), Math.round(screenRight.y));
+          ctx.lineTo(Math.round(screenDiag.x), Math.round(screenDiag.y));
+          ctx.lineTo(Math.round(screenDown.x), Math.round(screenDown.y));
+          ctx.closePath();
+          ctx.stroke();
+        }
       }
     }
     
-    ctx.globalAlpha = 1;
+    // Restore context state
+    ctx.restore();
   }, [gridToScreen]);
 
   const drawHouse = useCallback((ctx: CanvasRenderingContext2D, house: any, canvasWidth: number, canvasHeight: number) => {
     const screen = gridToScreen(house.position.x, house.position.z, canvasWidth, canvasHeight);
-    const size = CELL_SIZE * 2.5; // Increased size for better visibility
+    const size = CELL_SIZE * 2.5;
+    
+    // Only draw if house is visible on screen
+    if (screen.x < -size || screen.x > canvasWidth + size || 
+        screen.y < -size || screen.y > canvasHeight + size) {
+      return;
+    }
+    
+    ctx.save();
     
     // Draw house base (square)
     ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];
-    ctx.fillRect(screen.x - size/2, screen.y - size/2, size, size);
+    ctx.fillRect(Math.round(screen.x - size/2), Math.round(screen.y - size/2), size, size);
     
     // Draw house border
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 3;
-    ctx.strokeRect(screen.x - size/2, screen.y - size/2, size, size);
+    ctx.strokeRect(Math.round(screen.x - size/2), Math.round(screen.y - size/2), size, size);
     
     // Draw simple roof (triangle)
     ctx.fillStyle = '#8B4513';
     ctx.beginPath();
-    ctx.moveTo(screen.x - size/2, screen.y - size/2);
-    ctx.lineTo(screen.x + size/2, screen.y - size/2);
-    ctx.lineTo(screen.x, screen.y - size);
+    ctx.moveTo(Math.round(screen.x - size/2), Math.round(screen.y - size/2));
+    ctx.lineTo(Math.round(screen.x + size/2), Math.round(screen.y - size/2));
+    ctx.lineTo(Math.round(screen.x), Math.round(screen.y - size));
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    
+    ctx.restore();
   }, [gridToScreen]);
 
   const drawNPC = useCallback((ctx: CanvasRenderingContext2D, npc: any, canvasWidth: number, canvasHeight: number) => {
     const worldPos = gridToWorld(npc.position);
     const screen = gridToScreen(worldPos.x / CELL_SIZE, worldPos.z / CELL_SIZE, canvasWidth, canvasHeight);
-    const radius = CELL_SIZE * 1.2; // Increased radius for better visibility
+    const radius = CELL_SIZE * 1.2;
+    
+    // Only draw if NPC is visible on screen
+    if (screen.x < -radius || screen.x > canvasWidth + radius || 
+        screen.y < -radius || screen.y > canvasHeight + radius) {
+      return;
+    }
+    
+    ctx.save();
     
     // Draw NPC as circle
     ctx.fillStyle = '#FF6B6B';
     ctx.beginPath();
-    ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
+    ctx.arc(Math.round(screen.x), Math.round(screen.y), radius, 0, Math.PI * 2);
     ctx.fill();
     
     // Draw NPC border
@@ -125,19 +152,21 @@ export default function GameWorld2D() {
     // Draw simple eyes
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.arc(screen.x - radius/3, screen.y - radius/3, radius/6, 0, Math.PI * 2);
+    ctx.arc(Math.round(screen.x - radius/3), Math.round(screen.y - radius/3), radius/6, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(screen.x + radius/3, screen.y - radius/3, radius/6, 0, Math.PI * 2);
+    ctx.arc(Math.round(screen.x + radius/3), Math.round(screen.y - radius/3), radius/6, 0, Math.PI * 2);
     ctx.fill();
     
     ctx.fillStyle = '#000000';
     ctx.beginPath();
-    ctx.arc(screen.x - radius/3, screen.y - radius/3, radius/12, 0, Math.PI * 2);
+    ctx.arc(Math.round(screen.x - radius/3), Math.round(screen.y - radius/3), radius/12, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(screen.x + radius/3, screen.y - radius/3, radius/12, 0, Math.PI * 2);
+    ctx.arc(Math.round(screen.x + radius/3), Math.round(screen.y - radius/3), radius/12, 0, Math.PI * 2);
     ctx.fill();
+    
+    ctx.restore();
   }, [gridToScreen]);
 
   // Animation loop
@@ -151,25 +180,35 @@ export default function GameWorld2D() {
     // Update NPC movement
     updateNPCMovement();
     
-    // Clear canvas
+    // Save and clear canvas with proper compositing
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Draw background
     ctx.fillStyle = '#90EE90';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw grid
+    // Draw grid (more stable)
     drawGrid(ctx, canvas.width, canvas.height);
     
     // Draw houses
-    Object.values(houses).forEach(house => {
-      drawHouse(ctx, house, canvas.width, canvas.height);
-    });
+    const houseValues = Object.values(houses);
+    if (houseValues.length > 0) {
+      houseValues.forEach(house => {
+        drawHouse(ctx, house, canvas.width, canvas.height);
+      });
+    }
     
-    // Draw NPCs
-    Object.values(npcs).forEach(npc => {
-      drawNPC(ctx, npc, canvas.width, canvas.height);
-    });
+    // Draw NPCs (only if they exist)
+    const npcValues = Object.values(npcs);
+    if (npcValues.length > 0) {
+      npcValues.forEach(npc => {
+        drawNPC(ctx, npc, canvas.width, canvas.height);
+      });
+    }
+    
+    ctx.restore();
     
     // Continue animation
     animationRef.current = requestAnimationFrame(animate);

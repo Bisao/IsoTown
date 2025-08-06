@@ -22,13 +22,7 @@ interface NPCStore {
 export const useNPCStore = create<NPCStore>()(
   subscribeWithSelector((set, get) => ({
     npcs: {
-      // Create initial NPC bass
-      'npc-bass': {
-        id: 'npc-bass',
-        position: { x: 0, z: 0 },
-        controlMode: NPCControlMode.AUTONOMOUS,
-        isMoving: false,
-      }
+      // Start with no NPCs - user can add them manually
     },
 
     addNPC: (position) => {
