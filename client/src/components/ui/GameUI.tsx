@@ -58,31 +58,7 @@ export default function GameUI() {
         </div>
       </div>
 
-      {/* Windows 98 Style Instructions Panel */}
-      <div style={{
-        position: 'absolute',
-        top: '50px',
-        right: '8px',
-        width: '240px',
-        zIndex: 10
-      }}>
-        <div className="win98-window">
-          <div className="win98-window-header">
-            <span>Instructions</span>
-            <div className="win98-close-button">×</div>
-          </div>
-          <div className="win98-window-body">
-            <div style={{ fontSize: '11px', lineHeight: '1.3' }}>
-              <strong>How to Play:</strong><br/><br/>
-              • Click "Place House" to build<br/>
-              • Click on grid to place house<br/>
-              • Use pinch-to-zoom on mobile<br/>
-              • Right-click NPCs to configure<br/>
-              • Switch control modes as needed
-            </div>
-          </div>
-        </div>
-      </div>
+      
 
       {/* Mobile Virtual Joystick */}
       {isMobile && <VirtualJoystick />}

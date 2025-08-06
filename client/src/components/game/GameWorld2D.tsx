@@ -60,20 +60,24 @@ export default function GameWorld2D() {
     ctx.lineWidth = 1;
     ctx.globalAlpha = 0.6;
 
-    // Fixed grid size for stability
-    const gridSize = 10;
+    // Larger grid size to ensure visibility when camera follows NPC
+    const gridSize = 20;
     const halfGrid = Math.floor(gridSize / 2);
 
-    for (let x = -halfGrid; x <= halfGrid; x++) {
-      for (let z = -halfGrid; z <= halfGrid; z++) {
+    // Calculate current camera center for grid positioning
+    const centerOffsetX = Math.floor(panRef.current.x / (CELL_SIZE * 3 * zoomRef.current));
+    const centerOffsetZ = Math.floor(panRef.current.y / (CELL_SIZE * 3 * zoomRef.current * 0.5));
+
+    for (let x = -halfGrid + centerOffsetX; x <= halfGrid + centerOffsetX; x++) {
+      for (let z = -halfGrid + centerOffsetZ; z <= halfGrid + centerOffsetZ; z++) {
         const screen = gridToScreen(x, z, canvasWidth, canvasHeight);
         const screenRight = gridToScreen(x + 1, z, canvasWidth, canvasHeight);
         const screenDown = gridToScreen(x, z + 1, canvasWidth, canvasHeight);
         const screenDiag = gridToScreen(x + 1, z + 1, canvasWidth, canvasHeight);
 
-        // Only draw if cell is visible on screen
-        if (screen.x > -100 && screen.x < canvasWidth + 100 && 
-            screen.y > -100 && screen.y < canvasHeight + 100) {
+        // Only draw if cell is visible on screen (expanded bounds)
+        if (screen.x > -200 && screen.x < canvasWidth + 200 && 
+            screen.y > -200 && screen.y < canvasHeight + 200) {
 
           // Draw diamond shape for each grid cell
           ctx.beginPath();
