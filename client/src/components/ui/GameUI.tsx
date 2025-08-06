@@ -18,17 +18,6 @@ export default function GameUI() {
         >
           🏠 Build
         </button>
-        <button
-          onClick={() => {
-            // Add NPC at center of map
-            import('../../lib/stores/useNPCStore').then(({ useNPCStore }) => {
-              useNPCStore.getState().addNPC({ x: 0, z: 0 });
-            });
-          }}
-          className="win98-button"
-        >
-          👤 Add NPC
-        </button>
         <div className="win98-panel" style={{ marginLeft: '8px', flex: 1, padding: '4px' }}>
           <span style={{ fontSize: '11px', fontFamily: 'MS Sans Serif, sans-serif', color: 'var(--win98-text)' }}>
             SimCity 98 - Building Game

@@ -22,6 +22,7 @@ interface GameStore {
   selectNPC: (id: string | null) => void;
   selectHouse: (id: string | null) => void;
   setCameraMode: (mode: 'FREE' | 'FOLLOW_NPC') => void;
+  clearSelection: () => void;
 }
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -62,5 +63,11 @@ export const useGameStore = create<GameStore>((set) => ({
     selectedNPC: null
   }),
   
-  setCameraMode: (mode) => set({ cameraMode: mode })
+  setCameraMode: (mode) => set({ cameraMode: mode }),
+  
+  clearSelection: () => set({ 
+    selectedNPC: null, 
+    selectedHouse: null, 
+    showNPCModal: false 
+  })
 }));
