@@ -13,7 +13,7 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
   const { selectedNPC, selectedHouse, setShowNPCModal, clearSelection } = useGameStore();
   const { npcs, setNPCControlMode } = useNPCStore();
   const { houses } = useHouseStore();
-  
+
   const [currentNPC, setCurrentNPC] = useState<NPC | null>(null);
   const [currentHouse, setCurrentHouse] = useState<House | null>(null);
 
@@ -63,7 +63,7 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
           </span>
           <div className="win98-close-button" onClick={handleClose}>×</div>
         </div>
-        
+
         <div className="win98-window-body">
           {currentNPC && (
             <div className="win98-panel" style={{ marginBottom: '12px', padding: '8px' }}>
@@ -76,7 +76,7 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
               <div style={{ fontSize: '11px', marginBottom: '8px' }}>
                 Mode: {currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? 'Autonomous' : 'Controlled'}
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <button
                   onClick={() => handleSetControlMode(NPCControlMode.AUTONOMOUS)}
@@ -89,7 +89,7 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
                 >
                   Autonomous Movement
                 </button>
-                
+
                 <button
                   onClick={() => handleSetControlMode(NPCControlMode.CONTROLLED)}
                   className="win98-button"
@@ -102,8 +102,8 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
                   Manual Control
                 </button>
               </div>
-              
-              
+
+
             </div>
           )}
 
@@ -120,7 +120,7 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
               </div>
             </div>
           )}
-          
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
             <button
               onClick={handleClose}
