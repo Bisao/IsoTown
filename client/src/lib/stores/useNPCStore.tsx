@@ -1,29 +1,28 @@
+
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { NPC, Position } from '../types';
-import { NPCControlMode } from '../constants';
+import { NPCControlMode, MOVEMENT_SPEED } from '../constants';
 import { nanoid } from 'nanoid';
+import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid';
+import { getRandomDirection } from '../utils/pathfinding';
 
 interface NPCStore {
   npcs: Record<string, NPC>;
   
-  // Actions
   addNPC: (position: Position) => string;
   removeNPC: (id: string) => void;
-  updateNPCPosition: (id: string, position: Position) => void;
+  moveNPC: (id: string, direction: Position) => void;
   setNPCTarget: (id: string, target: Position) => void;
   setNPCControlMode: (id: string, mode: NPCControlMode) => void;
   assignNPCToHouse: (npcId: string, houseId: string) => void;
   unassignNPCFromHouse: (npcId: string) => void;
-  setNPCPath: (id: string, path: Position[]) => void;
   updateNPCMovement: () => void;
 }
 
 export const useNPCStore = create<NPCStore>()(
   subscribeWithSelector((set, get) => ({
-    npcs: {
-      // Start with no NPCs - user can add them manually
-    },
+    npcs: {},
 
     addNPC: (position) => {
       const id = nanoid();
@@ -46,17 +45,45 @@ export const useNPCStore = create<NPCStore>()(
       return { npcs: rest };
     }),
 
-    updateNPCPosition: (id, position) => set((state) => ({
-      npcs: {
-        ...state.npcs,
-        [id]: { ...state.npcs[id], position }
+    moveNPC: (id, direction) => {
+      const npcs = get().npcs;
+      const npc = npcs[id];
+      if (!npc) return;
+
+      const newPosition = {
+        x: npc.position.x + direction.x,
+        z: npc.position.z + direction.z
+      };
+
+      if (isValidGridPosition(newPosition)) {
+        set((state) => ({
+          npcs: {
+            ...state.npcs,
+            [id]: { 
+              ...state.npcs[id], 
+              position: newPosition,
+              isMoving: true,
+              movementTimer: Date.now()
+            }
+          }
+        }));
+
+        // Parar movimento após delay
+        setTimeout(() => {
+          set((state) => ({
+            npcs: {
+              ...state.npcs,
+              [id]: { ...state.npcs[id], isMoving: false }
+            }
+          }));
+        }, MOVEMENT_SPEED);
       }
-    })),
+    },
 
     setNPCTarget: (id, target) => set((state) => ({
       npcs: {
         ...state.npcs,
-        [id]: { ...state.npcs[id], targetPosition: target, isMoving: true }
+        [id]: { ...state.npcs[id], targetPosition: target }
       }
     })),
 
@@ -81,93 +108,70 @@ export const useNPCStore = create<NPCStore>()(
       }
     })),
 
-    setNPCPath: (id, path) => set((state) => ({
-      npcs: {
-        ...state.npcs,
-        [id]: { 
-          ...state.npcs[id], 
-          path, 
-          pathIndex: 0,
-          isMoving: path.length > 0
-        }
-      }
-    })),
-
     updateNPCMovement: () => {
       const npcs = get().npcs;
       const updates: Record<string, Partial<NPC>> = {};
 
       Object.values(npcs).forEach((npc) => {
-        if (npc.controlMode === NPCControlMode.AUTONOMOUS) {
-          // If not currently moving, randomly decide to start moving
-          if (!npc.isMoving && Math.random() < 0.01) {
-            const randomTarget = {
-              x: (Math.random() - 0.5) * 15, // Random position within grid bounds
-              z: (Math.random() - 0.5) * 15
-            };
-            updates[npc.id] = {
-              targetPosition: randomTarget,
-              isMoving: true
-            };
-            return;
-          }
-          
-          if (npc.isMoving) {
-            if (npc.path && npc.pathIndex !== undefined) {
-              // Follow path
-              if (npc.pathIndex < npc.path.length) {
-                const target = npc.path[npc.pathIndex];
-                const dx = target.x - npc.position.x;
-                const dz = target.z - npc.position.z;
-                const distance = Math.sqrt(dx * dx + dz * dz);
+        if (npc.controlMode === NPCControlMode.AUTONOMOUS && !npc.isMoving) {
+          // Movimento aleatório a cada 2 segundos
+          if (!npc.movementTimer || Date.now() - npc.movementTimer > 2000) {
+            if (Math.random() < 0.3) { // 30% chance de se mover
+              const direction = getRandomDirection();
+              const newPosition = {
+                x: npc.position.x + direction.x,
+                z: npc.position.z + direction.z
+              };
 
-                if (distance > 0.1) {
-                  const newX = npc.position.x + (dx / distance) * 0.05;
-                  const newZ = npc.position.z + (dz / distance) * 0.05;
-                  updates[npc.id] = {
-                    position: { x: newX, z: newZ }
-                  };
-                } else {
-                  // Reached waypoint, move to next
-                  if (npc.pathIndex < npc.path.length - 1) {
-                    updates[npc.id] = {
-                      pathIndex: npc.pathIndex + 1
-                    };
-                  } else {
-                    // Reached end of path
-                    updates[npc.id] = {
-                      isMoving: false,
-                      path: undefined,
-                      pathIndex: undefined
-                    };
-                  }
-                }
+              if (isValidGridPosition(newPosition)) {
+                updates[npc.id] = {
+                  position: newPosition,
+                  isMoving: true,
+                  movementTimer: Date.now()
+                };
               }
-            } else if (npc.targetPosition) {
-              // Move to target
-              const dx = npc.targetPosition.x - npc.position.x;
-              const dz = npc.targetPosition.z - npc.position.z;
-              const distance = Math.sqrt(dx * dx + dz * dz);
+            }
+          }
+        }
 
-              if (distance > 0.1) {
-                const newX = npc.position.x + (dx / distance) * 0.05;
-                const newZ = npc.position.z + (dz / distance) * 0.05;
-                updates[npc.id] = {
-                  position: { x: newX, z: newZ }
-                };
-              } else {
-                // Reached target
-                updates[npc.id] = {
-                  isMoving: false,
-                  targetPosition: undefined
-                };
+        // Mover em direção ao alvo se houver
+        if (npc.targetPosition && !npc.isMoving) {
+          const dx = npc.targetPosition.x - npc.position.x;
+          const dz = npc.targetPosition.z - npc.position.z;
+          
+          if (Math.abs(dx) > 0 || Math.abs(dz) > 0) {
+            const direction = {
+              x: dx > 0 ? 1 : dx < 0 ? -1 : 0,
+              z: dz > 0 ? 1 : dz < 0 ? -1 : 0
+            };
+            
+            // Mover apenas um tile por vez
+            if (direction.x !== 0 && direction.z !== 0) {
+              direction.z = 0; // Priorizar movimento horizontal
+            }
+            
+            const newPosition = {
+              x: npc.position.x + direction.x,
+              z: npc.position.z + direction.z
+            };
+
+            if (isValidGridPosition(newPosition)) {
+              updates[npc.id] = {
+                position: newPosition,
+                isMoving: true,
+                movementTimer: Date.now()
+              };
+              
+              // Remover alvo se alcançado
+              if (positionsEqual(newPosition, npc.targetPosition)) {
+                updates[npc.id].targetPosition = undefined;
               }
             }
           }
         }
       });
 
-      // Apply updates
+      // Aplicar atualizações
       if (Object.keys(updates).length > 0) {
         set((state) => {
           const newNPCs = { ...state.npcs };
@@ -177,6 +181,6 @@ export const useNPCStore = create<NPCStore>()(
           return { npcs: newNPCs };
         });
       }
-    },
+    }
   }))
 );

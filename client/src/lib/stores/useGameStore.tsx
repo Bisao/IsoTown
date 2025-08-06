@@ -1,73 +1,66 @@
-import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
-import { GameState } from '../types';
-import { HouseType } from '../constants';
 
-interface GameStore extends GameState {
+import { create } from 'zustand';
+import { HouseType, NPCControlMode } from '../constants';
+
+interface GameStore {
+  // UI State
+  showHouseModal: boolean;
+  showNPCModal: boolean;
+  
+  // Game State
+  isPlacingHouse: boolean;
+  selectedHouseType: HouseType | null;
+  selectedNPC: string | null;
+  selectedHouse: string | null;
+  cameraMode: 'FREE' | 'FOLLOW_NPC';
+  
   // Actions
-  startPlacingHouse: (type: HouseType) => void;
-  stopPlacingHouse: () => void;
-  selectNPC: (npcId: string) => void;
-  selectHouse: (houseId: string) => void;
-  clearSelection: () => void;
   setShowHouseModal: (show: boolean) => void;
   setShowNPCModal: (show: boolean) => void;
+  startPlacingHouse: (type: HouseType) => void;
+  stopPlacingHouse: () => void;
+  selectNPC: (id: string | null) => void;
+  selectHouse: (id: string | null) => void;
+  setCameraMode: (mode: 'FREE' | 'FOLLOW_NPC') => void;
 }
 
-export const useGameStore = create<GameStore>()(
-  subscribeWithSelector((set) => ({
-    // Initial state
-    isPlacingHouse: false,
-    selectedHouseType: undefined,
-    selectedNPC: undefined,
-    selectedHouse: undefined,
-    showHouseModal: false,
-    showNPCModal: false,
-
-    // Actions
-    startPlacingHouse: (type) => set({ 
-      isPlacingHouse: true, 
-      selectedHouseType: type, 
-      showHouseModal: false 
-    }),
-    
-    stopPlacingHouse: () => set({ 
-      isPlacingHouse: false, 
-      selectedHouseType: undefined 
-    }),
-    
-    selectNPC: (npcId) => set({ 
-      selectedNPC: npcId, 
-      selectedHouse: undefined,
-      showNPCModal: true 
-    }),
-    
-    selectHouse: (houseId) => set({ 
-      selectedHouse: houseId, 
-      selectedNPC: undefined,
-      showNPCModal: true 
-    }),
-    
-    clearSelection: () => set((state) => {
-      // Don't clear NPC selection if it's in controlled mode
-      const { npcs } = useNPCStore.getState();
-      const currentNPC = state.selectedNPC && npcs[state.selectedNPC];
-      
-      if (currentNPC && currentNPC.controlMode === 'CONTROLLED') {
-        return { 
-          selectedHouse: undefined,
-          showNPCModal: false 
-        };
-      }
-      
-      return { 
-        selectedNPC: undefined, 
-        selectedHouse: undefined,
-        showNPCModal: false 
-      };
-    }),
-    
-    setShowHouseModal: (show) => set({ showHouseModal: show }),
-    setShowNPCModal: (show) => set({ showNPCModal: show }),
-  }))
-);
+export const useGameStore = create<GameStore>((set) => ({
+  // UI State
+  showHouseModal: false,
+  showNPCModal: false,
+  
+  // Game State
+  isPlacingHouse: false,
+  selectedHouseType: null,
+  selectedNPC: null,
+  selectedHouse: null,
+  cameraMode: 'FREE',
+  
+  // Actions
+  setShowHouseModal: (show) => set({ showHouseModal: show }),
+  setShowNPCModal: (show) => set({ showNPCModal: show }),
+  
+  startPlacingHouse: (type) => set({ 
+    isPlacingHouse: true, 
+    selectedHouseType: type,
+    showHouseModal: false
+  }),
+  
+  stopPlacingHouse: () => set({ 
+    isPlacingHouse: false, 
+    selectedHouseType: null 
+  }),
+  
+  selectNPC: (id) => set({ 
+    selectedNPC: id,
+    selectedHouse: null,
+    showNPCModal: !!id
+  }),
+  
+  selectHouse: (id) => set({ 
+    selectedHouse: id,
+    selectedNPC: null
+  }),
+  
+  setCameraMode: (mode) => set({ cameraMode: mode })
+}));

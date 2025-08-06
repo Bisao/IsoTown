@@ -1,19 +1,6 @@
+
 import { Position } from '../types';
-import { GRID_SIZE, CELL_SIZE } from '../constants';
-
-export function worldToGrid(worldPos: Position): Position {
-  return {
-    x: Math.round(worldPos.x / CELL_SIZE),
-    z: Math.round(worldPos.z / CELL_SIZE)
-  };
-}
-
-export function gridToWorld(gridPos: Position): Position {
-  return {
-    x: gridPos.x * CELL_SIZE,
-    z: gridPos.z * CELL_SIZE
-  };
-}
+import { GRID_SIZE } from '../constants';
 
 export function isValidGridPosition(pos: Position): boolean {
   const halfGrid = Math.floor(GRID_SIZE / 2);
@@ -28,10 +15,10 @@ export function isValidGridPosition(pos: Position): boolean {
 export function getNeighbors(pos: Position): Position[] {
   const neighbors: Position[] = [];
   const directions = [
-    { x: 0, z: 1 },
-    { x: 1, z: 0 },
-    { x: 0, z: -1 },
-    { x: -1, z: 0 }
+    { x: 0, z: 1 },   // Norte
+    { x: 1, z: 0 },   // Leste  
+    { x: 0, z: -1 },  // Sul
+    { x: -1, z: 0 }   // Oeste
   ];
 
   directions.forEach(dir => {
@@ -45,4 +32,8 @@ export function getNeighbors(pos: Position): Position[] {
   });
 
   return neighbors;
+}
+
+export function positionsEqual(a: Position, b: Position): boolean {
+  return a.x === b.x && a.z === b.z;
 }

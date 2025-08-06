@@ -1,44 +1,28 @@
-// Control enums
-export enum Controls {
-  forward = 'forward',
-  backward = 'backward',
-  left = 'left',
-  right = 'right',
-  select = 'select',
-  cancel = 'cancel',
-}
+export const GRID_SIZE = 20;
+export const CELL_SIZE = 32;
 
-// House types
 export enum HouseType {
-  FARMER = 'farmer',
-  LUMBERJACK = 'lumberjack',
-  MINER = 'miner',
+  SMALL = 'SMALL',
+  MEDIUM = 'MEDIUM',
+  LARGE = 'LARGE'
 }
 
-// NPC control modes
 export enum NPCControlMode {
-  AUTONOMOUS = 'autonomous',
-  CONTROLLED = 'controlled',
+  AUTONOMOUS = 'AUTONOMOUS',
+  CONTROLLED = 'CONTROLLED'
 }
 
-// House colors
 export const HOUSE_COLORS = {
-  [HouseType.FARMER]: '#FFD700', // Yellow
-  [HouseType.LUMBERJACK]: '#8B4513', // Brown
-  [HouseType.MINER]: '#808080', // Gray
+  [HouseType.SMALL]: '#FF6B6B',
+  [HouseType.MEDIUM]: '#4ECDC4', 
+  [HouseType.LARGE]: '#45B7D1'
 };
 
-// House names
 export const HOUSE_NAMES = {
-  [HouseType.FARMER]: 'Farmer House',
-  [HouseType.LUMBERJACK]: 'Lumberjack House',
-  [HouseType.MINER]: 'Miner House',
+  [HouseType.SMALL]: 'Small House',
+  [HouseType.MEDIUM]: 'Medium House',
+  [HouseType.LARGE]: 'Large House'
 };
 
-// Grid settings
-export const GRID_SIZE = 15;
-export const CELL_SIZE = 2;
-
-// NPC settings
-export const NPC_SPEED = 0.05;
 export const NPC_COLOR = '#FF6B6B';
+export const MOVEMENT_SPEED = 200; // ms between tile movements
