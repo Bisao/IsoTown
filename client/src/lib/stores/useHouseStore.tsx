@@ -31,6 +31,22 @@ export const useHouseStore = create<HouseStore>()(
         houses: { ...state.houses, [id]: house }
       }));
       
+      // Spawn NPC after 3 seconds
+      setTimeout(() => {
+        import('./useNPCStore').then(({ useNPCStore }) => {
+          const npcId = useNPCStore.getState().addNPC(position);
+          useNPCStore.getState().assignNPCToHouse(npcId, id);
+          
+          // Update house with NPC assignment
+          set((state) => ({
+            houses: {
+              ...state.houses,
+              [id]: { ...state.houses[id], npcId }
+            }
+          }));
+        });
+      }, 3000);
+      
       return id;
     },
 

@@ -40,7 +40,8 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
 
   const handleClose = () => {
     setShowNPCModal(false);
-    clearSelection();
+    // Don't clear selection to keep joystick visible for controlled NPCs
+    // clearSelection();
   };
 
   const handleSetControlMode = (mode: NPCControlMode) => {
@@ -100,11 +101,7 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
                 </button>
               </div>
               
-              <div style={{ fontSize: '10px', marginTop: '6px', color: '#666666' }}>
-                {currentNPC.controlMode === NPCControlMode.AUTONOMOUS 
-                  ? 'NPC moves around automatically' 
-                  : 'Use virtual joystick to control'}
-              </div>
+              
             </div>
           )}
 

@@ -2,22 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Windows 98 Style Variables */
+/* Windows 98 Theme Variables */
 :root {
   --win98-bg: #c0c0c0;
   --win98-surface: #c0c0c0;
   --win98-button-face: #c0c0c0;
-  --win98-button-highlight: #ffffff;
+  --win98-button-highlight: #dfdfdf;
   --win98-button-shadow: #808080;
   --win98-button-dark-shadow: #404040;
   --win98-text: #000000;
-  --win98-blue: #0080ff;
-  --win98-blue-dark: #000080;
+  --win98-active-title: #0a0a7a;
+  --win98-active-title-text: #ffffff;
   --win98-dialog-bg: #c0c0c0;
-  --win98-border: #808080;
-  --win98-input-bg: #ffffff;
-  --win98-disabled: #808080;
-  --win98-green: #00ff00;
+  --win98-window-bg: #c0c0c0;
 }
 
 @layer base {
@@ -68,20 +65,43 @@
 
 /* Windows 98 Window/Dialog Styles */
 .win98-window {
-  background: var(--win98-dialog-bg);
-  border: 2px outset var(--win98-dialog-bg);
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  background: var(--win98-window-bg);
+  border: 2px outset var(--win98-surface);
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .win98-window-header {
-  background: linear-gradient(to right, var(--win98-blue), var(--win98-blue-dark));
-  color: white;
+  background: var(--win98-active-title);
+  color: var(--win98-active-title-text);
+  padding: 2px 4px;
   font-weight: bold;
   font-size: 11px;
-  padding: 3px 6px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.win98-close-button {
+  background: var(--win98-button-face);
+  border: 1px outset var(--win98-button-face);
+  width: 16px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 9px;
+  color: var(--win98-text);
+}
+
+.win98-close-button:hover {
+  background: var(--win98-button-highlight);
+}
+
+.win98-close-button:active {
+  border: 1px inset var(--win98-button-face);
 }
 
 .win98-window-body {
@@ -117,6 +137,60 @@
   padding: 4px;
 }
 
+/* Enhanced Windows 98 UI Components */
+.win98-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.win98-joystick-container {
+  background: var(--win98-surface);
+  border: 2px inset var(--win98-surface);
+  padding: 8px;
+  font-family: 'MS Sans Serif', sans-serif;
+}
+
+.win98-joystick-base {
+  width: 96px;
+  height: 96px;
+  background: var(--win98-surface);
+  border: 2px inset var(--win98-surface);
+  border-radius: 50%;
+  position: relative;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.win98-joystick-knob {
+  width: 32px;
+  height: 32px;
+  background: var(--win98-button-face);
+  border: 2px outset var(--win98-button-face);
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.1s;
+}
+
+.win98-label {
+  text-align: center;
+  font-size: 10px;
+  margin-top: 4px;
+  color: var(--win98-text);
+  font-family: 'MS Sans Serif', sans-serif;
+}
+
 /* Windows 98 Checkbox/Radio Styles */
 .win98-checkbox {
   background: var(--win98-input-bg);
@@ -133,25 +207,6 @@
   border: 1px solid var(--win98-border);
 }
 
-/* Close button X */
-.win98-close-button {
-  background: var(--win98-button-face);
-  border: 1px outset var(--win98-button-face);
-  width: 16px;
-  height: 14px;
-  font-size: 8px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.win98-close-button:active {
-  border: 1px inset var(--win98-button-face);
-}
-
 /* Game UI specific styles */
 .win98-game-ui {
   position: fixed;
@@ -164,19 +219,6 @@
   display: flex;
   gap: 4px;
   z-index: 1000;
-}
-
-.win98-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
 }
 
 #root {

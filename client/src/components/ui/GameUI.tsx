@@ -29,8 +29,10 @@ export default function GameUI() {
         >
           👤 Add NPC
         </button>
-        <div className="win98-panel" style={{ marginLeft: '8px', flex: 1 }}>
-          <span style={{ fontSize: '11px' }}>SimCity 98 - Isometric Building Game</span>
+        <div className="win98-panel" style={{ marginLeft: '8px', flex: 1, padding: '4px' }}>
+          <span style={{ fontSize: '11px', fontFamily: 'MS Sans Serif, sans-serif', color: 'var(--win98-text)' }}>
+            SimCity 98 - Building Game
+          </span>
         </div>
       </div>
 

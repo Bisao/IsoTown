@@ -81,20 +81,10 @@ export default function VirtualJoystick() {
 
   return (
     <div style={{ position: 'absolute', bottom: '16px', left: '16px', zIndex: 20 }}>
-      {/* Windows 98 Style Joystick Container */}
-      <div className="win98-panel-raised" style={{ padding: '4px', borderRadius: '50%' }}>
+      <div className="win98-joystick-container">
         <div
           ref={joystickRef}
-          style={{
-            width: '96px',
-            height: '96px',
-            background: 'var(--win98-surface)',
-            border: '2px inset var(--win98-surface)',
-            borderRadius: '50%',
-            position: 'relative',
-            cursor: 'pointer',
-            touchAction: 'none'
-          }}
+          className="win98-joystick-base"
           onPointerDown={(e) => {
             setIsDragging(true);
             e.preventDefault();
@@ -102,32 +92,12 @@ export default function VirtualJoystick() {
         >
           <div
             ref={knobRef}
-            style={{
-              width: '32px',
-              height: '32px',
-              background: 'var(--win98-button-face)',
-              border: '2px outset var(--win98-button-face)',
-              borderRadius: '50%',
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              pointerEvents: 'none',
-              transition: 'transform 0.1s'
-            }}
+            className="win98-joystick-knob"
           />
         </div>
-      </div>
-      
-      {/* Windows 98 Style Label */}
-      <div style={{ 
-        textAlign: 'center', 
-        fontSize: '10px', 
-        marginTop: '4px',
-        color: 'var(--win98-text)',
-        fontFamily: 'MS Sans Serif, sans-serif'
-      }}>
-        Joystick
+        <div className="win98-label">
+          Joystick
+        </div>
       </div>
     </div>
   );
