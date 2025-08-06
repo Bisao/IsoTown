@@ -60,24 +60,25 @@ export default function GameWorld2D() {
     ctx.lineWidth = 1;
     ctx.globalAlpha = 0.6;
 
-    // Larger grid size to ensure visibility when camera follows NPC
-    const gridSize = 20;
+    // Much larger grid size to ensure always visible
+    const gridSize = 50;
     const halfGrid = Math.floor(gridSize / 2);
 
-    // Calculate current camera center for grid positioning
-    const centerOffsetX = Math.floor(panRef.current.x / (CELL_SIZE * 3 * zoomRef.current));
-    const centerOffsetZ = Math.floor(panRef.current.y / (CELL_SIZE * 3 * zoomRef.current * 0.5));
+    // Calculate grid offset based on current pan position more accurately
+    const scale = 3 * zoomRef.current;
+    const gridOffsetX = Math.floor(-panRef.current.x / (CELL_SIZE * scale * 2));
+    const gridOffsetZ = Math.floor(-panRef.current.y / (CELL_SIZE * scale));
 
-    for (let x = -halfGrid + centerOffsetX; x <= halfGrid + centerOffsetX; x++) {
-      for (let z = -halfGrid + centerOffsetZ; z <= halfGrid + centerOffsetZ; z++) {
+    for (let x = -halfGrid + gridOffsetX; x <= halfGrid + gridOffsetX; x++) {
+      for (let z = -halfGrid + gridOffsetZ; z <= halfGrid + gridOffsetZ; z++) {
         const screen = gridToScreen(x, z, canvasWidth, canvasHeight);
         const screenRight = gridToScreen(x + 1, z, canvasWidth, canvasHeight);
         const screenDown = gridToScreen(x, z + 1, canvasWidth, canvasHeight);
         const screenDiag = gridToScreen(x + 1, z + 1, canvasWidth, canvasHeight);
 
-        // Only draw if cell is visible on screen (expanded bounds)
-        if (screen.x > -200 && screen.x < canvasWidth + 200 && 
-            screen.y > -200 && screen.y < canvasHeight + 200) {
+        // More generous visibility bounds to ensure grid stays visible
+        if (screen.x > -400 && screen.x < canvasWidth + 400 && 
+            screen.y > -400 && screen.y < canvasHeight + 400) {
 
           // Draw diamond shape for each grid cell
           ctx.beginPath();
@@ -97,26 +98,26 @@ export default function GameWorld2D() {
 
   const drawHouse = useCallback((ctx: CanvasRenderingContext2D, house: any, canvasWidth: number, canvasHeight: number) => {
     const screen = gridToScreen(house.position.x, house.position.z, canvasWidth, canvasHeight);
-    const size = CELL_SIZE * 2.5;
+    const size = CELL_SIZE * 2.5 * zoomRef.current;
 
-    // Only draw if house is visible on screen
-    if (screen.x < -size || screen.x > canvasWidth + size || 
-        screen.y < -size || screen.y > canvasHeight + size) {
+    // More generous visibility bounds for houses
+    if (screen.x < -size * 2 || screen.x > canvasWidth + size * 2 || 
+        screen.y < -size * 2 || screen.y > canvasHeight + size * 2) {
       return;
     }
 
     ctx.save();
 
-    // Draw house base (square)
+    // Draw house base (square) with zoom scaling
     ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];
     ctx.fillRect(Math.round(screen.x - size/2), Math.round(screen.y - size/2), size, size);
 
-    // Draw house border
+    // Draw house border with zoom scaling
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = Math.max(2, 3 * zoomRef.current);
     ctx.strokeRect(Math.round(screen.x - size/2), Math.round(screen.y - size/2), size, size);
 
-    // Draw simple roof (triangle)
+    // Draw simple roof (triangle) with zoom scaling
     ctx.fillStyle = '#8B4513';
     ctx.beginPath();
     ctx.moveTo(Math.round(screen.x - size/2), Math.round(screen.y - size/2));
@@ -132,46 +133,49 @@ export default function GameWorld2D() {
   const drawNPC = useCallback((ctx: CanvasRenderingContext2D, npc: any, canvasWidth: number, canvasHeight: number) => {
     const worldPos = gridToWorld(npc.position);
     const screen = gridToScreen(worldPos.x / CELL_SIZE, worldPos.z / CELL_SIZE, canvasWidth, canvasHeight);
-    const radius = CELL_SIZE * 1.2;
+    const radius = CELL_SIZE * 1.2 * zoomRef.current;
 
-    // Only draw if NPC is visible on screen
-    if (screen.x < -radius || screen.x > canvasWidth + radius || 
-        screen.y < -radius || screen.y > canvasHeight + radius) {
+    // More generous visibility bounds to keep NPCs visible
+    if (screen.x < -radius * 2 || screen.x > canvasWidth + radius * 2 || 
+        screen.y < -radius * 2 || screen.y > canvasHeight + radius * 2) {
       return;
     }
 
     ctx.save();
 
-    // Draw NPC as circle
-    ctx.fillStyle = '#FF6B6B';
+    // Draw NPC as circle with zoom adjustment
+    ctx.fillStyle = selectedNPC === npc.id ? '#FF4444' : '#FF6B6B';
     ctx.beginPath();
     ctx.arc(Math.round(screen.x), Math.round(screen.y), radius, 0, Math.PI * 2);
     ctx.fill();
 
     // Draw NPC border
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = selectedNPC === npc.id ? '#FF0000' : '#000000';
+    ctx.lineWidth = Math.max(2, 3 * zoomRef.current);
     ctx.stroke();
 
-    // Draw simple eyes
+    // Draw simple eyes (scale with zoom)
+    const eyeSize = radius / 6;
+    const pupilSize = radius / 12;
+    
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.arc(Math.round(screen.x - radius/3), Math.round(screen.y - radius/3), radius/6, 0, Math.PI * 2);
+    ctx.arc(Math.round(screen.x - radius/3), Math.round(screen.y - radius/3), eyeSize, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(Math.round(screen.x + radius/3), Math.round(screen.y - radius/3), radius/6, 0, Math.PI * 2);
+    ctx.arc(Math.round(screen.x + radius/3), Math.round(screen.y - radius/3), eyeSize, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = '#000000';
     ctx.beginPath();
-    ctx.arc(Math.round(screen.x - radius/3), Math.round(screen.y - radius/3), radius/12, 0, Math.PI * 2);
+    ctx.arc(Math.round(screen.x - radius/3), Math.round(screen.y - radius/3), pupilSize, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(Math.round(screen.x + radius/3), Math.round(screen.y - radius/3), radius/12, 0, Math.PI * 2);
+    ctx.arc(Math.round(screen.x + radius/3), Math.round(screen.y - radius/3), pupilSize, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
-  }, [gridToScreen]);
+  }, [gridToScreen, selectedNPC]);
 
   // Animation loop
   const animate = useCallback(() => {
