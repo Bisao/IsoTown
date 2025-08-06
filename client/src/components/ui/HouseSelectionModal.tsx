@@ -20,7 +20,18 @@ export default function HouseSelectionModal({ open }: HouseSelectionModalProps) 
 
   return (
     <div className="win98-modal-overlay">
-      <div className="win98-window" style={{ minWidth: '300px', maxWidth: '400px' }}>
+      <div
+        className="win98-window"
+        style={{
+          width: window.innerWidth > 768 ? '320px' : '90vw',
+          maxWidth: '400px',
+          minHeight: '280px',
+          maxHeight: '90vh',
+          position: 'relative',
+          margin: '20px'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="win98-window-header">
           <span>Select Building Type</span>
           <div className="win98-close-button" onClick={handleClose}>×</div>
@@ -43,18 +54,24 @@ export default function HouseSelectionModal({ open }: HouseSelectionModalProps) 
                     alignItems: 'center',
                     gap: '8px',
                     justifyContent: 'flex-start',
-                    padding: '6px 12px'
+                    padding: window.innerWidth > 768 ? '6px 12px' : '10px 12px',
+                    fontSize: window.innerWidth > 768 ? '11px' : '12px'
                   }}
                 >
                   <div
                     style={{
-                      width: '16px',
-                      height: '16px',
+                      width: window.innerWidth > 768 ? '16px' : '20px',
+                      height: window.innerWidth > 768 ? '16px' : '20px',
                       backgroundColor: HOUSE_COLORS[type],
                       border: '1px solid #000000'
                     }}
                   />
-                  <span style={{ fontSize: '11px' }}>{HOUSE_NAMES[type]}</span>
+                  <span style={{
+                    fontSize: window.innerWidth > 768 ? '11px' : '12px',
+                    fontFamily: 'MS Sans Serif, sans-serif'
+                  }}>
+                    {HOUSE_NAMES[type]}
+                  </span>
                 </button>
               </div>
             ))}

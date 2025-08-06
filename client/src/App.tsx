@@ -8,7 +8,13 @@ export default function App() {
   const { showHouseModal, showNPCModal } = useGameStore();
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ 
+      width: '100vw', 
+      height: '100vh', 
+      overflow: 'hidden',
+      position: 'relative',
+      touchAction: 'none'
+    }}>
       <GameWorld2D />
       <GameUI />
       <HouseSelectionModal open={showHouseModal} />

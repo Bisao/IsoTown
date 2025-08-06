@@ -316,7 +316,11 @@ export default function GameWorld2D() {
         cursor: isPlacingHouse ? 'crosshair' : 'default',
         width: '100%',
         height: '100%',
-        touchAction: 'none'
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none'
       }}
     />
   );
