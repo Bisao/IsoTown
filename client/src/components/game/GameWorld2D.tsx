@@ -10,7 +10,7 @@ export default function GameWorld2D() {
   const animationRef = useRef<number>();
 
   // Zoom and pan state
-  const zoomRef = useRef(1);
+  const zoomRef = useRef(2.5);
   const panRef = useRef({ x: 0, y: 0 });
   const lastTouchDistanceRef = useRef<number | null>(null);
   const lastTouchCenterRef = useRef<{ x: number, y: number } | null>(null);
@@ -19,7 +19,7 @@ export default function GameWorld2D() {
   const npcs = useNPCStore(state => state.npcs);
   const { updateNPCMovement } = useNPCStore();
 
-  const { isPlacingHouse, selectedHouseType, stopPlacingHouse } = useGameStore();
+  const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC } = useGameStore();
   const { addHouse, getHouseAt } = useHouseStore();
 
   // Convert grid coordinates to screen coordinates (isometric view)
@@ -180,6 +180,33 @@ export default function GameWorld2D() {
     // Update NPC movement
     updateNPCMovement();
 
+    // Follow controlled NPC with camera
+    if (selectedNPC && npcs[selectedNPC] && npcs[selectedNPC].controlMode === 'CONTROLLED') {
+      const npc = npcs[selectedNPC];
+      const worldPos = gridToWorld(npc.position);
+      const targetGridX = worldPos.x / CELL_SIZE;
+      const targetGridZ = worldPos.z / CELL_SIZE;
+      
+      const targetScreen = gridToScreen(targetGridX, targetGridZ, canvas.width, canvas.height);
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      // Smooth camera follow
+      const deltaX = centerX - targetScreen.x;
+      const deltaY = centerY - targetScreen.y;
+      
+      panRef.current.x += deltaX * 0.1;
+      panRef.current.y += deltaY * 0.1;
+      
+      // Set closer zoom for controlled NPCs
+      const targetZoom = 3.5;
+      zoomRef.current += (targetZoom - zoomRef.current) * 0.05;
+    } else {
+      // Return to normal zoom when not controlling
+      const targetZoom = 2.5;
+      zoomRef.current += (targetZoom - zoomRef.current) * 0.02;
+    }
+
     // Save and clear canvas with proper compositing
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
@@ -212,7 +239,7 @@ export default function GameWorld2D() {
 
     // Continue animation
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, updateNPCMovement, drawGrid, drawHouse, drawNPC]);
+  }, [houses, npcs, updateNPCMovement, drawGrid, drawHouse, drawNPC, selectedNPC, gridToScreen, gridToWorld]);
 
   // Handle canvas click for house placement or NPC/house selection
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {

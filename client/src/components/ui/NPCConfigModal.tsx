@@ -40,8 +40,10 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
 
   const handleClose = () => {
     setShowNPCModal(false);
-    // Don't clear selection to keep joystick visible for controlled NPCs
-    // clearSelection();
+    // Only clear selection if NPC is not in controlled mode
+    if (currentNPC && currentNPC.controlMode !== NPCControlMode.CONTROLLED) {
+      clearSelection();
+    }
   };
 
   const handleSetControlMode = (mode: NPCControlMode) => {

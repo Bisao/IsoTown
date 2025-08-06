@@ -48,10 +48,23 @@ export const useGameStore = create<GameStore>()(
       showNPCModal: true 
     }),
     
-    clearSelection: () => set({ 
-      selectedNPC: undefined, 
-      selectedHouse: undefined,
-      showNPCModal: false 
+    clearSelection: () => set((state) => {
+      // Don't clear NPC selection if it's in controlled mode
+      const { npcs } = useNPCStore.getState();
+      const currentNPC = state.selectedNPC && npcs[state.selectedNPC];
+      
+      if (currentNPC && currentNPC.controlMode === 'CONTROLLED') {
+        return { 
+          selectedHouse: undefined,
+          showNPCModal: false 
+        };
+      }
+      
+      return { 
+        selectedNPC: undefined, 
+        selectedHouse: undefined,
+        showNPCModal: false 
+      };
     }),
     
     setShowHouseModal: (show) => set({ showHouseModal: show }),
