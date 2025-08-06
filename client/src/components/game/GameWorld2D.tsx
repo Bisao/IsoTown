@@ -9,6 +9,12 @@ export default function GameWorld2D() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
   
+  // Zoom and pan state
+  const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
+  const lastTouchDistanceRef = useRef<number | null>(null);
+  const lastTouchCenterRef = useRef<{ x: number, y: number } | null>(null);
+  
   const houses = useHouseStore(state => state.houses);
   const npcs = useNPCStore(state => state.npcs);
   const { updateNPCMovement } = useNPCStore();
@@ -21,10 +27,10 @@ export default function GameWorld2D() {
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
     
-    // Isometric projection with larger scale for better visibility
-    const scale = 3; // Increased scale to make everything bigger and closer
-    const screenX = centerX + (gridX - gridZ) * CELL_SIZE * scale;
-    const screenY = centerY + (gridX + gridZ) * CELL_SIZE * scale * 0.5;
+    // Isometric projection with zoom and pan
+    const scale = 3 * zoomRef.current;
+    const screenX = centerX + panRef.current.x + (gridX - gridZ) * CELL_SIZE * scale;
+    const screenY = centerY + panRef.current.y + (gridX + gridZ) * CELL_SIZE * scale * 0.5;
     
     return { x: screenX, y: screenY };
   }, []);
@@ -34,11 +40,11 @@ export default function GameWorld2D() {
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
     
-    const relX = screenX - centerX;
-    const relY = screenY - centerY;
+    const relX = screenX - centerX - panRef.current.x;
+    const relY = screenY - centerY - panRef.current.y;
     
     // Inverse isometric transformation with scale adjustment
-    const scale = 3;
+    const scale = 3 * zoomRef.current;
     const gridX = Math.round((relX / (CELL_SIZE * scale) + relY / (CELL_SIZE * scale * 0.5)) / 2);
     const gridZ = Math.round((relY / (CELL_SIZE * scale * 0.5) - relX / (CELL_SIZE * scale)) / 2);
     
@@ -195,7 +201,7 @@ export default function GameWorld2D() {
       const worldPos = gridToWorld(npc.position);
       const screen = gridToScreen(worldPos.x / CELL_SIZE, worldPos.z / CELL_SIZE, canvas.width, canvas.height);
       const distance = Math.sqrt((x - screen.x) ** 2 + (y - screen.y) ** 2);
-      return distance <= CELL_SIZE * 1.2; // Updated NPC radius
+      return distance <= CELL_SIZE * 1.2 * zoomRef.current; // Scale with zoom
     });
     
     if (npcClicked) {
@@ -206,7 +212,7 @@ export default function GameWorld2D() {
     // Check houses
     const houseClicked = Object.values(houses).find(house => {
       const screen = gridToScreen(house.position.x, house.position.z, canvas.width, canvas.height);
-      const size = CELL_SIZE * 2.5; // Updated house size
+      const size = CELL_SIZE * 2.5 * zoomRef.current; // Scale with zoom
       return x >= screen.x - size/2 && x <= screen.x + size/2 && 
              y >= screen.y - size/2 && y <= screen.y + size/2;
     });
@@ -215,6 +221,69 @@ export default function GameWorld2D() {
       useGameStore.getState().selectHouse(houseClicked.id);
     }
   }, [isPlacingHouse, selectedHouseType, screenToGrid, getHouseAt, addHouse, stopPlacingHouse, npcs, houses, gridToScreen]);
+
+  // Touch event handlers for pinch-to-zoom
+  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+    if (event.touches.length === 2) {
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      
+      const distance = Math.sqrt(
+        (touch2.clientX - touch1.clientX) ** 2 + (touch2.clientY - touch1.clientY) ** 2
+      );
+      
+      const centerX = (touch1.clientX + touch2.clientX) / 2;
+      const centerY = (touch1.clientY + touch2.clientY) / 2;
+      
+      lastTouchDistanceRef.current = distance;
+      lastTouchCenterRef.current = { x: centerX, y: centerY };
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+    event.preventDefault(); // Prevent scrolling
+    
+    if (event.touches.length === 2 && lastTouchDistanceRef.current && lastTouchCenterRef.current) {
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      
+      const distance = Math.sqrt(
+        (touch2.clientX - touch1.clientX) ** 2 + (touch2.clientY - touch1.clientY) ** 2
+      );
+      
+      const centerX = (touch1.clientX + touch2.clientX) / 2;
+      const centerY = (touch1.clientY + touch2.clientY) / 2;
+      
+      // Calculate zoom change
+      const zoomDelta = distance / lastTouchDistanceRef.current;
+      const newZoom = Math.max(0.3, Math.min(3, zoomRef.current * zoomDelta));
+      zoomRef.current = newZoom;
+      
+      // Calculate pan based on center movement
+      const panDeltaX = centerX - lastTouchCenterRef.current.x;
+      const panDeltaY = centerY - lastTouchCenterRef.current.y;
+      
+      panRef.current.x += panDeltaX;
+      panRef.current.y += panDeltaY;
+      
+      lastTouchDistanceRef.current = distance;
+      lastTouchCenterRef.current = { x: centerX, y: centerY };
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    lastTouchDistanceRef.current = null;
+    lastTouchCenterRef.current = null;
+  }, []);
+
+  // Wheel event for desktop zoom
+  const handleWheel = useCallback((event: React.WheelEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    
+    const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.max(0.3, Math.min(3, zoomRef.current * zoomFactor));
+    zoomRef.current = newZoom;
+  }, []);
 
   // Handle canvas resize
   const handleResize = useCallback(() => {
@@ -251,10 +320,15 @@ export default function GameWorld2D() {
     <canvas
       ref={canvasRef}
       onClick={handleCanvasClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onWheel={handleWheel}
       style={{
         display: 'block',
         cursor: isPlacingHouse ? 'crosshair' : 'default',
-        background: '#90EE90'
+        background: '#90EE90',
+        touchAction: 'none' // Prevent default touch behaviors
       }}
     />
   );
