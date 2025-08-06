@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { NPCControlMode } from '../../lib/constants';
-import { worldToGrid, gridToWorld, isValidGridPosition } from '../../lib/utils/grid';
+import { worldToGrid, isValidGridPosition } from '../../lib/utils/grid';
 
 export default function VirtualJoystick() {
   const joystickRef = useRef<HTMLDivElement>(null);
@@ -46,8 +46,8 @@ export default function VirtualJoystick() {
         const newX = currentNPC.position.x + normalizedX * 0.1;
         const newZ = currentNPC.position.z + normalizedY * 0.1;
         
-        const newGridPos = worldToGrid({ x: newX, z: newZ });
-        if (isValidGridPosition(newGridPos)) {
+        // Check bounds in world coordinates
+        if (Math.abs(newX) <= 15 && Math.abs(newZ) <= 15) {
           updateNPCPosition(currentNPC.id, { x: newX, z: newZ });
         }
       }

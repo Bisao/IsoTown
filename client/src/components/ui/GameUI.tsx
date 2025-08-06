@@ -26,9 +26,9 @@ export default function GameUI() {
         <h3 className="font-bold mb-2">How to Play:</h3>
         <ul className="text-sm space-y-1">
           <li>• Click "Place House" to select a house type</li>
-          <li>• Click on grid to place the house</li>
-          <li>• Click on NPCs or houses to configure</li>
-          <li>• Move with WASD or virtual joystick</li>
+          <li>• Click on 2D isometric grid to place the house</li>
+          <li>• Right-click on NPCs (red circles) to configure</li>
+          <li>• Switch between autonomous and controlled modes</li>
         </ul>
       </div>
 
