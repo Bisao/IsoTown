@@ -53,142 +53,182 @@ export default function GameWorld2D() {
 
   // Draw functions
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
-    // Save context state
-    ctx.save();
-
     ctx.strokeStyle = '#AAAAAA';
     ctx.lineWidth = 1;
     ctx.globalAlpha = 0.6;
 
-    // Much larger grid size to ensure always visible
-    const gridSize = 50;
+    // Optimized grid size for better performance
+    const gridSize = 25;
     const halfGrid = Math.floor(gridSize / 2);
 
-    // Calculate grid offset based on current pan position more accurately
+    // Pre-calculate scale for better performance
     const scale = 3 * zoomRef.current;
-    const gridOffsetX = Math.floor(-panRef.current.x / (CELL_SIZE * scale * 2));
-    const gridOffsetZ = Math.floor(-panRef.current.y / (CELL_SIZE * scale));
+    const cellScale = CELL_SIZE * scale;
+    const gridOffsetX = Math.floor(-panRef.current.x / (cellScale * 2));
+    const gridOffsetZ = Math.floor(-panRef.current.y / cellScale);
 
+    // Batch drawing operations for better performance
+    ctx.beginPath();
+    
     for (let x = -halfGrid + gridOffsetX; x <= halfGrid + gridOffsetX; x++) {
       for (let z = -halfGrid + gridOffsetZ; z <= halfGrid + gridOffsetZ; z++) {
-        const screen = gridToScreen(x, z, canvasWidth, canvasHeight);
-        const screenRight = gridToScreen(x + 1, z, canvasWidth, canvasHeight);
-        const screenDown = gridToScreen(x, z + 1, canvasWidth, canvasHeight);
-        const screenDiag = gridToScreen(x + 1, z + 1, canvasWidth, canvasHeight);
+        // Quick visibility check
+        const centerX = canvasWidth / 2;
+        const centerY = canvasHeight / 2;
+        const screenX = centerX + panRef.current.x + (x - z) * cellScale;
+        const screenY = centerY + panRef.current.y + (x + z) * cellScale * 0.5;
 
-        // More generous visibility bounds to ensure grid stays visible
-        if (screen.x > -400 && screen.x < canvasWidth + 400 && 
-            screen.y > -400 && screen.y < canvasHeight + 400) {
+        // Only draw if visible (optimized bounds)
+        if (screenX > -100 && screenX < canvasWidth + 100 && 
+            screenY > -100 && screenY < canvasHeight + 100) {
 
-          // Draw diamond shape for each grid cell
-          ctx.beginPath();
-          ctx.moveTo(Math.round(screen.x), Math.round(screen.y));
-          ctx.lineTo(Math.round(screenRight.x), Math.round(screenRight.y));
-          ctx.lineTo(Math.round(screenDiag.x), Math.round(screenDiag.y));
-          ctx.lineTo(Math.round(screenDown.x), Math.round(screenDown.y));
+          // Calculate all four corners once
+          const rightX = centerX + panRef.current.x + ((x + 1) - z) * cellScale;
+          const rightY = centerY + panRef.current.y + ((x + 1) + z) * cellScale * 0.5;
+          
+          const downX = centerX + panRef.current.x + (x - (z + 1)) * cellScale;
+          const downY = centerY + panRef.current.y + (x + (z + 1)) * cellScale * 0.5;
+          
+          const diagX = centerX + panRef.current.x + ((x + 1) - (z + 1)) * cellScale;
+          const diagY = centerY + panRef.current.y + ((x + 1) + (z + 1)) * cellScale * 0.5;
+
+          // Draw diamond shape
+          ctx.moveTo(Math.round(screenX), Math.round(screenY));
+          ctx.lineTo(Math.round(rightX), Math.round(rightY));
+          ctx.lineTo(Math.round(diagX), Math.round(diagY));
+          ctx.lineTo(Math.round(downX), Math.round(downY));
           ctx.closePath();
-          ctx.stroke();
         }
       }
     }
-
-    // Restore context state
-    ctx.restore();
-  }, [gridToScreen]);
+    
+    ctx.stroke();
+  }, []);
 
   const drawHouse = useCallback((ctx: CanvasRenderingContext2D, house: any, canvasWidth: number, canvasHeight: number) => {
-    const screen = gridToScreen(house.position.x, house.position.z, canvasWidth, canvasHeight);
+    // Pre-calculate values for better performance
+    const centerX = canvasWidth / 2;
+    const centerY = canvasHeight / 2;
+    const scale = 3 * zoomRef.current;
+    const cellScale = CELL_SIZE * scale;
+    
+    const screenX = centerX + panRef.current.x + (house.position.x - house.position.z) * cellScale;
+    const screenY = centerY + panRef.current.y + (house.position.x + house.position.z) * cellScale * 0.5;
     const size = CELL_SIZE * 2.5 * zoomRef.current;
 
-    // More generous visibility bounds for houses
-    if (screen.x < -size * 2 || screen.x > canvasWidth + size * 2 || 
-        screen.y < -size * 2 || screen.y > canvasHeight + size * 2) {
+    // Optimized visibility check
+    if (screenX < -size || screenX > canvasWidth + size || 
+        screenY < -size || screenY > canvasHeight + size) {
       return;
     }
 
-    ctx.save();
+    const halfSize = size / 2;
+    const x = Math.round(screenX - halfSize);
+    const y = Math.round(screenY - halfSize);
 
-    // Draw house base (square) with zoom scaling
+    // Draw house base efficiently
     ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];
-    ctx.fillRect(Math.round(screen.x - size/2), Math.round(screen.y - size/2), size, size);
+    ctx.fillRect(x, y, size, size);
 
-    // Draw house border with zoom scaling
+    // Draw house border
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = Math.max(2, 3 * zoomRef.current);
-    ctx.strokeRect(Math.round(screen.x - size/2), Math.round(screen.y - size/2), size, size);
+    ctx.lineWidth = Math.max(1, 2 * zoomRef.current);
+    ctx.strokeRect(x, y, size, size);
 
-    // Draw simple roof (triangle) with zoom scaling
+    // Draw roof efficiently
     ctx.fillStyle = '#8B4513';
     ctx.beginPath();
-    ctx.moveTo(Math.round(screen.x - size/2), Math.round(screen.y - size/2));
-    ctx.lineTo(Math.round(screen.x + size/2), Math.round(screen.y - size/2));
-    ctx.lineTo(Math.round(screen.x), Math.round(screen.y - size));
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + size, y);
+    ctx.lineTo(Math.round(screenX), Math.round(screenY - size));
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
-    ctx.restore();
-  }, [gridToScreen]);
+  }, []);
 
   const drawNPC = useCallback((ctx: CanvasRenderingContext2D, npc: any, canvasWidth: number, canvasHeight: number) => {
+    // Pre-calculate for better performance
     const worldPos = gridToWorld(npc.position);
-    const screen = gridToScreen(worldPos.x / CELL_SIZE, worldPos.z / CELL_SIZE, canvasWidth, canvasHeight);
+    const centerX = canvasWidth / 2;
+    const centerY = canvasHeight / 2;
+    const scale = 3 * zoomRef.current;
+    const cellScale = CELL_SIZE * scale;
+    
+    const gridX = worldPos.x / CELL_SIZE;
+    const gridZ = worldPos.z / CELL_SIZE;
+    const screenX = centerX + panRef.current.x + (gridX - gridZ) * cellScale;
+    const screenY = centerY + panRef.current.y + (gridX + gridZ) * cellScale * 0.5;
     const radius = CELL_SIZE * 1.2 * zoomRef.current;
 
-    // More generous visibility bounds to keep NPCs visible
-    if (screen.x < -radius * 2 || screen.x > canvasWidth + radius * 2 || 
-        screen.y < -radius * 2 || screen.y > canvasHeight + radius * 2) {
+    // Optimized visibility check
+    if (screenX < -radius || screenX > canvasWidth + radius || 
+        screenY < -radius || screenY > canvasHeight + radius) {
       return;
     }
 
-    ctx.save();
+    const x = Math.round(screenX);
+    const y = Math.round(screenY);
+    const isSelected = selectedNPC === npc.id;
 
-    // Draw NPC as circle with zoom adjustment
-    ctx.fillStyle = selectedNPC === npc.id ? '#FF4444' : '#FF6B6B';
+    // Draw NPC body efficiently
+    ctx.fillStyle = isSelected ? '#FF4444' : '#FF6B6B';
     ctx.beginPath();
-    ctx.arc(Math.round(screen.x), Math.round(screen.y), radius, 0, Math.PI * 2);
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw NPC border
-    ctx.strokeStyle = selectedNPC === npc.id ? '#FF0000' : '#000000';
-    ctx.lineWidth = Math.max(2, 3 * zoomRef.current);
+    // Draw border
+    ctx.strokeStyle = isSelected ? '#FF0000' : '#000000';
+    ctx.lineWidth = Math.max(1, 2 * zoomRef.current);
     ctx.stroke();
 
-    // Draw simple eyes (scale with zoom)
-    const eyeSize = radius / 6;
-    const pupilSize = radius / 12;
-    
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.arc(Math.round(screen.x - radius/3), Math.round(screen.y - radius/3), eyeSize, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(Math.round(screen.x + radius/3), Math.round(screen.y - radius/3), eyeSize, 0, Math.PI * 2);
-    ctx.fill();
+    // Draw eyes only if NPC is large enough
+    if (radius > 8) {
+      const eyeSize = Math.max(2, radius / 6);
+      const pupilSize = Math.max(1, radius / 12);
+      const eyeOffset = radius / 3;
+      
+      // White of eyes
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(x - eyeOffset, y - eyeOffset, eyeSize, 0, Math.PI * 2);
+      ctx.arc(x + eyeOffset, y - eyeOffset, eyeSize, 0, Math.PI * 2);
+      ctx.fill();
 
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.arc(Math.round(screen.x - radius/3), Math.round(screen.y - radius/3), pupilSize, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(Math.round(screen.x + radius/3), Math.round(screen.y - radius/3), pupilSize, 0, Math.PI * 2);
-    ctx.fill();
+      // Pupils
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(x - eyeOffset, y - eyeOffset, pupilSize, 0, Math.PI * 2);
+      ctx.arc(x + eyeOffset, y - eyeOffset, pupilSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, [selectedNPC]);
 
-    ctx.restore();
-  }, [gridToScreen, selectedNPC]);
-
-  // Animation loop
-  const animate = useCallback(() => {
+  // Performance tracking
+  const lastFrameTime = useRef(0);
+  const frameCount = useRef(0);
+  
+  // Animation loop with performance optimization
+  const animate = useCallback((currentTime: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Update NPC movement
-    updateNPCMovement();
+    // Limit frame rate to 60fps for better performance
+    if (currentTime - lastFrameTime.current < 16.67) {
+      animationRef.current = requestAnimationFrame(animate);
+      return;
+    }
+    lastFrameTime.current = currentTime;
 
-    // Follow controlled NPC with camera
+    // Update NPC movement only every 3rd frame for better performance
+    frameCount.current++;
+    if (frameCount.current % 3 === 0) {
+      updateNPCMovement();
+    }
+
+    // Follow controlled NPC with camera (optimized)
     if (selectedNPC && npcs[selectedNPC] && npcs[selectedNPC].controlMode === 'CONTROLLED') {
       const npc = npcs[selectedNPC];
       const worldPos = gridToWorld(npc.position);
@@ -199,51 +239,49 @@ export default function GameWorld2D() {
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       
-      // Smooth camera follow
+      // Smooth camera follow with better interpolation
       const deltaX = centerX - targetScreen.x;
       const deltaY = centerY - targetScreen.y;
       
-      panRef.current.x += deltaX * 0.1;
-      panRef.current.y += deltaY * 0.1;
+      if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+        panRef.current.x += deltaX * 0.08;
+        panRef.current.y += deltaY * 0.08;
+      }
       
       // Set closer zoom for controlled NPCs
       const targetZoom = 3.5;
-      zoomRef.current += (targetZoom - zoomRef.current) * 0.05;
+      if (Math.abs(zoomRef.current - targetZoom) > 0.01) {
+        zoomRef.current += (targetZoom - zoomRef.current) * 0.05;
+      }
     } else {
       // Return to normal zoom when not controlling
       const targetZoom = 2.5;
-      zoomRef.current += (targetZoom - zoomRef.current) * 0.02;
+      if (Math.abs(zoomRef.current - targetZoom) > 0.01) {
+        zoomRef.current += (targetZoom - zoomRef.current) * 0.02;
+      }
     }
 
-    // Save and clear canvas with proper compositing
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
+    // Clear canvas efficiently
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw background
     ctx.fillStyle = '#90EE90';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid (more stable)
+    // Draw grid with optimized rendering
     drawGrid(ctx, canvas.width, canvas.height);
 
-    // Draw houses
+    // Draw houses efficiently
     const houseValues = Object.values(houses);
-    if (houseValues.length > 0) {
-      houseValues.forEach(house => {
-        drawHouse(ctx, house, canvas.width, canvas.height);
-      });
+    for (const house of houseValues) {
+      drawHouse(ctx, house, canvas.width, canvas.height);
     }
 
-    // Draw NPCs (only if they exist)
+    // Draw NPCs efficiently
     const npcValues = Object.values(npcs);
-    if (npcValues.length > 0) {
-      npcValues.forEach(npc => {
-        drawNPC(ctx, npc, canvas.width, canvas.height);
-      });
+    for (const npc of npcValues) {
+      drawNPC(ctx, npc, canvas.width, canvas.height);
     }
-
-    ctx.restore();
 
     // Continue animation
     animationRef.current = requestAnimationFrame(animate);
@@ -377,17 +415,24 @@ export default function GameWorld2D() {
     // Set initial canvas size
     handleResize();
 
-    // Start animation loop
-    animationRef.current = requestAnimationFrame(animate);
+    // Start animation loop with initial timestamp
+    animationRef.current = requestAnimationFrame((time) => animate(time));
 
-    // Add resize listener
-    window.addEventListener('resize', handleResize);
+    // Add resize listener with throttling
+    let resizeTimeout: NodeJS.Timeout;
+    const throttledResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(handleResize, 100);
+    };
+    
+    window.addEventListener('resize', throttledResize);
 
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', throttledResize);
+      clearTimeout(resizeTimeout);
     };
   }, [animate, handleResize]);
 
