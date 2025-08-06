@@ -21,9 +21,10 @@ export default function GameWorld2D() {
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
     
-    // Isometric projection
-    const screenX = centerX + (gridX - gridZ) * CELL_SIZE * 0.5;
-    const screenY = centerY + (gridX + gridZ) * CELL_SIZE * 0.25;
+    // Isometric projection with larger scale for better visibility
+    const scale = 3; // Increased scale to make everything bigger and closer
+    const screenX = centerX + (gridX - gridZ) * CELL_SIZE * scale;
+    const screenY = centerY + (gridX + gridZ) * CELL_SIZE * scale * 0.5;
     
     return { x: screenX, y: screenY };
   }, []);
@@ -36,9 +37,10 @@ export default function GameWorld2D() {
     const relX = screenX - centerX;
     const relY = screenY - centerY;
     
-    // Inverse isometric transformation
-    const gridX = Math.round((relX / (CELL_SIZE * 0.5) + relY / (CELL_SIZE * 0.25)) / 2);
-    const gridZ = Math.round((relY / (CELL_SIZE * 0.25) - relX / (CELL_SIZE * 0.5)) / 2);
+    // Inverse isometric transformation with scale adjustment
+    const scale = 3;
+    const gridX = Math.round((relX / (CELL_SIZE * scale) + relY / (CELL_SIZE * scale * 0.5)) / 2);
+    const gridZ = Math.round((relY / (CELL_SIZE * scale * 0.5) - relX / (CELL_SIZE * scale)) / 2);
     
     return { x: gridX, z: gridZ };
   }, []);
@@ -46,10 +48,12 @@ export default function GameWorld2D() {
   // Draw functions
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
     ctx.strokeStyle = '#CCCCCC';
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.5;
     
-    const halfGrid = Math.floor(GRID_SIZE / 2);
+    // Smaller grid for better focus
+    const gridSize = 8; // Reduced from GRID_SIZE
+    const halfGrid = Math.floor(gridSize / 2);
     
     for (let x = -halfGrid; x <= halfGrid; x++) {
       for (let z = -halfGrid; z <= halfGrid; z++) {
@@ -74,7 +78,7 @@ export default function GameWorld2D() {
 
   const drawHouse = useCallback((ctx: CanvasRenderingContext2D, house: any, canvasWidth: number, canvasHeight: number) => {
     const screen = gridToScreen(house.position.x, house.position.z, canvasWidth, canvasHeight);
-    const size = CELL_SIZE * 0.8;
+    const size = CELL_SIZE * 2.5; // Increased size for better visibility
     
     // Draw house base (square)
     ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];
@@ -82,7 +86,7 @@ export default function GameWorld2D() {
     
     // Draw house border
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.strokeRect(screen.x - size/2, screen.y - size/2, size, size);
     
     // Draw simple roof (triangle)
@@ -99,7 +103,7 @@ export default function GameWorld2D() {
   const drawNPC = useCallback((ctx: CanvasRenderingContext2D, npc: any, canvasWidth: number, canvasHeight: number) => {
     const worldPos = gridToWorld(npc.position);
     const screen = gridToScreen(worldPos.x / CELL_SIZE, worldPos.z / CELL_SIZE, canvasWidth, canvasHeight);
-    const radius = CELL_SIZE * 0.3;
+    const radius = CELL_SIZE * 1.2; // Increased radius for better visibility
     
     // Draw NPC as circle
     ctx.fillStyle = '#FF6B6B';
@@ -109,7 +113,7 @@ export default function GameWorld2D() {
     
     // Draw NPC border
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.stroke();
     
     // Draw simple eyes
@@ -191,7 +195,7 @@ export default function GameWorld2D() {
       const worldPos = gridToWorld(npc.position);
       const screen = gridToScreen(worldPos.x / CELL_SIZE, worldPos.z / CELL_SIZE, canvas.width, canvas.height);
       const distance = Math.sqrt((x - screen.x) ** 2 + (y - screen.y) ** 2);
-      return distance <= CELL_SIZE * 0.3; // NPC radius
+      return distance <= CELL_SIZE * 1.2; // Updated NPC radius
     });
     
     if (npcClicked) {
@@ -202,7 +206,7 @@ export default function GameWorld2D() {
     // Check houses
     const houseClicked = Object.values(houses).find(house => {
       const screen = gridToScreen(house.position.x, house.position.z, canvas.width, canvas.height);
-      const size = CELL_SIZE * 0.8;
+      const size = CELL_SIZE * 2.5; // Updated house size
       return x >= screen.x - size/2 && x <= screen.x + size/2 && 
              y >= screen.y - size/2 && y <= screen.y + size/2;
     });

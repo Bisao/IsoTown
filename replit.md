@@ -1,6 +1,6 @@
 # Overview
 
-This is a 3D simulation game built with React Three Fiber where players can place houses, manage NPCs, and control game world interactions. The application features a grid-based world with different types of buildings (farmer, lumberjack, miner houses) and autonomous or player-controlled NPCs. The game includes both desktop and mobile controls, with virtual joysticks for mobile devices.
+This is a 2D isometric simulation game built with HTML5 Canvas where players can place houses, manage NPCs, and control game world interactions. The application features a grid-based isometric world with different types of buildings (farmer, lumberjack, miner houses) and autonomous or player-controlled NPCs. The game uses geometric shapes (squares for houses, circles for NPCs) and includes virtual joysticks for mobile control.
 
 # User Preferences
 
