@@ -3,7 +3,6 @@ import HouseSelectionModal from './HouseSelectionModal';
 import NPCConfigModal from './NPCConfigModal';
 import VirtualJoystick from './VirtualJoystick';
 import { useGameStore } from '../../lib/stores/useGameStore';
-import { Button } from './button';
 
 export default function GameUI() {
   const isMobile = useIsMobile();
@@ -11,25 +10,76 @@ export default function GameUI() {
 
   return (
     <>
-      {/* Main UI */}
-      <div className="absolute top-4 left-4 z-10">
-        <Button
+      {/* Windows 98 Style Toolbar */}
+      <div className="win98-game-ui">
+        <button
           onClick={() => setShowHouseModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="win98-button"
         >
-          Place House
-        </Button>
+          🏠 Build
+        </button>
+        <button
+          onClick={() => {
+            // Add NPC at center of map
+            import('../../lib/stores/useNPCStore').then(({ useNPCStore }) => {
+              useNPCStore.getState().addNPC({ x: 0, z: 0 });
+            });
+          }}
+          className="win98-button"
+        >
+          👤 Add NPC
+        </button>
+        <div className="win98-panel" style={{ marginLeft: '8px', flex: 1 }}>
+          <span style={{ fontSize: '11px' }}>SimCity 98 - Isometric Building Game</span>
+        </div>
       </div>
 
-      {/* Instructions */}
-      <div className="absolute top-4 right-4 z-10 bg-black/70 text-white p-4 rounded-lg max-w-xs">
-        <h3 className="font-bold mb-2">How to Play:</h3>
-        <ul className="text-sm space-y-1">
-          <li>• Click "Place House" to select a house type</li>
-          <li>• Click on 2D isometric grid to place the house</li>
-          <li>• Right-click on NPCs (red circles) to configure</li>
-          <li>• Switch between autonomous and controlled modes</li>
-        </ul>
+      {/* Windows 98 Style Status Bar */}
+      <div style={{
+        position: 'fixed',
+        bottom: '0',
+        left: '0',
+        right: '0',
+        height: '20px',
+        background: 'var(--win98-surface)',
+        border: '2px inset var(--win98-surface)',
+        borderBottom: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        paddingLeft: '8px',
+        fontSize: '11px',
+        zIndex: 1000
+      }}>
+        <span>Ready</span>
+        <div style={{ marginLeft: 'auto', marginRight: '8px' }}>
+          Use pinch-to-zoom on mobile
+        </div>
+      </div>
+
+      {/* Windows 98 Style Instructions Panel */}
+      <div style={{
+        position: 'absolute',
+        top: '50px',
+        right: '8px',
+        width: '240px',
+        zIndex: 10
+      }}>
+        <div className="win98-window">
+          <div className="win98-window-header">
+            <span>Instructions</span>
+            <div className="win98-close-button">×</div>
+          </div>
+          <div className="win98-window-body">
+            <div style={{ fontSize: '11px', lineHeight: '1.3' }}>
+              <strong>How to Play:</strong><br/><br/>
+              • Click "Place House" to build<br/>
+              • Click on grid to place house<br/>
+              • Use pinch-to-zoom on mobile<br/>
+              • Right-click NPCs to configure<br/>
+              • Switch control modes as needed
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Mobile Virtual Joystick */}

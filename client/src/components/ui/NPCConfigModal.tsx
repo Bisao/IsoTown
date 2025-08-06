@@ -1,7 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
-import { Button } from './button';
-import { Card, CardContent } from './card';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useHouseStore } from '../../lib/stores/useHouseStore';
@@ -52,67 +49,90 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
     }
   };
 
-  if (!currentNPC && !currentHouse) return null;
+  if (!open || (!currentNPC && !currentHouse)) return null;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {currentNPC ? `NPC Configuration` : `House Configuration`}
-          </DialogTitle>
-        </DialogHeader>
+    <div className="win98-modal-overlay">
+      <div className="win98-window" style={{ minWidth: '320px', maxWidth: '450px' }}>
+        <div className="win98-window-header">
+          <span>
+            {currentNPC ? 'NPC Properties' : 'Building Properties'}
+          </span>
+          <div className="win98-close-button" onClick={handleClose}>×</div>
+        </div>
         
-        <div className="space-y-4">
+        <div className="win98-window-body">
           {currentNPC && (
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-2">NPC: {currentNPC.id}</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Position: ({Math.round(currentNPC.position.x)}, {Math.round(currentNPC.position.z)})
-                </p>
-                <p className="text-sm text-gray-600 mb-4">
-                  Current Mode: {currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? 'Autonomous' : 'Controlled'}
-                </p>
+            <div className="win98-panel" style={{ marginBottom: '12px', padding: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>
+                NPC: {currentNPC.id}
+              </div>
+              <div style={{ fontSize: '11px', marginBottom: '4px' }}>
+                Position: ({Math.round(currentNPC.position.x)}, {Math.round(currentNPC.position.z)})
+              </div>
+              <div style={{ fontSize: '11px', marginBottom: '8px' }}>
+                Mode: {currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? 'Autonomous' : 'Controlled'}
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <button
+                  onClick={() => handleSetControlMode(NPCControlMode.AUTONOMOUS)}
+                  className="win98-button"
+                  style={{ 
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    border: currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? '2px inset #c0c0c0' : '2px outset #c0c0c0'
+                  }}
+                >
+                  Autonomous Movement
+                </button>
                 
-                <div className="grid grid-cols-1 gap-2">
-                  <Button
-                    onClick={() => handleSetControlMode(NPCControlMode.AUTONOMOUS)}
-                    variant={currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? "default" : "outline"}
-                  >
-                    🚶 Autonomous
-                    <span className="text-xs block">NPC walks alone on the map</span>
-                  </Button>
-                  
-                  <Button
-                    onClick={() => handleSetControlMode(NPCControlMode.CONTROLLED)}
-                    variant={currentNPC.controlMode === NPCControlMode.CONTROLLED ? "default" : "outline"}
-                  >
-                    🎮 Controlled
-                    <span className="text-xs block">Control with virtual joystick</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                <button
+                  onClick={() => handleSetControlMode(NPCControlMode.CONTROLLED)}
+                  className="win98-button"
+                  style={{ 
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    border: currentNPC.controlMode === NPCControlMode.CONTROLLED ? '2px inset #c0c0c0' : '2px outset #c0c0c0'
+                  }}
+                >
+                  Manual Control
+                </button>
+              </div>
+              
+              <div style={{ fontSize: '10px', marginTop: '6px', color: '#666666' }}>
+                {currentNPC.controlMode === NPCControlMode.AUTONOMOUS 
+                  ? 'NPC moves around automatically' 
+                  : 'Use virtual joystick to control'}
+              </div>
+            </div>
           )}
 
           {currentHouse && (
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-2">
-                  {currentHouse?.type ? HOUSE_NAMES[currentHouse.type] : 'Unknown House'}
-                </h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  Position: ({currentHouse.position.x}, {currentHouse.position.z})
-                </p>
-                <p className="text-sm text-gray-600">
-                  {currentHouse.npcId ? `Assigned NPC: ${currentHouse.npcId}` : 'No NPC assigned'}
-                </p>
-              </CardContent>
-            </Card>
+            <div className="win98-panel" style={{ marginBottom: '12px', padding: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>
+                {currentHouse?.type ? HOUSE_NAMES[currentHouse.type] : 'Unknown Building'}
+              </div>
+              <div style={{ fontSize: '11px', marginBottom: '4px' }}>
+                Position: ({currentHouse.position.x}, {currentHouse.position.z})
+              </div>
+              <div style={{ fontSize: '11px' }}>
+                {currentHouse.npcId ? `Assigned NPC: ${currentHouse.npcId}` : 'No NPC assigned'}
+              </div>
+            </div>
           )}
+          
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+            <button
+              onClick={handleClose}
+              className="win98-button"
+              style={{ minWidth: '75px' }}
+            >
+              OK
+            </button>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

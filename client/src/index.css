@@ -2,19 +2,181 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Windows 98 Style Variables */
+:root {
+  --win98-bg: #c0c0c0;
+  --win98-surface: #c0c0c0;
+  --win98-button-face: #c0c0c0;
+  --win98-button-highlight: #ffffff;
+  --win98-button-shadow: #808080;
+  --win98-button-dark-shadow: #404040;
+  --win98-text: #000000;
+  --win98-blue: #0080ff;
+  --win98-blue-dark: #000080;
+  --win98-dialog-bg: #c0c0c0;
+  --win98-border: #808080;
+  --win98-input-bg: #ffffff;
+  --win98-disabled: #808080;
+  --win98-green: #00ff00;
+}
+
 @layer base {
   * {
-    @apply border-border;
+    box-sizing: border-box;
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'MS Sans Serif', sans-serif;
+    font-size: 11px;
+    background: var(--win98-bg);
+    color: var(--win98-text);
     margin: 0;
     padding: 0;
     overflow: hidden;
     width: 100vw;
     height: 100vh;
+    cursor: default;
   }
+}
+
+/* Windows 98 Button Styles */
+.win98-button {
+  background: var(--win98-button-face);
+  border: 2px outset var(--win98-button-face);
+  color: var(--win98-text);
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  padding: 3px 8px;
+  min-width: 75px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.win98-button:hover {
+  background: var(--win98-button-face);
+}
+
+.win98-button:active {
+  border: 2px inset var(--win98-button-face);
+  background: var(--win98-button-face);
+}
+
+.win98-button:disabled {
+  color: var(--win98-disabled);
+  cursor: default;
+}
+
+/* Windows 98 Window/Dialog Styles */
+.win98-window {
+  background: var(--win98-dialog-bg);
+  border: 2px outset var(--win98-dialog-bg);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.win98-window-header {
+  background: linear-gradient(to right, var(--win98-blue), var(--win98-blue-dark));
+  color: white;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 3px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.win98-window-body {
+  padding: 8px;
+  background: var(--win98-dialog-bg);
+}
+
+/* Windows 98 Input Styles */
+.win98-input {
+  background: var(--win98-input-bg);
+  border: 2px inset var(--win98-dialog-bg);
+  color: var(--win98-text);
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+.win98-input:focus {
+  outline: 1px dotted var(--win98-text);
+  outline-offset: -1px;
+}
+
+/* Windows 98 Panel Styles */
+.win98-panel {
+  background: var(--win98-surface);
+  border: 2px inset var(--win98-surface);
+  padding: 4px;
+}
+
+.win98-panel-raised {
+  background: var(--win98-surface);
+  border: 2px outset var(--win98-surface);
+  padding: 4px;
+}
+
+/* Windows 98 Checkbox/Radio Styles */
+.win98-checkbox {
+  background: var(--win98-input-bg);
+  border: 2px inset var(--win98-dialog-bg);
+  width: 13px;
+  height: 13px;
+  margin-right: 6px;
+  cursor: pointer;
+}
+
+/* Windows 98 Scrollbar (simplified) */
+.win98-scrollbar {
+  background: var(--win98-surface);
+  border: 1px solid var(--win98-border);
+}
+
+/* Close button X */
+.win98-close-button {
+  background: var(--win98-button-face);
+  border: 1px outset var(--win98-button-face);
+  width: 16px;
+  height: 14px;
+  font-size: 8px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.win98-close-button:active {
+  border: 1px inset var(--win98-button-face);
+}
+
+/* Game UI specific styles */
+.win98-game-ui {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--win98-surface);
+  border-bottom: 2px outset var(--win98-surface);
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+  z-index: 1000;
+}
+
+.win98-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
 }
 
 #root {

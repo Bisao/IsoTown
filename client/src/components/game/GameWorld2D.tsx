@@ -327,10 +327,11 @@ export default function GameWorld2D() {
   // Handle canvas resize
   const handleResize = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !canvas.parentElement) return;
     
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const parent = canvas.parentElement;
+    canvas.width = parent.clientWidth;
+    canvas.height = parent.clientHeight;
   }, []);
 
   // Initialize canvas and start animation
@@ -366,7 +367,8 @@ export default function GameWorld2D() {
       style={{
         display: 'block',
         cursor: isPlacingHouse ? 'crosshair' : 'default',
-        background: '#90EE90',
+        width: '100%',
+        height: '100%',
         touchAction: 'none' // Prevent default touch behaviors
       }}
     />

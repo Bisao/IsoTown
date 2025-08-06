@@ -80,23 +80,54 @@ export default function VirtualJoystick() {
   if (!showJoystick) return null;
 
   return (
-    <div className="absolute bottom-8 left-8 z-20">
-      <div
-        ref={joystickRef}
-        className="w-24 h-24 bg-gray-800/50 border-2 border-gray-600 rounded-full relative cursor-pointer touch-none"
-        onPointerDown={(e) => {
-          setIsDragging(true);
-          e.preventDefault();
-        }}
-      >
+    <div style={{ position: 'absolute', bottom: '16px', left: '16px', zIndex: 20 }}>
+      {/* Windows 98 Style Joystick Container */}
+      <div className="win98-panel-raised" style={{ padding: '4px', borderRadius: '50%' }}>
         <div
-          ref={knobRef}
-          className="w-8 h-8 bg-white border-2 border-gray-400 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-transform"
-          style={{ pointerEvents: 'none' }}
-        />
+          ref={joystickRef}
+          style={{
+            width: '96px',
+            height: '96px',
+            background: 'var(--win98-surface)',
+            border: '2px inset var(--win98-surface)',
+            borderRadius: '50%',
+            position: 'relative',
+            cursor: 'pointer',
+            touchAction: 'none'
+          }}
+          onPointerDown={(e) => {
+            setIsDragging(true);
+            e.preventDefault();
+          }}
+        >
+          <div
+            ref={knobRef}
+            style={{
+              width: '32px',
+              height: '32px',
+              background: 'var(--win98-button-face)',
+              border: '2px outset var(--win98-button-face)',
+              borderRadius: '50%',
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              transition: 'transform 0.1s'
+            }}
+          />
+        </div>
       </div>
-      <div className="text-center text-white text-xs mt-2 font-medium">
-        Virtual Joystick
+      
+      {/* Windows 98 Style Label */}
+      <div style={{ 
+        textAlign: 'center', 
+        fontSize: '10px', 
+        marginTop: '4px',
+        color: 'var(--win98-text)',
+        fontFamily: 'MS Sans Serif, sans-serif'
+      }}>
+        Joystick
       </div>
     </div>
   );

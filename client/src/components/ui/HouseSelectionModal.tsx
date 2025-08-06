@@ -1,6 +1,3 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
-import { Button } from './button';
-import { Card, CardContent } from './card';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { HouseType, HOUSE_COLORS, HOUSE_NAMES } from '../../lib/constants';
 
@@ -19,33 +16,61 @@ export default function HouseSelectionModal({ open }: HouseSelectionModalProps) 
     setShowHouseModal(false);
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Select House Type</DialogTitle>
-        </DialogHeader>
+    <div className="win98-modal-overlay">
+      <div className="win98-window" style={{ minWidth: '300px', maxWidth: '400px' }}>
+        <div className="win98-window-header">
+          <span>Select Building Type</span>
+          <div className="win98-close-button" onClick={handleClose}>×</div>
+        </div>
         
-        <div className="grid grid-cols-1 gap-4">
-          {Object.values(HouseType).map((type) => (
-            <Card key={type} className="cursor-pointer hover:bg-gray-50">
-              <CardContent className="p-4">
-                <Button
+        <div className="win98-window-body">
+          <div style={{ marginBottom: '12px', fontSize: '11px' }}>
+            Choose a building type to place on the grid:
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {Object.values(HouseType).map((type) => (
+              <div key={type} className="win98-panel" style={{ padding: '6px' }}>
+                <button
                   onClick={() => handleSelectHouse(type)}
-                  className="w-full h-auto p-4 flex items-center gap-4"
-                  variant="outline"
+                  className="win98-button"
+                  style={{ 
+                    width: '100%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    justifyContent: 'flex-start',
+                    padding: '6px 12px'
+                  }}
                 >
                   <div
-                    className="w-8 h-8 rounded"
-                    style={{ backgroundColor: HOUSE_COLORS[type] }}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      backgroundColor: HOUSE_COLORS[type],
+                      border: '1px solid #000000'
+                    }}
                   />
-                  <span className="font-medium">{HOUSE_NAMES[type]}</span>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                  <span style={{ fontSize: '11px' }}>{HOUSE_NAMES[type]}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+          
+          <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={handleClose}
+              className="win98-button"
+              style={{ minWidth: '75px' }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
