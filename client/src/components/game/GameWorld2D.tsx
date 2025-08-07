@@ -286,8 +286,8 @@ export default function GameWorld2D() {
     const screen = gridToScreen(tree.position.x, tree.position.z, canvasWidth, canvasHeight);
     const size = CELL_SIZE * zoomRef.current;
     
-    // Árvores maiores - aumentando o tamanho base
-    const treeScale = 1.8; // Aumentar 80% do tamanho original
+    // Árvores em tamanho proporcional ao NPC
+    const treeScale = 0.9; // Reduzir para 90% do tamanho original
     
     // Tronco
     const trunkWidth = size * 0.25 * treeScale;
