@@ -14,6 +14,7 @@ export default function GameWorld2D() {
   const panRef = useRef({ x: 0, y: 0 });
   const spritesRef = useRef<Record<string, HTMLImageElement>>({});
   const spritesLoadedRef = useRef(false);
+  const cameraTargetRef = useRef<{ x: number, y: number } | null>(null);
 
   const houses = useHouseStore(state => state.houses);
   const npcs = useNPCStore(state => state.npcs);
@@ -326,6 +327,55 @@ export default function GameWorld2D() {
     return () => clearInterval(npcUpdateInterval);
   }, [updateNPCMovement]);
 
+  // Câmera que segue NPC controlado
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Encontrar NPC controlado
+    const controlledNPC = Object.values(npcs).find(npc => npc.controlMode === NPCControlMode.CONTROLLED);
+    
+    if (controlledNPC) {
+      // Calcular posição da tela para o NPC
+      const targetScreen = gridToScreen(controlledNPC.position.x, controlledNPC.position.z, canvas.width, canvas.height);
+      
+      // Calcular offset necessário para centralizar o NPC
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      const targetPan = {
+        x: centerX - targetScreen.x + panRef.current.x,
+        y: centerY - targetScreen.y + panRef.current.y
+      };
+      
+      cameraTargetRef.current = targetPan;
+    } else {
+      cameraTargetRef.current = null;
+    }
+  }, [npcs, gridToScreen]);
+
+  // Animação suave da câmera
+  useEffect(() => {
+    const smoothCamera = () => {
+      if (cameraTargetRef.current) {
+        const target = cameraTargetRef.current;
+        const current = panRef.current;
+        
+        // Interpolação suave (lerp)
+        const lerpFactor = 0.1;
+        const newX = current.x + (target.x - current.x) * lerpFactor;
+        const newY = current.y + (target.y - current.y) * lerpFactor;
+        
+        panRef.current = { x: newX, y: newY };
+      }
+      
+      requestAnimationFrame(smoothCamera);
+    };
+    
+    const animationId = requestAnimationFrame(smoothCamera);
+    return () => cancelAnimationFrame(animationId);
+  }, []);
+
   // Loop de animação otimizado
   const animate = useCallback(() => {
     const canvas = canvasRef.current;
@@ -427,6 +477,38 @@ export default function GameWorld2D() {
     zoomRef.current = Math.max(0.5, Math.min(3, zoomRef.current * zoomFactor));
   }, []);
 
+  // Controle de arrastar câmera (apenas em modo livre)
+  const isDraggingRef = useRef(false);
+  const lastMousePosRef = useRef({ x: 0, y: 0 });
+
+  const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    // Só permitir arrastar se não houver NPC controlado
+    const controlledNPC = Object.values(npcs).find(npc => npc.controlMode === NPCControlMode.CONTROLLED);
+    if (!controlledNPC) {
+      isDraggingRef.current = true;
+      lastMousePosRef.current = { x: event.clientX, y: event.clientY };
+      cameraTargetRef.current = null; // Parar seguimento da câmera
+    }
+  }, [npcs]);
+
+  const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isDraggingRef.current) {
+      const deltaX = event.clientX - lastMousePosRef.current.x;
+      const deltaY = event.clientY - lastMousePosRef.current.y;
+      
+      panRef.current = {
+        x: panRef.current.x + deltaX,
+        y: panRef.current.y + deltaY
+      };
+      
+      lastMousePosRef.current = { x: event.clientX, y: event.clientY };
+    }
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDraggingRef.current = false;
+  }, []);
+
   // Manipular teclas para movimento e rotação
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -520,9 +602,15 @@ export default function GameWorld2D() {
       ref={canvasRef}
       onClick={handleCanvasClick}
       onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
       style={{
         display: 'block',
-        cursor: isPlacingHouse ? 'crosshair' : 'default',
+        cursor: isPlacingHouse ? 'crosshair' : 
+               isDraggingRef.current ? 'grabbing' :
+               Object.values(npcs).some(npc => npc.controlMode === NPCControlMode.CONTROLLED) ? 'default' : 'grab',
         width: '100%',
         height: '100%',
         touchAction: 'none',
