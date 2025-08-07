@@ -3,6 +3,8 @@
 This is a 2D isometric simulation game built with HTML5 Canvas where players can place houses, manage NPCs, and control game world interactions. The application features a grid-based isometric world with different types of buildings (farmer, lumberjack, miner houses) and autonomous or player-controlled NPCs. The game uses geometric shapes (squares for houses, circles for NPCs) and includes virtual joysticks for mobile control and pinch-to-zoom functionality for better view control.
 
 ## Recent Updates (January 2025)
+- **PlayStation 5 Complete Integration**: Implemented comprehensive DualSense controller support with haptic feedback, adaptive trigger resistance, and PS5 browser optimizations for seamless gameplay on PlayStation 5
+- **Advanced Controller Mapping**: Added full DualSense button mapping, analog stick controls, and virtual cursor navigation optimized for PS5 browser environment
 - **Manual NPC Actions System**: Implemented comprehensive manual control system for NPCs in controlled mode, allowing players to trigger work actions like tree cutting using keyboard controls (Space/E keys) or UI buttons
 - **Enhanced NPC Interface**: Added NPCActionButtons component with real-time progress tracking, work status display, and intuitive controls for manual NPC management
 - **Integrated Tree Cutting**: Connected manual actions with existing tree system, enabling controlled NPCs to cut adjacent trees with proper progress tracking and completion detection
@@ -96,3 +98,12 @@ UI preferences: Clean interface without window borders or decorative frames.
 - **Web Audio API**: For game sound effects and background music
 - **GLSL shader support**: Via vite-plugin-glsl for custom visual effects
 - **Font loading**: Inter font family via @fontsource/inter
+
+## PlayStation 5 Integration
+- **DualSense Controller Support**: Full gamepad API integration with button mapping and analog stick controls
+- **Haptic Feedback System**: Vibration patterns for different game actions (building, chopping, UI interactions)
+- **Adaptive Trigger Simulation**: Resistance feedback for work activities and tool usage
+- **PS5 Browser Detection**: Automatic detection and optimization for PlayStation 5 browser environment
+- **Controller-to-Keyboard Mapping**: Seamless integration with existing keyboard controls via event dispatching
+- **Virtual Cursor Navigation**: Right stick controls for precise navigation in PS5 browser
+- **Performance Monitoring**: Real-time FPS and memory usage tracking optimized for PS5 hardware
