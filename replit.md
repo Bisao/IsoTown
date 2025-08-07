@@ -5,6 +5,9 @@ This is a 2D isometric simulation game built with HTML5 Canvas where players can
 ## Recent Updates (January 2025)
 - **PlayStation 5 Complete Integration**: Implemented comprehensive DualSense controller support with haptic feedback, adaptive trigger resistance, and PS5 browser optimizations for seamless gameplay on PlayStation 5
 - **Advanced Controller Mapping**: Added full DualSense button mapping, analog stick controls, and virtual cursor navigation optimized for PS5 browser environment
+- **R2 Wood Cutting Integration**: Configured DualSense R2 trigger to directly activate wood cutting action with haptic feedback intensity matching trigger pressure
+- **House-to-NPC Panel Integration**: Clicking on any house now automatically opens the configuration panel for the NPC residing in that house, improving user experience
+- **Stone Animation Fixes**: Resolved visual glitches where stone sprites appeared to rotate unexpectedly by implementing deterministic shape generation and eliminating random values in render loops
 - **Manual NPC Actions System**: Implemented comprehensive manual control system for NPCs in controlled mode, allowing players to trigger work actions like tree cutting using keyboard controls (Space/E keys) or UI buttons
 - **Enhanced NPC Interface**: Added NPCActionButtons component with real-time progress tracking, work status display, and intuitive controls for manual NPC management
 - **Integrated Tree Cutting**: Connected manual actions with existing tree system, enabling controlled NPCs to cut adjacent trees with proper progress tracking and completion detection

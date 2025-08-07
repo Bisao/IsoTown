@@ -724,16 +724,16 @@ export default function GameWorld2D() {
       if (elapsed < hitDuration) {
         const progress = elapsed / hitDuration;
         
-        // Shake effect - tremor
-        const shakeIntensity = (1 - progress) * 4;
-        const shakeX = Math.sin(progress * Math.PI * 10) * shakeIntensity;
-        const shakeY = Math.sin(progress * Math.PI * 8) * shakeIntensity;
+        // Shake effect - tremor (apenas horizontal/vertical, sem rotação)
+        const shakeIntensity = (1 - progress) * 3;
+        const shakeX = Math.sin(progress * Math.PI * 8) * shakeIntensity;
+        const shakeY = Math.sin(progress * Math.PI * 6) * shakeIntensity * 0.5; // Tremor menor na vertical
         
-        // Scale pulse effect
-        const scaleEffect = 1 + Math.sin(progress * Math.PI * 6) * 0.05 * (1 - progress);
+        // Scale pulse effect (suave)
+        const scaleEffect = 1 + Math.sin(progress * Math.PI * 4) * 0.03 * (1 - progress);
         
-        ctx.translate(shakeX, shakeY);
-        ctx.translate(screen.x, screen.y);
+        // Aplicar apenas shake e scale, sem rotação
+        ctx.translate(screen.x + shakeX, screen.y + shakeY);
         ctx.scale(scaleEffect, scaleEffect);
         ctx.translate(-screen.x, -screen.y);
         
@@ -748,20 +748,20 @@ export default function GameWorld2D() {
       }
     }
 
-    // Handle breaking animation
+    // Handle breaking animation (sem rotação estranha)
     if (stone.isBreaking && stone.breakStartTime) {
       const elapsed = Date.now() - stone.breakStartTime;
-      const breakDuration = 800; // 0.8 seconds break
+      const breakDuration = 600; // 0.6 seconds break
       const breakProgress = Math.min(elapsed / breakDuration, 1);
 
-      // Cracking effect
-      const crackLines = 5;
+      // Cracking effect - linhas estáticas fixas
+      const crackLines = 4;
       for (let i = 0; i < crackLines; i++) {
-        const angle = (Math.PI * 2 * i) / crackLines;
-        const length = size * 0.3 * breakProgress;
+        const angle = (Math.PI * 2 * i) / crackLines + (Math.PI / 4); // Offset fixo
+        const length = size * 0.25 * breakProgress;
         
-        ctx.strokeStyle = '#333333';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(51, 51, 51, ${1 - breakProgress * 0.5})`;
+        ctx.lineWidth = Math.max(1, 3 - breakProgress * 2);
         ctx.beginPath();
         ctx.moveTo(screen.x, screen.y);
         ctx.lineTo(
@@ -771,10 +771,11 @@ export default function GameWorld2D() {
         ctx.stroke();
       }
 
-      // Fade out after breaking
-      if (elapsed > breakDuration) {
-        const fadeProgress = (elapsed - breakDuration) / 2000; // 2s fade
-        ctx.globalAlpha = Math.max(0, 1 - fadeProgress);
+      // Fade out gradual
+      if (elapsed > breakDuration * 0.7) {
+        const fadeStart = breakDuration * 0.7;
+        const fadeProgress = (elapsed - fadeStart) / (breakDuration * 0.3);
+        ctx.globalAlpha = Math.max(0.1, 1 - fadeProgress);
       }
     }
 
@@ -810,12 +811,16 @@ export default function GameWorld2D() {
       ctx.arc(screen.x, screen.y, stoneSize, 0, Math.PI * 2);
       ctx.fill();
     } else if (stone.type === 'large') {
-      // Large stone - irregular shape
+      // Large stone - irregular shape (forma fixa baseada no ID)
       ctx.beginPath();
       const sides = 8;
+      // Usar hash do ID para gerar forma consistente
+      const seed = stone.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       for (let i = 0; i < sides; i++) {
         const angle = (Math.PI * 2 * i) / sides;
-        const variation = 0.8 + Math.random() * 0.4; // Random variation
+        // Variação determinística baseada no seed + índice
+        const variationSeed = Math.sin(seed * 0.001 + i * 0.7) * 0.5 + 0.5;
+        const variation = 0.8 + variationSeed * 0.4;
         const radius = stoneSize * variation;
         const x = screen.x + Math.cos(angle) * radius;
         const y = screen.y + Math.sin(angle) * radius;
@@ -1215,6 +1220,14 @@ export default function GameWorld2D() {
 
     if (houseClicked) {
       useGameStore.getState().selectHouse(houseClicked.id);
+      
+      // Encontrar NPC que mora nesta casa e abrir painel de configuração
+      const npcInHouse = Object.values(npcs).find(npc => npc.houseId === houseClicked.id);
+      if (npcInHouse) {
+        useGameStore.getState().selectNPC(npcInHouse.id);
+        useGameStore.getState().setShowNPCModal(true);
+        console.log('Abrindo painel de configuração do NPC da casa:', npcInHouse.id);
+      }
       return;
     }
 

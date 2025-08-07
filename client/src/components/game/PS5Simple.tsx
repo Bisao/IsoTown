@@ -43,7 +43,7 @@ export function PS5SimpleController() {
       setControllerState(prev => {
         const newState = {
           connected: !!dualsense,
-          gamepad: dualsense,
+          gamepad: dualsense || null,
           lastUpdate: now
         };
         
@@ -122,11 +122,26 @@ export function PS5SimpleController() {
       }));
     }
 
+    // Triggers - R2 para cortar madeira
+    if (buttons.r2 > 0.5) {
+      window.dispatchEvent(new CustomEvent('ps5-button', { 
+        detail: { button: 'r2', action: 'chopWood', intensity: buttons.r2 }
+      }));
+      
+      // Trigger manual work action
+      window.dispatchEvent(new CustomEvent('manual-work-action', {
+        detail: { action: 'chop', source: 'ps5-r2' }
+      }));
+      
+      console.log('PS5 R2: Cortar madeira ativado');
+    }
+
     // Haptic feedback simulation
-    if (buttons.cross || buttons.square) {
+    if (buttons.cross || buttons.square || buttons.r2 > 0.5) {
       // Simple vibration if available
       if ('vibrate' in navigator) {
-        navigator.vibrate(50);
+        const intensity = buttons.r2 > 0.5 ? Math.floor(buttons.r2 * 100) : 50;
+        navigator.vibrate(intensity);
       }
     }
 
