@@ -428,8 +428,11 @@ export const useNPCStore = create<NPCStore>()(
                   },
                   lastMovement: currentTime,
                   currentTask: treeDestroyed ? undefined : {
-                    ...npc.currentTask,
-                    progress: newProgress
+                    type: npc.currentTask.type,
+                    targetId: npc.currentTask.targetId,
+                    targetPosition: npc.currentTask.targetPosition,
+                    progress: newProgress,
+                    maxProgress: npc.currentTask.maxProgress
                   },
                   state: treeDestroyed ? NPCState.IDLE : NPCState.WORKING
                 }
