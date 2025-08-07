@@ -94,6 +94,17 @@ export interface Tree {
   hitStartTime?: number;
 }
 
+export interface Stone {
+  id: string;
+  position: Position;
+  type: 'small' | 'medium' | 'large';
+  health: number;
+  maxHealth: number;
+  isBreaking?: boolean;
+  breakStartTime?: number;
+  hitStartTime?: number;
+}
+
 export interface VisualEffect {
   id: string;
   type: 'text' | 'animation';

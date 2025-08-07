@@ -3,6 +3,7 @@ import { useKeyboardActions } from '../../hooks/useKeyboardActions';
 import { useHouseStore } from '../../lib/stores/useHouseStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useTreeStore } from '../../lib/stores/useTreeStore';
+import { useStoneStore } from '../../lib/stores/useStoneStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
 import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN } from '../../lib/constants';
@@ -21,11 +22,13 @@ export default function GameWorld2D() {
   const houses = useHouseStore(state => state.houses);
   const npcs = useNPCStore(state => state.npcs);
   const trees = useTreeStore(state => state.trees);
+  const stones = useStoneStore(state => state.stones);
   const textEffects = useEffectsStore(state => state.effects);
   const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree, setNPCState } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt, updateTree, removeTree } = useTreeStore();
+  const { generateRandomStones, getStoneAt } = useStoneStore();
   const { updateEffects, addTextEffect } = useEffectsStore();
 
   // Adicionar hooks de teclado para ações
@@ -199,14 +202,19 @@ export default function GameWorld2D() {
     loadSprites();
   }, []);
 
-  // Gerar árvores aleatórias na primeira renderização
+  // Gerar árvores e pedras aleatórias na primeira renderização
   useEffect(() => {
     const treeCount = Object.keys(trees).length;
+    const stoneCount = Object.keys(stones).length;
     if (treeCount === 0) {
       console.log('Gerando árvores aleatórias...');
       generateRandomTrees();
     }
-  }, [generateRandomTrees, trees]);
+    if (stoneCount === 0) {
+      console.log('Gerando pedras aleatórias...');
+      generateRandomStones();
+    }
+  }, [generateRandomTrees, generateRandomStones, trees, stones]);
 
   // Game loop for NPC behavior and effects
   useEffect(() => {
@@ -233,6 +241,10 @@ export default function GameWorld2D() {
       // Update tree falling animations
       const { updateFallingTrees } = useTreeStore.getState();
       updateFallingTrees();
+
+      // Update stone breaking animations
+      const { updateBreakingStones } = useStoneStore.getState();
+      updateBreakingStones();
 
       // Update text effects
       updateEffects();
@@ -697,6 +709,172 @@ export default function GameWorld2D() {
     ctx.restore();
   }, [gridToScreen, selectedNPC]);
 
+  // Desenhar pedra (memoizado)
+  const drawStone = useCallback((ctx: CanvasRenderingContext2D, stone: any, canvasWidth: number, canvasHeight: number) => {
+    const screen = gridToScreen(stone.position.x, stone.position.z, canvasWidth, canvasHeight);
+    const size = CELL_SIZE * zoomRef.current;
+
+    ctx.save();
+
+    // Handle hit animation
+    if (stone.hitStartTime) {
+      const elapsed = Date.now() - stone.hitStartTime;
+      const hitDuration = 200; // 200ms hit animation
+      
+      if (elapsed < hitDuration) {
+        const progress = elapsed / hitDuration;
+        
+        // Shake effect - tremor
+        const shakeIntensity = (1 - progress) * 4;
+        const shakeX = Math.sin(progress * Math.PI * 10) * shakeIntensity;
+        const shakeY = Math.sin(progress * Math.PI * 8) * shakeIntensity;
+        
+        // Scale pulse effect
+        const scaleEffect = 1 + Math.sin(progress * Math.PI * 6) * 0.05 * (1 - progress);
+        
+        ctx.translate(shakeX, shakeY);
+        ctx.translate(screen.x, screen.y);
+        ctx.scale(scaleEffect, scaleEffect);
+        ctx.translate(-screen.x, -screen.y);
+        
+        // White flash effect
+        const flashIntensity = Math.sin(progress * Math.PI * 4) * 0.4 * (1 - progress);
+        if (flashIntensity > 0) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${flashIntensity})`;
+          ctx.beginPath();
+          ctx.arc(screen.x, screen.y, size * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // Handle breaking animation
+    if (stone.isBreaking && stone.breakStartTime) {
+      const elapsed = Date.now() - stone.breakStartTime;
+      const breakDuration = 800; // 0.8 seconds break
+      const breakProgress = Math.min(elapsed / breakDuration, 1);
+
+      // Cracking effect
+      const crackLines = 5;
+      for (let i = 0; i < crackLines; i++) {
+        const angle = (Math.PI * 2 * i) / crackLines;
+        const length = size * 0.3 * breakProgress;
+        
+        ctx.strokeStyle = '#333333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(screen.x, screen.y);
+        ctx.lineTo(
+          screen.x + Math.cos(angle) * length,
+          screen.y + Math.sin(angle) * length
+        );
+        ctx.stroke();
+      }
+
+      // Fade out after breaking
+      if (elapsed > breakDuration) {
+        const fadeProgress = (elapsed - breakDuration) / 2000; // 2s fade
+        ctx.globalAlpha = Math.max(0, 1 - fadeProgress);
+      }
+    }
+
+    // Color based on health and type
+    let stoneColor = '#808080'; // Default gray
+    
+    if (stone.type === 'small') {
+      stoneColor = '#A0A0A0'; // Light gray
+    } else if (stone.type === 'large') {
+      stoneColor = '#606060'; // Dark gray
+    }
+
+    if (stone.health < stone.maxHealth) {
+      // Damaged stone - darker color
+      const healthRatio = stone.health / stone.maxHealth;
+      const darkness = 1 - (1 - healthRatio) * 0.3;
+      const r = Math.floor(parseInt(stoneColor.slice(1, 3), 16) * darkness);
+      const g = Math.floor(parseInt(stoneColor.slice(3, 5), 16) * darkness);
+      const b = Math.floor(parseInt(stoneColor.slice(5, 7), 16) * darkness);
+      stoneColor = `rgb(${r}, ${g}, ${b})`;
+    }
+
+    // Draw stone based on type
+    const stoneSize = stone.type === 'small' ? size * 0.3 : 
+                    stone.type === 'large' ? size * 0.5 : 
+                    size * 0.4; // medium
+
+    ctx.fillStyle = stoneColor;
+    
+    if (stone.type === 'small') {
+      // Small stone - simple circle
+      ctx.beginPath();
+      ctx.arc(screen.x, screen.y, stoneSize, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (stone.type === 'large') {
+      // Large stone - irregular shape
+      ctx.beginPath();
+      const sides = 8;
+      for (let i = 0; i < sides; i++) {
+        const angle = (Math.PI * 2 * i) / sides;
+        const variation = 0.8 + Math.random() * 0.4; // Random variation
+        const radius = stoneSize * variation;
+        const x = screen.x + Math.cos(angle) * radius;
+        const y = screen.y + Math.sin(angle) * radius;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Medium stone - hexagon
+      ctx.beginPath();
+      const sides = 6;
+      for (let i = 0; i < sides; i++) {
+        const angle = (Math.PI * 2 * i) / sides;
+        const x = screen.x + Math.cos(angle) * stoneSize;
+        const y = screen.y + Math.sin(angle) * stoneSize;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Outline
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Health indicator (small bars above stone)
+    if (!stone.isBreaking && stone.health < stone.maxHealth) {
+      const barWidth = size * 0.4;
+      const barHeight = 3;
+      const healthRatio = stone.health / stone.maxHealth;
+
+      // Background bar
+      ctx.fillStyle = '#FF0000';
+      ctx.fillRect(screen.x - barWidth/2, screen.y - size * 0.8, barWidth, barHeight);
+
+      // Health bar
+      ctx.fillStyle = '#00FF00';
+      ctx.fillRect(screen.x - barWidth/2, screen.y - size * 0.8, barWidth * healthRatio, barHeight);
+
+      // Border
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(screen.x - barWidth/2, screen.y - size * 0.8, barWidth, barHeight);
+    }
+
+    ctx.restore();
+  }, [gridToScreen]);
+
   // Desenhar árvore (memoizado)
   const drawTree = useCallback((ctx: CanvasRenderingContext2D, tree: any, canvasWidth: number, canvasHeight: number) => {
     const screen = gridToScreen(tree.position.x, tree.position.z, canvasWidth, canvasHeight);
@@ -985,7 +1163,12 @@ export default function GameWorld2D() {
     // Desenhar elementos
     drawGrid(ctx, canvas.width, canvas.height);
 
-    // Desenhar árvores primeiro (fundo)
+    // Desenhar pedras primeiro (fundo)
+    Object.values(stones).forEach(stone => {
+      drawStone(ctx, stone, canvas.width, canvas.height);
+    });
+
+    // Desenhar árvores
     Object.values(trees).forEach(tree => {
       drawTree(ctx, tree, canvas.width, canvas.height);
     });
@@ -1002,7 +1185,7 @@ export default function GameWorld2D() {
     drawTextEffects(ctx, canvas.width, canvas.height);
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, trees, drawGrid, drawHouse, drawNPC, drawTree, drawTextEffects]);
+  }, [houses, npcs, trees, stones, drawGrid, drawHouse, drawNPC, drawTree, drawStone, drawTextEffects]);
 
   // Manipular cliques no canvas
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1015,7 +1198,7 @@ export default function GameWorld2D() {
 
     if (isPlacingHouse && selectedHouseType) {
       const gridPos = screenToGrid(x, y, canvas.width, canvas.height);
-      if (isValidGridPosition(gridPos) && !getHouseAt(gridPos) && !getTreeAt(gridPos)) {
+      if (isValidGridPosition(gridPos) && !getHouseAt(gridPos) && !getTreeAt(gridPos) && !getStoneAt(gridPos)) {
         addHouse(selectedHouseType, gridPos, currentRotation);
         stopPlacingHouse();
       }

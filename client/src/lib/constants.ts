@@ -44,5 +44,9 @@ export const TOC_TEXT_DURATION = 1000; // ms for TOC text effect
 // Lumberjack behavior
 export const LUMBERJACK_WORK_RANGE = 5; // How far lumberjack will search for trees
 export const LUMBERJACK_CHOP_INTERVAL = 1000; // ms between chops
-export const CHOPPING_ANIMATION_DURATION = 500;
 export const CONTROLLED_CHOP_COOLDOWN = 800; // 800ms cooldown for controlled NPCs
+
+// Stone constants
+export const STONE_COLOR = '#808080';
+export const STONE_DENSITY = 0.05; // 5% chance of stone per tile
+export const STONE_MAX_HEALTH = 5; // Number of hits to break a stone
