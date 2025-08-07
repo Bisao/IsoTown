@@ -13,7 +13,7 @@ export enum HouseType {
 
 export const HOUSE_COLORS = {
   [HouseType.SMALL]: '#FF6B6B',
-  [HouseType.MEDIUM]: '#4ECDC4', 
+  [HouseType.MEDIUM]: '#4ECDC4',
   [HouseType.LARGE]: '#45B7D1',
   [HouseType.FARMER]: '#FFFFFF',
   [HouseType.LUMBERJACK]: '#F5F5DC'
@@ -44,3 +44,5 @@ export const TOC_TEXT_DURATION = 1000; // ms for TOC text effect
 // Lumberjack behavior
 export const LUMBERJACK_WORK_RANGE = 5; // How far lumberjack will search for trees
 export const LUMBERJACK_CHOP_INTERVAL = 1000; // ms between chops
+export const CHOPPING_ANIMATION_DURATION = 500;
+export const CONTROLLED_CHOP_COOLDOWN = 800; // 800ms cooldown for controlled NPCs

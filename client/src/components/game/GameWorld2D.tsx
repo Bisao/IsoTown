@@ -5,7 +5,7 @@ import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useTreeStore } from '../../lib/stores/useTreeStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
-import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION } from '../../lib/constants';
+import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN } from '../../lib/constants';
 import { NPCControlMode, NPCProfession } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
 
@@ -85,6 +85,13 @@ export default function GameWorld2D() {
       const npc = npcs[npcId];
       if (npc.profession !== NPCProfession.LUMBERJACK) return;
 
+      // Verificar cooldown
+      if (useNPCStore.getState().isNPCOnCooldown(npcId)) {
+        console.log('NPC em cooldown, aguarde para próximo golpe');
+        addTextEffect(npc.position, 'Aguarde!', '#FFB347', 600);
+        return;
+      }
+
       // Se já está cortando uma árvore, processar um golpe manual
       if (npc.currentTreeId && npc.state === 'WORKING') {
         const targetTree = trees[npc.currentTreeId];
@@ -97,6 +104,9 @@ export default function GameWorld2D() {
 
           // Adicionar efeito visual
           addTextEffect(targetTree.position, 'TOC!', '#FFA500', 800);
+
+          // Aplicar cooldown
+          useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN);
 
           const progress = targetTree.maxHealth - newHealth;
           const completed = newHealth <= 0;
@@ -131,6 +141,9 @@ export default function GameWorld2D() {
 
         // Adicionar efeito visual
         addTextEffect(priorityTree.position, 'TOC!', '#FFA500', 800);
+
+        // Aplicar cooldown
+        useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN);
 
         console.log('TOC! Cortando árvore manualmente - progresso:', 1, 'completo:', newHealth <= 0);
 
@@ -200,6 +213,9 @@ export default function GameWorld2D() {
     const gameLoop = setInterval(() => {
       // Update NPC movement
       updateNPCMovement();
+
+      // Update cooldowns
+      useNPCStore.getState().updateCooldowns();
 
       // Update lumberjack behavior for each NPC with access to tree data
       Object.values(npcs).forEach((npc) => {
@@ -633,6 +649,31 @@ export default function GameWorld2D() {
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 1;
       ctx.strokeRect(screen.x - barWidth/2, npcY - radius * 1.8, barWidth, barHeight);
+    }
+
+    // Cooldown indicator for controlled NPCs
+    if (npc.controlMode === NPCControlMode.CONTROLLED && useNPCStore.getState().isNPCOnCooldown(npc.id)) {
+      const cooldownEnd = useNPCStore.getState().npcCooldowns[npc.id];
+      const remainingTime = cooldownEnd - Date.now();
+      const cooldownProgress = Math.max(0, remainingTime / CONTROLLED_CHOP_COOLDOWN);
+
+      // Draw cooldown arc
+      const arcRadius = radius * 1.2;
+      const startAngle = -Math.PI / 2; // Top
+      const endAngle = startAngle + (2 * Math.PI * cooldownProgress);
+
+      ctx.strokeStyle = '#FF6B6B';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(screen.x, npcY, arcRadius, startAngle, endAngle);
+      ctx.stroke();
+
+      // Draw cooldown background
+      ctx.strokeStyle = 'rgba(255, 107, 107, 0.3)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(screen.x, npcY, arcRadius, 0, 2 * Math.PI);
+      ctx.stroke();
     }
 
     // Olhos

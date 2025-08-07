@@ -1,7 +1,6 @@
-
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { NPC, Position, NPCControlMode, NPCProfession, NPCState } from '../types';
+import { NPC, Position, NPCControlMode, NPCProfession, NPCState, NPCAnimation } from '../types';
 import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPING_ANIMATION_DURATION } from '../constants';
 import { nanoid } from 'nanoid';
 import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid';
@@ -10,32 +9,32 @@ import { NPCActionSystem } from '../systems/NPCActionSystem';
 
 interface NPCStore {
   npcs: Record<string, NPC>;
-  
-  addNPC: (position: Position, profession?: NPCProfession) => string;
+  npcCooldowns: Record<string, number>; // Cooldowns por NPC
+
+  // Actions
+  addNPC: (position: Position, profession?: NPCProfession, houseId?: string) => string;
   removeNPC: (id: string) => void;
-  moveNPC: (id: string, direction: Position) => void;
-  setNPCTarget: (id: string, target: Position) => void;
+  moveNPC: (id: string, direction: { x: number; z: number }) => void;
+  selectNPC: (id: string) => void;
   setNPCControlMode: (id: string, mode: NPCControlMode) => void;
-  setNPCProfession: (id: string, profession: NPCProfession) => void;
-  assignNPCToHouse: (npcId: string, houseId: string) => void;
-  unassignNPCFromHouse: (npcId: string) => void;
-  updateNPCMovement: () => void;
-  updateLumberjackBehavior: (npc: NPC) => void;
   setNPCState: (id: string, state: NPCState, task?: any) => void;
-  updateNPCTask: (id: string, task: any) => void;
-  setNPCAnimation: (id: string, animation: any) => void;
-  
-  // Ações manuais para NPCs controlados
-  performWork: (id: string) => { success: boolean; message: string; adjacentPositions?: any[] };
-  startManualTreeCutting: (id: string) => { success: boolean; message: string; adjacentPositions?: any[] };
-  startCuttingTree: (npcId: string, treeId: string, treePosition: any, treeHealth: number) => { success: boolean; message: string };
-  stopWork: (id: string) => { success: boolean; message: string };
+  setNPCAnimation: (id: string, animation: NPCAnimation | undefined) => void;
+  updateNPCMovement: () => void;
   updateControlledNPCWork: () => void;
+  updateNPCTask: (id: string, task: any) => void;
+  performWork: (id: string) => { success: boolean; message: string };
+  stopWork: (id: string) => { success: boolean; message: string };
+  startManualTreeCutting: (id: string) => boolean;
+  startCuttingTree: (npcId: string, treeId: string) => void;
+  isNPCOnCooldown: (id: string) => boolean;
+  setNPCCooldown: (id: string, duration: number) => void;
+  updateCooldowns: () => void;
 }
 
 export const useNPCStore = create<NPCStore>()(
   subscribeWithSelector((set, get) => ({
     npcs: {},
+    npcCooldowns: {},
 
     addNPC: (position, profession = NPCProfession.NONE) => {
       const id = nanoid();
@@ -48,11 +47,11 @@ export const useNPCStore = create<NPCStore>()(
         isMoving: false,
         lastMovement: Date.now()
       };
-      
+
       set((state) => ({
         npcs: { ...state.npcs, [id]: npc }
       }));
-      
+
       console.log('Novo NPC criado:', id, 'na posição:', position, 'profissão:', profession);
       return id;
     },
@@ -171,7 +170,7 @@ export const useNPCStore = create<NPCStore>()(
                   isMoving: true,
                   lastMovement: currentTime
                 };
-                
+
                 // Parar movimento após delay
                 setTimeout(() => {
                   const currentState = get();
@@ -203,18 +202,18 @@ export const useNPCStore = create<NPCStore>()(
         if (npc.targetPosition && !npc.isMoving) {
           const dx = npc.targetPosition.x - npc.position.x;
           const dz = npc.targetPosition.z - npc.position.z;
-          
+
           if (Math.abs(dx) > 0 || Math.abs(dz) > 0) {
             const direction = {
               x: dx > 0 ? 1 : dx < 0 ? -1 : 0,
               z: dz > 0 ? 1 : dz < 0 ? -1 : 0
             };
-            
+
             // Mover apenas um tile por vez
             if (direction.x !== 0 && direction.z !== 0) {
               direction.z = 0; // Priorizar movimento horizontal
             }
-            
+
             const newPosition = {
               x: npc.position.x + direction.x,
               z: npc.position.z + direction.z
@@ -226,7 +225,7 @@ export const useNPCStore = create<NPCStore>()(
                 isMoving: true,
                 lastMovement: Date.now()
               };
-              
+
               // Remover alvo se alcançado
               if (positionsEqual(newPosition, npc.targetPosition)) {
                 updates[npc.id].targetPosition = undefined;
@@ -256,7 +255,7 @@ export const useNPCStore = create<NPCStore>()(
       }
 
       const currentTime = Date.now();
-      
+
       console.log('Atualizando lenhador - estado atual:', npc.state);
 
       switch (npc.state) {
@@ -272,10 +271,10 @@ export const useNPCStore = create<NPCStore>()(
               return null;
             }
           };
-          
+
           // For now, let's use a simpler approach - access trees through the component
           // We'll modify the GameWorld2D to pass tree data to the lumberjack behavior
-          
+
           // Find nearest tree within range using mock data for testing
           // This will be replaced with real tree data
           const mockTrees = [
@@ -283,27 +282,27 @@ export const useNPCStore = create<NPCStore>()(
             { id: 'tree2', position: { x: 3, z: 7 }, health: 3, maxHealth: 3 },
             { id: 'tree3', position: { x: 8, z: 2 }, health: 3, maxHealth: 3 }
           ];
-          
+
           let nearestTree = null;
           let nearestDistance = Infinity;
-          
+
           for (const tree of mockTrees) {
             const distance = Math.abs(tree.position.x - npc.position.x) + 
                            Math.abs(tree.position.z - npc.position.z);
-            
+
             if (distance <= LUMBERJACK_WORK_RANGE && distance < nearestDistance) {
               nearestTree = tree;
               nearestDistance = distance;
             }
           }
-          
+
           console.log('Procurando árvore próxima de:', npc.position, 'encontrou:', nearestTree ? nearestTree.id : 'nenhuma');
-          
+
           if (nearestTree) {
             // Check if adjacent to tree (distance = 1)
             const distance = Math.abs(nearestTree.position.x - npc.position.x) + 
                            Math.abs(nearestTree.position.z - npc.position.z);
-            
+
             if (distance === 1) {
               // Adjacent to tree - start working
               console.log('Lenhador adjacente à árvore, começando trabalho');
@@ -327,26 +326,26 @@ export const useNPCStore = create<NPCStore>()(
             } else {
               // Move towards tree one step at a time
               console.log('Movendo lenhador em direção à árvore');
-              
+
               const dx = nearestTree.position.x - npc.position.x;
               const dz = nearestTree.position.z - npc.position.z;
-              
+
               let direction = { x: 0, z: 0 };
-              
+
               // Choose direction - prioritize getting closer
               if (Math.abs(dx) > Math.abs(dz)) {
                 direction.x = dx > 0 ? 1 : -1;
               } else {
                 direction.z = dz > 0 ? 1 : -1;
               }
-              
+
               const newPosition = {
                 x: npc.position.x + direction.x,
                 z: npc.position.z + direction.z
               };
-              
+
               console.log('Nova posição calculada:', newPosition);
-              
+
               if (isValidGridPosition(newPosition)) {
                 set((state) => ({
                   npcs: {
@@ -361,7 +360,7 @@ export const useNPCStore = create<NPCStore>()(
                     }
                   }
                 }));
-                
+
                 // Stop movement after delay and return to idle to recalculate
                 setTimeout(() => {
                   const currentState = get();
@@ -397,7 +396,7 @@ export const useNPCStore = create<NPCStore>()(
           }
           break;
         }
-        
+
         case NPCState.WORKING: {
           if (!npc.currentTask || npc.currentTask.type !== 'cut_tree') {
             // Invalid task - return to idle
@@ -413,16 +412,16 @@ export const useNPCStore = create<NPCStore>()(
             }));
             return;
           }
-          
+
           console.log('Lenhador trabalhando - progresso:', npc.currentTask.progress, 'de', npc.currentTask.maxProgress);
-          
+
           // Check if enough time has passed since last chop
           if (currentTime - npc.lastMovement >= LUMBERJACK_CHOP_INTERVAL) {
             const newProgress = npc.currentTask.progress + 1;
             const treeDestroyed = newProgress >= npc.currentTask.maxProgress;
-            
+
             console.log('TOC! Cortando árvore - progresso:', newProgress, 'destruída:', treeDestroyed);
-            
+
             // Add chopping animation and update progress
             set((state) => ({
               npcs: {
@@ -446,7 +445,7 @@ export const useNPCStore = create<NPCStore>()(
                 }
               }
             }));
-            
+
             // TODO: Actually damage the tree in the tree store
             // This will be implemented when we integrate with the real tree store
             if (treeDestroyed) {
@@ -455,7 +454,7 @@ export const useNPCStore = create<NPCStore>()(
           }
           break;
         }
-        
+
         case NPCState.MOVING: {
           // Let the normal movement system handle this
           // The lumberjack will return to IDLE after movement completes
@@ -509,6 +508,11 @@ export const useNPCStore = create<NPCStore>()(
         return { success: false, message: 'NPC não está em modo controlado!' };
       }
 
+      // Verifica cooldown antes de realizar a ação
+      if (get().isNPCOnCooldown(id)) {
+        return { success: false, message: 'Ação em cooldown!' };
+      }
+
       if (npc.state === NPCState.WORKING) {
         return { success: false, message: 'NPC já está trabalhando!' };
       }
@@ -516,7 +520,15 @@ export const useNPCStore = create<NPCStore>()(
       // Implementar ação específica da profissão usando o sistema existente
       switch (npc.profession) {
         case NPCProfession.LUMBERJACK:
-          return get().startManualTreeCutting(id);
+          // Ao iniciar o corte manual, aplicamos um cooldown
+          const { adjacentPositions } = get().startManualTreeCutting(id);
+          if (adjacentPositions) {
+            // Define o cooldown para o lenhador (ex: 1 segundo após tentar cortar)
+            get().setNPCCooldown(id, 1000); 
+            return { success: true, message: 'Procurando árvores adjacentes para cortar...', adjacentPositions };
+          } else {
+            return { success: false, message: 'Não foi possível iniciar o corte.' };
+          }
         case NPCProfession.FARMER:
           return { success: false, message: 'Sistema de farming ainda não implementado!' };
         case NPCProfession.MINER:
@@ -530,7 +542,7 @@ export const useNPCStore = create<NPCStore>()(
     startManualTreeCutting: (npcId) => {
       const { npcs } = get();
       const npc = npcs[npcId];
-      
+
       if (!npc || npc.profession !== NPCProfession.LUMBERJACK) {
         return { success: false, message: 'Apenas lenhadores podem cortar árvores!' };
       }
@@ -545,7 +557,7 @@ export const useNPCStore = create<NPCStore>()(
       ];
 
       console.log('Tentativa de corte manual, posições adjacentes:', adjacentPositions);
-      
+
       return { 
         success: true, 
         message: 'Procurando árvores adjacentes...', 
@@ -554,32 +566,18 @@ export const useNPCStore = create<NPCStore>()(
     },
 
     // Iniciar trabalho de corte com árvore específica
-    startCuttingTree: (npcId, treeId, treePosition, treeHealth) => {
+    startCuttingTree: (npcId, treeId) => {
       set((state) => ({
         npcs: {
           ...state.npcs,
           [npcId]: {
             ...state.npcs[npcId],
-            state: NPCState.WORKING,
-            currentTask: {
-              type: 'cut_tree',
-              targetId: treeId,
-              targetPosition: treePosition,
-              progress: 0,
-              maxProgress: treeHealth
-            },
-            animation: {
-              type: 'chopping',
-              startTime: Date.now(),
-              duration: CHOPPING_ANIMATION_DURATION
-            },
-            lastMovement: Date.now()
+            currentTreeId: treeId,
+            state: NPCState.WORKING // Ensure state is WORKING
           }
         }
       }));
-      
       console.log('Lenhador começou a cortar árvore:', treeId);
-      return { success: true, message: 'Começando a cortar árvore!' };
     },
 
     stopWork: (id) => {
@@ -589,7 +587,7 @@ export const useNPCStore = create<NPCStore>()(
       }
 
       const result = NPCActionSystem.stopWork(npc);
-      
+
       if (result.success && result.updates) {
         set((state) => ({
           npcs: {
@@ -612,7 +610,7 @@ export const useNPCStore = create<NPCStore>()(
         if (npc.controlMode === NPCControlMode.CONTROLLED && 
             npc.state === NPCState.WORKING && 
             npc.currentTask) {
-          
+
           // Continuar trabalho baseado na profissão
           switch (npc.profession) {
             case NPCProfession.LUMBERJACK:
@@ -620,9 +618,9 @@ export const useNPCStore = create<NPCStore>()(
               if (currentTime - npc.lastMovement >= LUMBERJACK_CHOP_INTERVAL) {
                 const newProgress = npc.currentTask.progress + 1;
                 const workCompleted = newProgress >= npc.currentTask.maxProgress;
-                
+
                 console.log('TOC! Cortando árvore manualmente -', 'progresso:', newProgress, 'completo:', workCompleted);
-                
+
                 updates[npc.id] = {
                   animation: {
                     type: 'chopping',
@@ -639,7 +637,7 @@ export const useNPCStore = create<NPCStore>()(
                   },
                   state: workCompleted ? NPCState.IDLE : NPCState.WORKING
                 };
-                
+
                 // Se o trabalho foi completado, destruir a árvore
                 if (workCompleted && npc.currentTask.targetId) {
                   // A árvore será destruída automaticamente pelo sistema existente
@@ -663,6 +661,34 @@ export const useNPCStore = create<NPCStore>()(
           return { npcs: newNpcs };
         });
       }
+    },
+
+    // Funções de cooldown
+    isNPCOnCooldown: (id) => {
+      const cooldowns = get().npcCooldowns;
+      return cooldowns[id] && cooldowns[id] > Date.now();
+    },
+
+    setNPCCooldown: (id, duration) => {
+      set((state) => ({
+        npcCooldowns: {
+          ...state.npcCooldowns,
+          [id]: Date.now() + duration
+        }
+      }));
+    },
+
+    updateCooldowns: () => {
+      const now = Date.now();
+      set((state) => {
+        const updatedCooldowns = { ...state.npcCooldowns };
+        Object.keys(updatedCooldowns).forEach(npcId => {
+          if (updatedCooldowns[npcId] <= now) {
+            delete updatedCooldowns[npcId];
+          }
+        });
+        return { npcCooldowns: updatedCooldowns };
+      });
     }
   }))
 );
