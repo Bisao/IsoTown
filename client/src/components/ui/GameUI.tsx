@@ -30,7 +30,7 @@ export default function GameUI() {
   const { houses, addHouse, removeHouse } = useHouseStore();
   const { npcs, addNPC, setNPCControlMode, setNPCProfession } = useNPCStore();
   const { getTreeAt, damageTree } = useTreeStore();
-  const { addEffect } = useEffectsStore();
+  const { addTextEffect } = useEffectsStore();
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -134,25 +134,15 @@ export default function GameUI() {
         duration: CHOPPING_ANIMATION_DURATION
       });
 
-      // Add visual effect
-      addEffect({
-        type: 'text',
-        position: targetTree.position,
-        text: 'TOC!',
-        duration: 1000
-      });
+      // Add visual effect at tree position
+      addTextEffect(targetTree.position, 'TOC!', 1000);
 
       console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
     } else {
       console.log('Nenhuma árvore adjacente encontrada para cortar');
 
       // Add visual feedback
-      addEffect({
-        type: 'text',
-        position: npc.position,
-        text: 'Sem árvores!',
-        duration: 1000
-      });
+      addTextEffect(npc.position, 'Sem árvores!', 1000);
     }
   };
 
