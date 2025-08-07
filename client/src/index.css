@@ -528,25 +528,41 @@ canvas {
   background: linear-gradient(135deg, #8B7355 0%, #A0916B 50%, #8B7355 100%);
   border: 3px outset #8B7355;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
   padding: 8px 16px;
   z-index: 999;
   font-family: 'MS Sans Serif', serif;
   box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
 }
 
+.rpg-control-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 600px;
+}
+
+.rpg-orbs-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .rpg-orb-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 0 4px;
   position: relative;
 }
 
 .rpg-orb {
-  width: 70px;
-  height: 70px;
+  width: 65px;
+  height: 65px;
   border-radius: 50%;
   position: relative;
   border: 3px solid #4A4A4A;
@@ -554,7 +570,6 @@ canvas {
     0 0 20px rgba(0,0,0,0.5),
     inset 0 0 20px rgba(255,255,255,0.2);
   overflow: hidden;
-  transform: translateY(-30%);
 }
 
 .health-orb {
@@ -567,10 +582,10 @@ canvas {
 
 .orb-shine {
   position: absolute;
-  top: 12px;
-  left: 18px;
-  width: 28px;
-  height: 28px;
+  top: 10px;
+  left: 16px;
+  width: 25px;
+  height: 25px;
   background: radial-gradient(circle, rgba(255,255,255,0.8), transparent);
   border-radius: 50%;
 }
@@ -578,9 +593,33 @@ canvas {
 .rpg-buttons-left, .rpg-buttons-right {
   display: flex;
   flex-direction: row;
-  gap: 4px;
-  margin: 0 12px;
-  align-items: flex-end;
+  gap: 6px;
+  align-items: center;
+}
+
+.rpg-button {
+  background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%);
+  border: 2px outset #D4AF37;
+  color: #2F1B14;
+  font-family: 'MS Sans Serif', serif;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  transition: all 0.1s ease;
+}
+
+.rpg-button:hover {
+  background: linear-gradient(135deg, #F4D03F 0%, #D4AF37 100%);
+  transform: translateY(-1px);
+}
+
+.rpg-button:active {
+  border: 2px inset #D4AF37;
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
 .rpg-button {

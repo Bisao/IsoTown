@@ -30,7 +30,6 @@ export default function RPGControlModal() {
         <button className="rpg-button">CHAR</button>
         <button className="rpg-button">QUESTS</button>
         <button className="rpg-button">MAP</button>
-        <button className="rpg-button">MENU</button>
       </div>
 
       {/* Center inventory bar */}
@@ -46,7 +45,7 @@ export default function RPGControlModal() {
       {/* Right side buttons */}
       <div className="rpg-buttons-right">
         <button className="rpg-button">INV</button>
-        <button className="rpg-button">SPELLS</button>
+        <button className="rpg-button">MENU</button>
       </div>
 
       {/* Right side orb (Mana) */}
