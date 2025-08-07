@@ -249,11 +249,17 @@ export const useNPCStore = create<NPCStore>()(
       // Import tree and effects stores dynamically to avoid circular dependencies
       const { trees, getNearestTree, damageTree } = require('./useTreeStore').useTreeStore.getState();
       const { addTextEffect } = require('./useEffectsStore').useEffectsStore.getState();
+      
+      console.log('Árvores disponíveis:', Object.keys(trees).length);
+      if (Object.keys(trees).length > 0) {
+        console.log('Primeira árvore:', Object.values(trees)[0]);
+      }
 
       switch (npc.state) {
         case NPCState.IDLE: {
           // Look for nearest tree within range
           const nearestTree = getNearestTree(npc.position, LUMBERJACK_WORK_RANGE);
+          console.log('Procurando árvore próxima de:', npc.position, 'encontrou:', nearestTree ? nearestTree.id : 'nenhuma');
           
           if (nearestTree) {
             // Check if adjacent to tree
@@ -387,10 +393,10 @@ export const useNPCStore = create<NPCStore>()(
                     duration: CHOPPING_ANIMATION_DURATION
                   },
                   lastMovement: currentTime,
-                  currentTask: treeDestroyed ? undefined : {
+                  currentTask: treeDestroyed ? undefined : npc.currentTask ? {
                     ...npc.currentTask,
                     progress: npc.currentTask.progress + 1
-                  },
+                  } : undefined,
                   state: treeDestroyed ? NPCState.IDLE : NPCState.WORKING
                 }
               }

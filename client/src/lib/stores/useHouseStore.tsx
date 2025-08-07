@@ -37,10 +37,19 @@ export const useHouseStore = create<HouseStore>()(
       setTimeout(() => {
         import('./useNPCStore').then(({ useNPCStore }) => {
           import('./useTreeStore').then(({ useTreeStore }) => {
-            // Verificar se a posição não tem árvore antes de spawnar NPC
-            if (!useTreeStore.getState().getTreeAt(position)) {
-              const npcId = useNPCStore.getState().addNPC(position);
-              useNPCStore.getState().assignNPCToHouse(npcId, id);
+            import('../types').then(({ NPCProfession }) => {
+              // Verificar se a posição não tem árvore antes de spawnar NPC
+              if (!useTreeStore.getState().getTreeAt(position)) {
+                // Determinar profissão baseada no tipo de casa
+                let profession = NPCProfession.NONE;
+                if (type === 'LUMBERJACK') {
+                  profession = NPCProfession.LUMBERJACK;
+                } else if (type === 'FARMER') {
+                  profession = NPCProfession.FARMER;
+                }
+                
+                const npcId = useNPCStore.getState().addNPC(position, profession);
+                useNPCStore.getState().assignNPCToHouse(npcId, id);
               
               // Update house with NPC assignment
               set((state) => ({
@@ -49,7 +58,8 @@ export const useHouseStore = create<HouseStore>()(
                   [id]: { ...state.houses[id], npcId }
                 }
               }));
-            }
+              }
+            });
           });
         });
       }, 3000);
