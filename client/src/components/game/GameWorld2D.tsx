@@ -5,7 +5,7 @@ import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useTreeStore } from '../../lib/stores/useTreeStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
-import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR } from '../../lib/constants';
+import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION } from '../../lib/constants';
 import { NPCControlMode } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
 
