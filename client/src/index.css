@@ -524,11 +524,11 @@ canvas {
   bottom: 40px;
   left: 8px;
   right: 8px;
-  height: 120px;
+  height: 80px;
   background: linear-gradient(135deg, #8B7355 0%, #A0916B 50%, #8B7355 100%);
   border: 3px outset #8B7355;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   padding: 8px 16px;
   z-index: 999;
@@ -544,8 +544,8 @@ canvas {
 }
 
 .rpg-orb {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   position: relative;
   border: 3px solid #4A4A4A;
@@ -553,7 +553,7 @@ canvas {
     0 0 20px rgba(0,0,0,0.5),
     inset 0 0 20px rgba(255,255,255,0.2);
   overflow: hidden;
-  transform: translateY(-25%);
+  transform: translateY(-50%);
 }
 
 .health-orb {
@@ -576,9 +576,10 @@ canvas {
 
 .rpg-buttons-left, .rpg-buttons-right {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 4px;
   margin: 0 12px;
+  align-items: flex-end;
 }
 
 .rpg-button {
@@ -586,10 +587,10 @@ canvas {
   border: 2px outset #C0C0C0;
   color: #000;
   font-family: 'MS Sans Serif', sans-serif;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: bold;
-  padding: 4px 8px;
-  min-width: 60px;
+  padding: 3px 6px;
+  min-width: 45px;
   cursor: pointer;
   user-select: none;
   text-shadow: 1px 1px 1px rgba(255,255,255,0.5);
