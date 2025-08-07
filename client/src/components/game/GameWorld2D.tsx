@@ -25,11 +25,55 @@ export default function GameWorld2D() {
   const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree, setNPCState } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
-  const { generateRandomTrees, getTreeAt, updateTree, destroyTree } = useTreeStore();
+  const { generateRandomTrees, getTreeAt, updateTree, removeTree } = useTreeStore();
   const { updateEffects, addTextEffect } = useEffectsStore();
 
   // Adicionar hooks de teclado para ações
   useKeyboardActions();
+
+  // Função para encontrar árvore prioritária para um NPC
+  const getPriorityTreeForNPC = useCallback((npc: any) => {
+    const adjacentPositions = [
+      { x: npc.position.x + 1, z: npc.position.z },
+      { x: npc.position.x - 1, z: npc.position.z },
+      { x: npc.position.x, z: npc.position.z + 1 },
+      { x: npc.position.x, z: npc.position.z - 1 }
+    ];
+
+    // Buscar todas as árvores válidas adjacentes
+    const availableTrees = [];
+    for (const pos of adjacentPositions) {
+      const tree = Object.values(trees).find(t => 
+        t.position.x === pos.x && 
+        t.position.z === pos.z && 
+        !t.isFalling && 
+        t.health > 0
+      );
+      if (tree) {
+        availableTrees.push(tree);
+      }
+    }
+
+    if (availableTrees.length === 0) return null;
+
+    // Priorizar por: 1) Menor vida, 2) Mais próximo do centro (0,0), 3) Posição x menor
+    return availableTrees.sort((a, b) => {
+      // Prioridade 1: Menor vida (árvores mais danificadas primeiro)
+      if (a.health !== b.health) {
+        return a.health - b.health;
+      }
+      
+      // Prioridade 2: Mais próximo do centro
+      const distanceA = Math.abs(a.position.x) + Math.abs(a.position.z);
+      const distanceB = Math.abs(b.position.x) + Math.abs(b.position.z);
+      if (distanceA !== distanceB) {
+        return distanceA - distanceB;
+      }
+      
+      // Prioridade 3: Posição X menor (mais à esquerda)
+      return a.position.x - b.position.x;
+    })[0];
+  }, [trees]);
 
   // Hook personalizado para processar ações de trabalho manual
   useEffect(() => {
@@ -62,56 +106,38 @@ export default function GameWorld2D() {
           if (completed) {
             // Árvore cortada com sucesso
             console.log('Árvore cortada com sucesso pelo NPC controlado!');
-            destroyTree(npc.currentTreeId);
+            const { removeTree } = useTreeStore.getState();
+            removeTree(npc.currentTreeId);
             setNPCState(npcId, 'IDLE', null);
           }
           return;
         }
       }
 
-      // Buscar árvores adjacentes para começar novo corte
-      const adjacentPositions = [
-        { x: npc.position.x + 1, z: npc.position.z },
-        { x: npc.position.x - 1, z: npc.position.z },
-        { x: npc.position.x, z: npc.position.z + 1 },
-        { x: npc.position.x, z: npc.position.z - 1 }
-      ];
+      // Buscar árvore prioritária adjacente para começar novo corte
+      const priorityTree = getPriorityTreeForNPC(npc);
 
-      // Buscar árvore válida nas posições adjacentes
-      let targetTree = null;
-      for (const pos of adjacentPositions) {
-        const tree = Object.values(trees).find(t => 
-          t.position.x === pos.x && 
-          t.position.z === pos.z && 
-          !t.isFalling && 
-          t.health > 0
-        );
-        if (tree) {
-          targetTree = tree;
-          break;
-        }
-      }
-
-      if (targetTree) {
-        console.log('Árvore encontrada para corte manual:', targetTree.id);
+      if (priorityTree) {
+        console.log('Árvore encontrada para corte manual:', priorityTree.id);
         // Iniciar corte manual
         setNPCState(npcId, 'WORKING', { 
-          currentTreeId: targetTree.id, 
+          currentTreeId: priorityTree.id, 
           workProgress: 1 
         });
 
         // Processar primeiro golpe
-        const newHealth = Math.max(0, targetTree.health - 1);
-        updateTree(targetTree.id, { health: newHealth });
+        const newHealth = Math.max(0, priorityTree.health - 1);
+        updateTree(priorityTree.id, { health: newHealth });
 
         // Adicionar efeito visual
-        addTextEffect(targetTree.position, 'TOC!', '#FFA500', 800);
+        addTextEffect(priorityTree.position, 'TOC!', '#FFA500', 800);
 
         console.log('TOC! Cortando árvore manualmente - progresso:', 1, 'completo:', newHealth <= 0);
 
         if (newHealth <= 0) {
           console.log('Árvore cortada com sucesso pelo NPC controlado!');
-          destroyTree(targetTree.id);
+          const { removeTree } = useTreeStore.getState();
+          removeTree(priorityTree.id);
           setNPCState(npcId, 'IDLE', null);
         }
       } else {
@@ -121,7 +147,7 @@ export default function GameWorld2D() {
 
     window.addEventListener('manualWork', handleManualWork as EventListener);
     return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
-  }, [npcs, trees, updateTree, setNPCState, destroyTree, addTextEffect]);
+  }, [npcs, trees, updateTree, setNPCState, addTextEffect]);
 
   // Carregar sprites das casas
   useEffect(() => {
@@ -228,6 +254,12 @@ export default function GameWorld2D() {
       const { addTextEffect } = useEffectsStore.getState();
       addTextEffect(treeAtPosition.position, 'TOC!', 1000);
 
+      // If tree was destroyed, remove it
+      if (treeDestroyed) {
+        const { removeTree } = useTreeStore.getState();
+        removeTree(treeAtPosition.id);
+      }
+
       console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
       return true;
     } else {
@@ -333,6 +365,8 @@ export default function GameWorld2D() {
 
           if (treeDestroyed) {
             console.log('Árvore destruída! Lenhador volta ao idle');
+            const { removeTree } = useTreeStore.getState();
+            removeTree(tree.id);
             useNPCStore.getState().setNPCState(npc.id, 'IDLE');
           } else {
             // Continue working
@@ -627,14 +661,17 @@ export default function GameWorld2D() {
     const screen = gridToScreen(tree.position.x, tree.position.z, canvasWidth, canvasHeight);
     const size = CELL_SIZE * zoomRef.current;
 
-    // Verificar se há NPC controlado lenhador adjacente para highlight
+    // Verificar se há NPC controlado lenhador adjacente e se esta é a árvore prioritária
     const controlledLumberjack = Object.values(npcs).find(npc => 
       npc.controlMode === NPCControlMode.CONTROLLED && 
-      npc.profession === NPCProfession.LUMBERJACK &&
-      Math.abs(npc.position.x - tree.position.x) + Math.abs(npc.position.z - tree.position.z) === 1
+      npc.profession === NPCProfession.LUMBERJACK
     );
 
-    const isHighlighted = controlledLumberjack && !tree.isFalling && tree.health > 0;
+    let isHighlighted = false;
+    if (controlledLumberjack && !tree.isFalling && tree.health > 0) {
+      const priorityTree = getPriorityTreeForNPC(controlledLumberjack);
+      isHighlighted = priorityTree && priorityTree.id === tree.id;
+    }
 
     // Árvores em tamanho proporcional ao NPC
     const treeScale = 1.2; // Aumentar para 120% do tamanho original
@@ -739,7 +776,7 @@ export default function GameWorld2D() {
     }
 
     ctx.restore();
-  }, [gridToScreen, npcs]);
+  }, [gridToScreen, npcs, getPriorityTreeForNPC]);
 
   // Draw text effects
   const drawTextEffects = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {

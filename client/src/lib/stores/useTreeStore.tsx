@@ -20,7 +20,7 @@ interface TreeStore {
   updateFallingTrees: () => void;
 }
 
-export const useTreeStore = create<TreeStore>((set, get) => ({
+export const useTreeStore = create<TreeStore>()((set, get) => ({
   trees: {},
 
   addTree: (position, type = 'pine') => {
