@@ -129,6 +129,51 @@ export default function GameWorld2D() {
       ctx.fillRect(size/6, -size/8, size/6, size/6);
       ctx.strokeRect(-size/3, -size/8, size/6, size/6);
       ctx.strokeRect(size/6, -size/8, size/6, size/6);
+    } else if (house.type === HouseType.LUMBERJACK) {
+      // Casa do lenhador - estilo baseado na imagem anexada
+      // Base bege/creme
+      ctx.fillStyle = '#F5F5DC';
+      ctx.fillRect(-size/2, -size/2, size, size);
+      
+      // Borda preta
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-size/2, -size/2, size, size);
+      
+      // Teto marrom/laranja triangular
+      ctx.fillStyle = '#D2691E';
+      ctx.beginPath();
+      ctx.moveTo(-size/2, -size/2);
+      ctx.lineTo(size/2, -size/2);
+      ctx.lineTo(0, -size);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      // Porta de madeira escura
+      ctx.fillStyle = '#654321';
+      ctx.fillRect(-size/8, size/4, size/4, size/4);
+      ctx.strokeRect(-size/8, size/4, size/4, size/4);
+      
+      // Janelas com moldura de madeira
+      ctx.fillStyle = '#87CEEB';
+      ctx.fillRect(-size/3, -size/8, size/6, size/6);
+      ctx.fillRect(size/6, -size/8, size/6, size/6);
+      ctx.strokeStyle = '#654321';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-size/3, -size/8, size/6, size/6);
+      ctx.strokeRect(size/6, -size/8, size/6, size/6);
+      
+      // Detalhes de madeira na fachada
+      ctx.strokeStyle = '#8B4513';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      // Linhas verticais de madeira
+      ctx.moveTo(-size/4, -size/2);
+      ctx.lineTo(-size/4, size/2);
+      ctx.moveTo(size/4, -size/2);
+      ctx.lineTo(size/4, size/2);
+      ctx.stroke();
     } else {
       // Casa padrão
       ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];

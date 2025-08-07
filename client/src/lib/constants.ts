@@ -5,7 +5,8 @@ export enum HouseType {
   SMALL = 'SMALL',
   MEDIUM = 'MEDIUM',
   LARGE = 'LARGE',
-  FARMER = 'FARMER'
+  FARMER = 'FARMER',
+  LUMBERJACK = 'LUMBERJACK'
 }
 
 export enum NPCControlMode {
@@ -17,14 +18,16 @@ export const HOUSE_COLORS = {
   [HouseType.SMALL]: '#FF6B6B',
   [HouseType.MEDIUM]: '#4ECDC4', 
   [HouseType.LARGE]: '#45B7D1',
-  [HouseType.FARMER]: '#FFFFFF'
+  [HouseType.FARMER]: '#FFFFFF',
+  [HouseType.LUMBERJACK]: '#F5F5DC'
 };
 
 export const HOUSE_NAMES = {
   [HouseType.SMALL]: 'Small House',
   [HouseType.MEDIUM]: 'Medium House',
   [HouseType.LARGE]: 'Large House',
-  [HouseType.FARMER]: 'Farmer House'
+  [HouseType.FARMER]: 'Farmer House',
+  [HouseType.LUMBERJACK]: 'Lumberjack House'
 };
 
 export const NPC_COLOR = '#FF6B6B';
