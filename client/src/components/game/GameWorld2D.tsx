@@ -131,7 +131,7 @@ export default function GameWorld2D() {
   // Desenhar casa (memoizado)
   const drawHouse = useCallback((ctx: CanvasRenderingContext2D, house: any, canvasWidth: number, canvasHeight: number) => {
     const screen = gridToScreen(house.position.x, house.position.z, canvasWidth, canvasHeight);
-    const size = CELL_SIZE * zoomRef.current;
+    const size = CELL_SIZE * zoomRef.current * 1.4; // Aumentar para ocupar mais do tile isométrico
     
     ctx.save();
     ctx.translate(screen.x, screen.y);
