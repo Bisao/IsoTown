@@ -6,6 +6,7 @@ interface GameStore {
   // UI State
   showHouseModal: boolean;
   showNPCModal: boolean;
+  showStartMenu: boolean;
   
   // Game State
   isPlacingHouse: boolean;
@@ -17,6 +18,7 @@ interface GameStore {
   // Actions
   setShowHouseModal: (show: boolean) => void;
   setShowNPCModal: (show: boolean) => void;
+  setShowStartMenu: (show: boolean) => void;
   startPlacingHouse: (type: HouseType) => void;
   stopPlacingHouse: () => void;
   selectNPC: (id: string | null) => void;
@@ -29,6 +31,7 @@ export const useGameStore = create<GameStore>((set) => ({
   // UI State
   showHouseModal: false,
   showNPCModal: false,
+  showStartMenu: false,
   
   // Game State
   isPlacingHouse: false,
@@ -40,6 +43,7 @@ export const useGameStore = create<GameStore>((set) => ({
   // Actions
   setShowHouseModal: (show) => set({ showHouseModal: show }),
   setShowNPCModal: (show) => set({ showNPCModal: show }),
+  setShowStartMenu: (show) => set({ showStartMenu: show }),
   
   startPlacingHouse: (type) => set({ 
     isPlacingHouse: true, 

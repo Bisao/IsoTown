@@ -207,6 +207,86 @@
   border: 1px solid var(--win98-border);
 }
 
+/* Windows 98 Taskbar */
+.win98-taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  background: var(--win98-surface);
+  border-top: 2px outset var(--win98-surface);
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  z-index: 1000;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+}
+
+.win98-start-button {
+  background: var(--win98-button-face);
+  border: 2px outset var(--win98-button-face);
+  color: var(--win98-text);
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 8px;
+  height: 26px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.win98-start-button:active,
+.win98-start-button.active {
+  border: 2px inset var(--win98-button-face);
+}
+
+.win98-start-menu {
+  position: fixed;
+  bottom: 32px;
+  left: 2px;
+  width: 200px;
+  background: var(--win98-surface);
+  border: 2px outset var(--win98-surface);
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+}
+
+.win98-start-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border: 1px transparent;
+  user-select: none;
+}
+
+.win98-start-menu-item:hover {
+  background: var(--win98-active-title);
+  color: var(--win98-active-title-text);
+}
+
+.win98-start-menu-separator {
+  height: 1px;
+  background: var(--win98-button-shadow);
+  margin: 2px 8px;
+}
+
+.win98-taskbar-time {
+  margin-left: auto;
+  padding: 2px 8px;
+  background: var(--win98-surface);
+  border: 1px inset var(--win98-surface);
+  font-size: 10px;
+}
+
 /* Game UI specific styles */
 .win98-game-ui {
   position: fixed;
@@ -254,6 +334,8 @@
 
 canvas {
   width: 100% !important;
-  height: 100% !important;
+  height: calc(100% - 72px) !important; /* Account for toolbar and taskbar */
+  top: 40px !important;
+  position: absolute !important;
   touch-action: none;
 }
