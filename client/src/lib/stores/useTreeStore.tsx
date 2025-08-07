@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { Tree, Position } from '../types';
 import { nanoid } from 'nanoid';
@@ -7,10 +6,11 @@ import { GRID_SIZE, TREE_DENSITY } from '../constants';
 
 interface TreeStore {
   trees: Record<string, Tree>;
-  
+
   // Actions
   addTree: (position: Position, type?: 'pine' | 'oak' | 'birch') => string;
   removeTree: (id: string) => void;
+  updateTree: (id: string, updates: Partial<Tree>) => void;
   damageTree: (id: string, damage: number) => boolean; // Returns true if tree was destroyed
   getTreeAt: (position: Position) => Tree | undefined;
   getNearestTree: (position: Position, maxDistance: number) => Tree | undefined;
@@ -32,11 +32,11 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
       health: 3, // Using hardcoded value instead of constant to avoid import issues
       maxHealth: 3
     };
-    
+
     set((state) => ({
       trees: { ...state.trees, [id]: tree }
     }));
-    
+
     return id;
   },
 
@@ -45,10 +45,20 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
     return { trees: rest };
   }),
 
+  updateTree: (id, updates) => set((state) => {
+    if (!state.trees[id]) return state;
+    return {
+      trees: {
+        ...state.trees,
+        [id]: { ...state.trees[id], ...updates }
+      }
+    };
+  }),
+
   damageTree: (id, damage) => {
     const tree = get().trees[id];
     if (!tree) return false;
-    
+
     const newHealth = tree.health - damage;
     if (newHealth <= 0) {
       // Tree is destroyed - start falling animation
@@ -70,17 +80,17 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
     const trees = Object.values(get().trees);
     let nearestTree: Tree | undefined;
     let nearestDistance = Infinity;
-    
+
     for (const tree of trees) {
       if (tree.isFalling) continue; // Skip falling trees
-      
+
       const distance = Math.abs(tree.position.x - position.x) + Math.abs(tree.position.z - position.z);
       if (distance <= maxDistance && distance < nearestDistance) {
         nearestDistance = distance;
         nearestTree = tree;
       }
     }
-    
+
     return nearestTree;
   },
 
@@ -95,7 +105,7 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
         }
       }
     }));
-    
+
     // Remove tree after fall animation + despawn delay
     setTimeout(() => {
       get().removeTree(id);
@@ -105,7 +115,7 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
   updateFallingTrees: () => {
     const now = Date.now();
     const trees = get().trees;
-    
+
     Object.values(trees).forEach(tree => {
       if (tree.isFalling && tree.fallStartTime) {
         const elapsed = now - tree.fallStartTime;
@@ -118,7 +128,7 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
 
   getTreeAt: (position) => {
     const { trees } = get();
-    return Object.values(trees).find(tree => 
+    return Object.values(trees).find(tree =>
       tree.position.x === position.x && tree.position.z === position.z
     );
   },
@@ -131,11 +141,11 @@ export const useTreeStore = create<TreeStore>((set, get) => ({
     const { addTree } = get();
     const halfGrid = Math.floor(GRID_SIZE / 2);
     const treeTypes: Array<'pine' | 'oak' | 'birch'> = ['pine', 'oak', 'birch'];
-    
+
     for (let x = -halfGrid; x <= halfGrid; x++) {
       for (let z = -halfGrid; z <= halfGrid; z++) {
         const position = { x, z };
-        
+
         if (isValidGridPosition(position) && Math.random() < TREE_DENSITY) {
           const randomType = treeTypes[Math.floor(Math.random() * treeTypes.length)];
           addTree(position, randomType);

@@ -35,30 +35,30 @@ export default function GameWorld2D() {
   useEffect(() => {
     const handleManualWork = (event: CustomEvent) => {
       const { npcId } = event.detail;
-      
+
       if (!npcId || !npcs[npcId]) return;
-      
+
       const npc = npcs[npcId];
       if (npc.profession !== NPCProfession.LUMBERJACK) return;
-      
+
       // Se já está cortando uma árvore, processar um golpe manual
       if (npc.currentTreeId && npc.state === 'WORKING') {
         const targetTree = trees[npc.currentTreeId];
         if (targetTree && !targetTree.isFalling && targetTree.health > 0) {
           console.log('Continuando corte manual da árvore:', npc.currentTreeId);
-          
+
           // Reduzir vida da árvore
           const newHealth = Math.max(0, targetTree.health - 1);
           updateTree(npc.currentTreeId, { health: newHealth });
-          
+
           // Adicionar efeito visual
           addTextEffect(targetTree.position, 'TOC!', '#FFA500', 800);
-          
+
           const progress = targetTree.maxHealth - newHealth;
           const completed = newHealth <= 0;
-          
+
           console.log('TOC! Cortando árvore manualmente - progresso:', progress, 'completo:', completed);
-          
+
           if (completed) {
             // Árvore cortada com sucesso
             console.log('Árvore cortada com sucesso pelo NPC controlado!');
@@ -68,7 +68,7 @@ export default function GameWorld2D() {
           return;
         }
       }
-      
+
       // Buscar árvores adjacentes para começar novo corte
       const adjacentPositions = [
         { x: npc.position.x + 1, z: npc.position.z },
@@ -76,7 +76,7 @@ export default function GameWorld2D() {
         { x: npc.position.x, z: npc.position.z + 1 },
         { x: npc.position.x, z: npc.position.z - 1 }
       ];
-      
+
       // Buscar árvore válida nas posições adjacentes
       let targetTree = null;
       for (const pos of adjacentPositions) {
@@ -91,7 +91,7 @@ export default function GameWorld2D() {
           break;
         }
       }
-      
+
       if (targetTree) {
         console.log('Árvore encontrada para corte manual:', targetTree.id);
         // Iniciar corte manual
@@ -99,16 +99,16 @@ export default function GameWorld2D() {
           currentTreeId: targetTree.id, 
           workProgress: 1 
         });
-        
+
         // Processar primeiro golpe
         const newHealth = Math.max(0, targetTree.health - 1);
         updateTree(targetTree.id, { health: newHealth });
-        
+
         // Adicionar efeito visual
         addTextEffect(targetTree.position, 'TOC!', '#FFA500', 800);
-        
+
         console.log('TOC! Cortando árvore manualmente - progresso:', 1, 'completo:', newHealth <= 0);
-        
+
         if (newHealth <= 0) {
           console.log('Árvore cortada com sucesso pelo NPC controlado!');
           destroyTree(targetTree.id);
@@ -118,7 +118,7 @@ export default function GameWorld2D() {
         console.log('Nenhuma árvore adjacente encontrada');
       }
     };
-    
+
     window.addEventListener('manualWork', handleManualWork as EventListener);
     return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
   }, [npcs, trees, updateTree, setNPCState, destroyTree, addTextEffect]);
@@ -209,7 +209,7 @@ export default function GameWorld2D() {
 
     // Check if there's a tree at the NPC's exact position
     const treeAtPosition = getTreeAt(npc.position);
-    
+
     if (treeAtPosition && !treeAtPosition.isFalling) {
       console.log('Cortando árvore manualmente:', treeAtPosition.id, 'na mesma posição do NPC');
 
@@ -648,7 +648,7 @@ export default function GameWorld2D() {
       ctx.beginPath();
       ctx.arc(screen.x, screen.y, highlightRadius, 0, Math.PI * 2);
       ctx.fill();
-      
+
       // Borda do highlight pulsante
       const pulseIntensity = 0.5 + 0.5 * Math.sin(Date.now() / 300);
       ctx.strokeStyle = `rgba(255, 215, 0, ${pulseIntensity})`;
