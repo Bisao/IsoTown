@@ -387,8 +387,7 @@ export default function GameWorld2D() {
     ctx.fillStyle = '#90EE90';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Desenhar elementos
-    drawGrid(ctx, canvas.width, canvas.height);
+    // Grid rendering disabled
     
     // Tree rendering disabled
     
