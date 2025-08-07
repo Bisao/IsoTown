@@ -2,29 +2,23 @@ export const GRID_SIZE = 20;
 export const CELL_SIZE = 32;
 
 export enum HouseType {
-  SMALL = 'SMALL',
-  MEDIUM = 'MEDIUM',
-  LARGE = 'LARGE',
   FARMER = 'FARMER',
-  LUMBERJACK = 'LUMBERJACK'
+  LUMBERJACK = 'LUMBERJACK',
+  MINER = 'MINER'
 }
 
 // NPCControlMode moved to types.ts to avoid circular imports
 
 export const HOUSE_COLORS = {
-  [HouseType.SMALL]: '#FF6B6B',
-  [HouseType.MEDIUM]: '#4ECDC4',
-  [HouseType.LARGE]: '#45B7D1',
   [HouseType.FARMER]: '#FFFFFF',
-  [HouseType.LUMBERJACK]: '#F5F5DC'
+  [HouseType.LUMBERJACK]: '#F5F5DC',
+  [HouseType.MINER]: '#8B4513'
 };
 
 export const HOUSE_NAMES = {
-  [HouseType.SMALL]: 'Small House',
-  [HouseType.MEDIUM]: 'Medium House',
-  [HouseType.LARGE]: 'Large House',
   [HouseType.FARMER]: 'Farmer House',
-  [HouseType.LUMBERJACK]: 'Lumberjack House'
+  [HouseType.LUMBERJACK]: 'Lumberjack House',
+  [HouseType.MINER]: 'Miner House'
 };
 
 export const NPC_COLOR = '#FF6B6B';

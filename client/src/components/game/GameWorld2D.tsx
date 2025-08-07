@@ -173,9 +173,7 @@ export default function GameWorld2D() {
       const spriteMap = {
         [HouseType.FARMER]: '/sprites/houses/farmer_house.png',
         [HouseType.LUMBERJACK]: '/sprites/houses/lumberjack_house.png',
-        [HouseType.MEDIUM]: '/sprites/houses/medium_house.png',
-        [HouseType.SMALL]: '/sprites/houses/medium_house.png', // Usar a mesma sprite por enquanto
-        [HouseType.LARGE]: '/sprites/houses/medium_house.png'   // Usar a mesma sprite por enquanto
+        [HouseType.MINER]: '/sprites/houses/medium_house.png' // Usar medium_house como placeholder para miner
       };
 
       const loadPromises = Object.entries(spriteMap).map(([type, path]) => {
@@ -567,9 +565,70 @@ export default function GameWorld2D() {
         ctx.moveTo(size/4, -size/2);
         ctx.lineTo(size/4, size/2);
         ctx.stroke();
+      } else if (house.type === HouseType.MINER) {
+        // Casa do minerador - estilo robusto de pedra
+        // Base marrom escuro (madeira/pedra)
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(-size/2, -size/2, size, size);
+
+        // Borda preta grossa
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-size/2, -size/2, size, size);
+
+        // Teto de pedra cinza
+        ctx.fillStyle = '#696969';
+        ctx.beginPath();
+        ctx.moveTo(-size/2, -size/2);
+        ctx.lineTo(size/2, -size/2);
+        ctx.lineTo(0, -size);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Porta reforçada de ferro
+        ctx.fillStyle = '#2F4F4F';
+        ctx.fillRect(-size/8, size/4, size/4, size/4);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-size/8, size/4, size/4, size/4);
+
+        // Janelas pequenas com grades
+        ctx.fillStyle = '#87CEEB';
+        ctx.fillRect(-size/3, -size/8, size/8, size/8);
+        ctx.fillRect(size/5, -size/8, size/8, size/8);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-size/3, -size/8, size/8, size/8);
+        ctx.strokeRect(size/5, -size/8, size/8, size/8);
+
+        // Grades nas janelas
+        ctx.strokeStyle = '#2F4F4F';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        // Grade vertical esquerda
+        ctx.moveTo(-size/3 + size/16, -size/8);
+        ctx.lineTo(-size/3 + size/16, -size/8 + size/8);
+        // Grade horizontal esquerda
+        ctx.moveTo(-size/3, -size/8 + size/16);
+        ctx.lineTo(-size/3 + size/8, -size/8 + size/16);
+        // Grade vertical direita
+        ctx.moveTo(size/5 + size/16, -size/8);
+        ctx.lineTo(size/5 + size/16, -size/8 + size/8);
+        // Grade horizontal direita
+        ctx.moveTo(size/5, -size/8 + size/16);
+        ctx.lineTo(size/5 + size/8, -size/8 + size/16);
+        ctx.stroke();
+
+        // Chaminé de pedra
+        ctx.fillStyle = '#696969';
+        ctx.fillRect(size/3, -size, size/8, size/2);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(size/3, -size, size/8, size/2);
       } else {
-        // Casa padrão
-        ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];
+        // Casa padrão (fallback)
+        ctx.fillStyle = HOUSE_COLORS[house.type as HouseType] || '#808080';
         ctx.fillRect(-size/2, -size/2, size, size);
 
         ctx.strokeStyle = '#000000';
