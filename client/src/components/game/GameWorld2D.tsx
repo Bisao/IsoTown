@@ -2,8 +2,9 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useHouseStore } from '../../lib/stores/useHouseStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
+import { useTreeStore } from '../../lib/stores/useTreeStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
-import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, NPCControlMode } from '../../lib/constants';
+import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, NPCControlMode, TREE_COLOR } from '../../lib/constants';
 import { isValidGridPosition } from '../../lib/utils/grid';
 
 export default function GameWorld2D() {
@@ -14,9 +15,20 @@ export default function GameWorld2D() {
 
   const houses = useHouseStore(state => state.houses);
   const npcs = useNPCStore(state => state.npcs);
+  const trees = useTreeStore(state => state.trees);
   const { moveNPC, updateNPCMovement, addNPC } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode } = useGameStore();
   const { addHouse, getHouseAt } = useHouseStore();
+  const { generateRandomTrees, getTreeAt } = useTreeStore();
+
+  // Gerar árvores aleatórias na primeira renderização
+  useEffect(() => {
+    const treeCount = Object.keys(trees).length;
+    if (treeCount === 0) {
+      console.log('Gerando árvores aleatórias...');
+      generateRandomTrees();
+    }
+  }, [generateRandomTrees, trees]);
   
   
 
@@ -137,6 +149,43 @@ export default function GameWorld2D() {
     }
   }, [gridToScreen, selectedNPC]);
 
+  // Desenhar árvore (memoizado)
+  const drawTree = useCallback((ctx: CanvasRenderingContext2D, tree: any, canvasWidth: number, canvasHeight: number) => {
+    const screen = gridToScreen(tree.position.x, tree.position.z, canvasWidth, canvasHeight);
+    const size = CELL_SIZE * zoomRef.current;
+    
+    // Tronco
+    const trunkWidth = size * 0.2;
+    const trunkHeight = size * 0.5;
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(screen.x - trunkWidth/2, screen.y - trunkHeight/2, trunkWidth, trunkHeight);
+    
+    // Copa da árvore baseada no tipo
+    const foliageRadius = size * 0.4;
+    ctx.fillStyle = tree.type === 'birch' ? '#90EE90' : 
+                    tree.type === 'oak' ? '#228B22' : '#006400';
+    
+    if (tree.type === 'pine') {
+      // Árvore triangular (pinheiro)
+      ctx.beginPath();
+      ctx.moveTo(screen.x, screen.y - size * 0.6);
+      ctx.lineTo(screen.x - foliageRadius, screen.y + size * 0.1);
+      ctx.lineTo(screen.x + foliageRadius, screen.y + size * 0.1);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Árvore circular (carvalho/bétula)
+      ctx.beginPath();
+      ctx.arc(screen.x, screen.y - size * 0.2, foliageRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Borda
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }, [gridToScreen]);
+
   // Timer para atualização dos NPCs (separado do loop de animação)
   useEffect(() => {
     const npcUpdateInterval = setInterval(() => {
@@ -164,6 +213,11 @@ export default function GameWorld2D() {
     // Desenhar elementos
     drawGrid(ctx, canvas.width, canvas.height);
     
+    // Desenhar árvores primeiro (fundo)
+    Object.values(trees).forEach(tree => {
+      drawTree(ctx, tree, canvas.width, canvas.height);
+    });
+    
     Object.values(houses).forEach(house => {
       drawHouse(ctx, house, canvas.width, canvas.height);
     });
@@ -173,7 +227,7 @@ export default function GameWorld2D() {
     });
     
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, drawGrid, drawHouse, drawNPC]);
+  }, [houses, npcs, trees, drawGrid, drawHouse, drawNPC, drawTree]);
 
   // Manipular cliques no canvas
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -186,7 +240,7 @@ export default function GameWorld2D() {
 
     if (isPlacingHouse && selectedHouseType) {
       const gridPos = screenToGrid(x, y, canvas.width, canvas.height);
-      if (isValidGridPosition(gridPos) && !getHouseAt(gridPos)) {
+      if (isValidGridPosition(gridPos) && !getHouseAt(gridPos) && !getTreeAt(gridPos)) {
         addHouse(selectedHouseType, gridPos);
         stopPlacingHouse();
       }

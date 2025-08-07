@@ -34,16 +34,21 @@ export const useHouseStore = create<HouseStore>()(
       // Spawn NPC after 3 seconds
       setTimeout(() => {
         import('./useNPCStore').then(({ useNPCStore }) => {
-          const npcId = useNPCStore.getState().addNPC(position);
-          useNPCStore.getState().assignNPCToHouse(npcId, id);
-          
-          // Update house with NPC assignment
-          set((state) => ({
-            houses: {
-              ...state.houses,
-              [id]: { ...state.houses[id], npcId }
+          import('./useTreeStore').then(({ useTreeStore }) => {
+            // Verificar se a posição não tem árvore antes de spawnar NPC
+            if (!useTreeStore.getState().getTreeAt(position)) {
+              const npcId = useNPCStore.getState().addNPC(position);
+              useNPCStore.getState().assignNPCToHouse(npcId, id);
+              
+              // Update house with NPC assignment
+              set((state) => ({
+                houses: {
+                  ...state.houses,
+                  [id]: { ...state.houses[id], npcId }
+                }
+              }));
             }
-          }));
+          });
         });
       }, 3000);
       

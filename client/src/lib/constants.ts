@@ -26,3 +26,7 @@ export const HOUSE_NAMES = {
 
 export const NPC_COLOR = '#FF6B6B';
 export const MOVEMENT_SPEED = 200; // ms between tile movements
+
+// Tree constants
+export const TREE_COLOR = '#228B22';
+export const TREE_DENSITY = 0.15; // 15% chance of tree per tile

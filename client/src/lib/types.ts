@@ -12,9 +12,16 @@ export interface House {
 export interface NPC {
   id: string;
   position: Position;
-  controlMode: string;
   targetPosition?: Position;
   isMoving: boolean;
+  controlMode: NPCControlMode;
   houseId?: string;
-  movementTimer?: number;
+  movementPath?: Position[];
+  lastMovement: number;
+}
+
+export interface Tree {
+  id: string;
+  position: Position;
+  type: 'pine' | 'oak' | 'birch';
 }
