@@ -4,15 +4,20 @@ import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useHouseStore } from '../../lib/stores/useHouseStore';
 import { NPCControlMode, HOUSE_NAMES } from '../../lib/constants';
 import { NPC, House } from '../../lib/types';
+import { useDraggable } from '../../hooks/use-draggable';
 
 interface NPCConfigModalProps {
   open: boolean;
 }
 
 export default function NPCConfigModal({ open }: NPCConfigModalProps) {
-  const { selectedNPC, selectedHouse, setShowNPCModal, clearSelection } = useGameStore();
+  const { selectedNPC, selectedHouse, setShowNPCModal, clearSelection, focusWindow } = useGameStore();
   const { npcs, setNPCControlMode } = useNPCStore();
   const { houses } = useHouseStore();
+  const { position, isDragging, elementRef, handleMouseDown } = useDraggable({
+    x: window.innerWidth / 2 - 180,
+    y: window.innerHeight / 2 - 200
+  });
 
   const [currentNPC, setCurrentNPC] = useState<NPC | null>(null);
   const [currentHouse, setCurrentHouse] = useState<House | null>(null);
@@ -27,8 +32,10 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
       }
     } else if (selectedHouse && houses[selectedHouse]) {
       setCurrentHouse(houses[selectedHouse]);
-      if (houses[selectedHouse].npcId && npcs[houses[selectedHouse].npcId]) {
-        setCurrentNPC(npcs[houses[selectedHouse].npcId]);
+      // Find NPC assigned to this house
+      const assignedNPC = Object.values(npcs).find(npc => npc.houseId === selectedHouse);
+      if (assignedNPC) {
+        setCurrentNPC(assignedNPC);
       } else {
         setCurrentNPC(null);
       }
@@ -55,11 +62,25 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
   if (!open || (!currentNPC && !currentHouse)) return null;
 
   return (
-    <div className="win98-modal-overlay">
-      <div className="win98-window" style={{ minWidth: '320px', maxWidth: '450px' }}>
-        <div className="win98-window-header">
+    <div className="win98-modal-overlay" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={elementRef}
+        className={`win98-window win98-draggable-window ${isDragging ? 'dragging' : ''}`}
+        style={{ 
+          minWidth: '320px', 
+          maxWidth: '450px',
+          left: position.x,
+          top: position.y,
+          margin: 0
+        }}
+        onClick={() => focusWindow('npc')}
+      >
+        <div 
+          className={`win98-window-header ${isDragging ? 'dragging' : ''}`}
+          onMouseDown={handleMouseDown}
+        >
           <span>
-            {currentNPC ? 'NPC Properties' : 'Building Properties'}
+            🔧 {currentNPC ? 'NPC Properties' : 'Building Properties'}
           </span>
           <div className="win98-close-button" onClick={handleClose}>×</div>
         </div>
@@ -110,13 +131,13 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
           {currentHouse && (
             <div className="win98-panel" style={{ marginBottom: '12px', padding: '8px' }}>
               <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>
-                {currentHouse?.type ? HOUSE_NAMES[currentHouse.type] : 'Unknown Building'}
+                {currentHouse?.type ? HOUSE_NAMES[currentHouse.type as keyof typeof HOUSE_NAMES] : 'Unknown Building'}
               </div>
               <div style={{ fontSize: '11px', marginBottom: '4px' }}>
                 Position: ({currentHouse.position.x}, {currentHouse.position.z})
               </div>
               <div style={{ fontSize: '11px' }}>
-                {currentHouse.npcId ? `Assigned NPC: ${currentHouse.npcId}` : 'No NPC assigned'}
+                {Object.values(npcs).find(npc => npc.houseId === currentHouse.id) ? `Assigned NPC: ${Object.values(npcs).find(npc => npc.houseId === currentHouse.id)?.id}` : 'No NPC assigned'}
               </div>
             </div>
           )}

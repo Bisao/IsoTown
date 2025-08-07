@@ -11,9 +11,12 @@ export default function GameUI() {
     showHouseModal, 
     showNPCModal, 
     showStartMenu,
+    openWindows,
     setShowHouseModal, 
     setShowNPCModal,
-    setShowStartMenu 
+    setShowStartMenu,
+    toggleWindow,
+    focusWindow
   } = useGameStore();
   
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -67,6 +70,14 @@ export default function GameUI() {
     });
   };
 
+  const getWindowTitle = (windowId: string) => {
+    switch (windowId) {
+      case 'house': return '🏠 Construir';
+      case 'npc': return '👥 NPCs';
+      default: return windowId;
+    }
+  };
+
   return (
     <>
       {/* Windows 98 Style Toolbar */}
@@ -98,6 +109,22 @@ export default function GameUI() {
           <span style={{ fontSize: '16px' }}>🪟</span>
           Iniciar
         </button>
+        
+        {/* Window buttons in taskbar */}
+        {openWindows.map((windowId) => (
+          <button
+            key={windowId}
+            className="win98-taskbar-window"
+            onClick={() => focusWindow(windowId)}
+            style={{
+              marginLeft: '4px',
+              fontSize: isMobile ? '10px' : '11px',
+              padding: isMobile ? '4px 6px' : '2px 8px'
+            }}
+          >
+            {getWindowTitle(windowId)}
+          </button>
+        ))}
         
         <div className="win98-taskbar-time">
           {formatTime(currentTime)}

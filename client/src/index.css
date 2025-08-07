@@ -144,11 +144,24 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+}
+
+.win98-draggable-window {
+  position: absolute;
+  cursor: move;
+}
+
+.win98-draggable-window:active {
+  cursor: grabbing;
+}
+
+.win98-window-header.dragging {
+  cursor: grabbing;
 }
 
 .win98-joystick-container {
@@ -277,6 +290,30 @@
   height: 1px;
   background: var(--win98-button-shadow);
   margin: 2px 8px;
+}
+
+.win98-taskbar-window {
+  background: var(--win98-button-face);
+  border: 2px outset var(--win98-button-face);
+  color: var(--win98-text);
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  padding: 2px 8px;
+  height: 22px;
+  cursor: pointer;
+  user-select: none;
+  max-width: 120px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.win98-taskbar-window:hover {
+  background: var(--win98-button-highlight);
+}
+
+.win98-taskbar-window:active {
+  border: 2px inset var(--win98-button-face);
 }
 
 .win98-taskbar-time {

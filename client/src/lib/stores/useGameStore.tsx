@@ -7,6 +7,7 @@ interface GameStore {
   showHouseModal: boolean;
   showNPCModal: boolean;
   showStartMenu: boolean;
+  openWindows: string[];
   
   // Game State
   isPlacingHouse: boolean;
@@ -19,6 +20,8 @@ interface GameStore {
   setShowHouseModal: (show: boolean) => void;
   setShowNPCModal: (show: boolean) => void;
   setShowStartMenu: (show: boolean) => void;
+  toggleWindow: (windowId: string) => void;
+  focusWindow: (windowId: string) => void;
   startPlacingHouse: (type: HouseType) => void;
   stopPlacingHouse: () => void;
   selectNPC: (id: string | null) => void;
@@ -32,6 +35,7 @@ export const useGameStore = create<GameStore>((set) => ({
   showHouseModal: false,
   showNPCModal: false,
   showStartMenu: false,
+  openWindows: [],
   
   // Game State
   isPlacingHouse: false,
@@ -41,9 +45,44 @@ export const useGameStore = create<GameStore>((set) => ({
   cameraMode: 'FREE',
   
   // Actions
-  setShowHouseModal: (show) => set({ showHouseModal: show }),
-  setShowNPCModal: (show) => set({ showNPCModal: show }),
+  setShowHouseModal: (show) => set((state) => ({ 
+    showHouseModal: show,
+    openWindows: show 
+      ? [...state.openWindows.filter(id => id !== 'house'), 'house']
+      : state.openWindows.filter(id => id !== 'house')
+  })),
+  setShowNPCModal: (show) => set((state) => ({ 
+    showNPCModal: show,
+    openWindows: show 
+      ? [...state.openWindows.filter(id => id !== 'npc'), 'npc']
+      : state.openWindows.filter(id => id !== 'npc')
+  })),
   setShowStartMenu: (show) => set({ showStartMenu: show }),
+  
+  toggleWindow: (windowId) => set((state) => {
+    const isOpen = state.openWindows.includes(windowId);
+    if (windowId === 'house') {
+      return { 
+        showHouseModal: !isOpen,
+        openWindows: !isOpen 
+          ? [...state.openWindows.filter(id => id !== 'house'), 'house']
+          : state.openWindows.filter(id => id !== 'house')
+      };
+    }
+    if (windowId === 'npc') {
+      return { 
+        showNPCModal: !isOpen,
+        openWindows: !isOpen 
+          ? [...state.openWindows.filter(id => id !== 'npc'), 'npc']
+          : state.openWindows.filter(id => id !== 'npc')
+      };
+    }
+    return state;
+  }),
+  
+  focusWindow: (windowId) => set((state) => ({
+    openWindows: [...state.openWindows.filter(id => id !== windowId), windowId]
+  })),
   
   startPlacingHouse: (type) => set({ 
     isPlacingHouse: true, 
