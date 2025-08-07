@@ -286,35 +286,38 @@ export default function GameWorld2D() {
     const screen = gridToScreen(tree.position.x, tree.position.z, canvasWidth, canvasHeight);
     const size = CELL_SIZE * zoomRef.current;
     
+    // Árvores maiores - aumentando o tamanho base
+    const treeScale = 1.8; // Aumentar 80% do tamanho original
+    
     // Tronco
-    const trunkWidth = size * 0.2;
-    const trunkHeight = size * 0.5;
+    const trunkWidth = size * 0.25 * treeScale;
+    const trunkHeight = size * 0.7 * treeScale;
     ctx.fillStyle = '#8B4513';
     ctx.fillRect(screen.x - trunkWidth/2, screen.y - trunkHeight/2, trunkWidth, trunkHeight);
     
     // Copa da árvore baseada no tipo
-    const foliageRadius = size * 0.4;
+    const foliageRadius = size * 0.6 * treeScale;
     ctx.fillStyle = tree.type === 'birch' ? '#90EE90' : 
                     tree.type === 'oak' ? '#228B22' : '#006400';
     
     if (tree.type === 'pine') {
-      // Árvore triangular (pinheiro)
+      // Árvore triangular (pinheiro) - maior e mais alta
       ctx.beginPath();
-      ctx.moveTo(screen.x, screen.y - size * 0.6);
-      ctx.lineTo(screen.x - foliageRadius, screen.y + size * 0.1);
-      ctx.lineTo(screen.x + foliageRadius, screen.y + size * 0.1);
+      ctx.moveTo(screen.x, screen.y - size * 0.9 * treeScale);
+      ctx.lineTo(screen.x - foliageRadius, screen.y + size * 0.15);
+      ctx.lineTo(screen.x + foliageRadius, screen.y + size * 0.15);
       ctx.closePath();
       ctx.fill();
     } else {
-      // Árvore circular (carvalho/bétula)
+      // Árvore circular (carvalho/bétula) - maior e mais alta
       ctx.beginPath();
-      ctx.arc(screen.x, screen.y - size * 0.2, foliageRadius, 0, Math.PI * 2);
+      ctx.arc(screen.x, screen.y - size * 0.3 * treeScale, foliageRadius, 0, Math.PI * 2);
       ctx.fill();
     }
     
     // Borda
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 2;
     ctx.stroke();
   }, [gridToScreen]);
 
