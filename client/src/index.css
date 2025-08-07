@@ -312,8 +312,10 @@
   background: var(--win98-button-highlight);
 }
 
-.win98-taskbar-window:active {
+.win98-taskbar-window:active,
+.win98-taskbar-window.active {
   border: 2px inset var(--win98-button-face);
+  background: var(--win98-button-shadow);
 }
 
 .win98-taskbar-time {

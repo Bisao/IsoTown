@@ -72,6 +72,7 @@ export default function GameUI() {
 
   const getWindowTitle = (windowId: string) => {
     switch (windowId) {
+      case 'game': return '🎮 SimCity 98';
       case 'house': return '🏠 Construir';
       case 'npc': return '👥 NPCs';
       default: return windowId;
@@ -114,8 +115,13 @@ export default function GameUI() {
         {openWindows.map((windowId) => (
           <button
             key={windowId}
-            className="win98-taskbar-window"
-            onClick={() => focusWindow(windowId)}
+            className={`win98-taskbar-window ${windowId === 'game' ? 'active' : ''}`}
+            onClick={() => {
+              if (windowId !== 'game') {
+                focusWindow(windowId);
+              }
+              // For game window, just keep it focused (it's always open)
+            }}
             style={{
               marginLeft: '4px',
               fontSize: isMobile ? '10px' : '11px',
@@ -141,13 +147,6 @@ export default function GameUI() {
             <span>🏠</span>
             <span>Construir Casas</span>
           </div>
-          <div 
-            className="win98-start-menu-item"
-            onClick={() => handleMenuItemClick('npcs')}
-          >
-            <span>👥</span>
-            <span>Configurar NPCs</span>
-          </div>
           <div className="win98-start-menu-separator" />
           <div 
             className="win98-start-menu-item"
@@ -155,11 +154,6 @@ export default function GameUI() {
           >
             <span>ℹ️</span>
             <span>Sobre</span>
-          </div>
-          <div className="win98-start-menu-separator" />
-          <div className="win98-start-menu-item">
-            <span>🎮</span>
-            <span>Jogar SimCity 98</span>
           </div>
         </div>
       )}

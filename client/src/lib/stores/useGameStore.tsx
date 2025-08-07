@@ -35,7 +35,7 @@ export const useGameStore = create<GameStore>((set) => ({
   showHouseModal: false,
   showNPCModal: false,
   showStartMenu: false,
-  openWindows: [],
+  openWindows: ['game'], // Game is always open
   
   // Game State
   isPlacingHouse: false,
