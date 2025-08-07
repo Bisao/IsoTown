@@ -12,6 +12,8 @@ export default function GameWorld2D() {
   const animationRef = useRef<number>();
   const zoomRef = useRef(1.5);
   const panRef = useRef({ x: 0, y: 0 });
+  const spritesRef = useRef<Record<string, HTMLImageElement>>({});
+  const spritesLoadedRef = useRef(false);
 
   const houses = useHouseStore(state => state.houses);
   const npcs = useNPCStore(state => state.npcs);
@@ -20,6 +22,43 @@ export default function GameWorld2D() {
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt } = useTreeStore();
+
+  // Carregar sprites das casas
+  useEffect(() => {
+    const loadSprites = async () => {
+      const sprites: Record<string, HTMLImageElement> = {};
+      
+      const spriteMap = {
+        [HouseType.FARMER]: '/sprites/houses/farmer_house.png',
+        [HouseType.LUMBERJACK]: '/sprites/houses/lumberjack_house.png',
+        [HouseType.MEDIUM]: '/sprites/houses/medium_house.png',
+        [HouseType.SMALL]: '/sprites/houses/medium_house.png', // Usar a mesma sprite por enquanto
+        [HouseType.LARGE]: '/sprites/houses/medium_house.png'   // Usar a mesma sprite por enquanto
+      };
+      
+      const loadPromises = Object.entries(spriteMap).map(([type, path]) => {
+        return new Promise<void>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            sprites[type] = img;
+            resolve();
+          };
+          img.onerror = () => {
+            console.warn(`Falha ao carregar sprite: ${path}`);
+            resolve(); // Continue mesmo se falhar
+          };
+          img.src = path;
+        });
+      });
+      
+      await Promise.all(loadPromises);
+      spritesRef.current = sprites;
+      spritesLoadedRef.current = true;
+      console.log('Sprites carregadas:', Object.keys(sprites));
+    };
+    
+    loadSprites();
+  }, []);
 
   // Gerar árvores aleatórias na primeira renderização
   useEffect(() => {
@@ -97,101 +136,109 @@ export default function GameWorld2D() {
     ctx.translate(screen.x, screen.y);
     ctx.rotate((house.rotation || 0) * Math.PI / 180);
     
-    if (house.type === HouseType.FARMER) {
-      // Casa do fazendeiro - estilo especial baseado na imagem
-      // Base branca
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(-size/2, -size/2, size, size);
-      
-      // Borda preta
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(-size/2, -size/2, size, size);
-      
-      // Teto vermelho triangular
-      ctx.fillStyle = '#DC143C';
-      ctx.beginPath();
-      ctx.moveTo(-size/2, -size/2);
-      ctx.lineTo(size/2, -size/2);
-      ctx.lineTo(0, -size);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      
-      // Porta frontal (sempre na frente considerando rotação)
-      ctx.fillStyle = '#8B4513';
-      ctx.fillRect(-size/8, size/4, size/4, size/4);
-      ctx.strokeRect(-size/8, size/4, size/4, size/4);
-      
-      // Janelas
-      ctx.fillStyle = '#87CEEB';
-      ctx.fillRect(-size/3, -size/8, size/6, size/6);
-      ctx.fillRect(size/6, -size/8, size/6, size/6);
-      ctx.strokeRect(-size/3, -size/8, size/6, size/6);
-      ctx.strokeRect(size/6, -size/8, size/6, size/6);
-    } else if (house.type === HouseType.LUMBERJACK) {
-      // Casa do lenhador - estilo baseado na imagem anexada
-      // Base bege/creme
-      ctx.fillStyle = '#F5F5DC';
-      ctx.fillRect(-size/2, -size/2, size, size);
-      
-      // Borda preta
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(-size/2, -size/2, size, size);
-      
-      // Teto marrom/laranja triangular
-      ctx.fillStyle = '#D2691E';
-      ctx.beginPath();
-      ctx.moveTo(-size/2, -size/2);
-      ctx.lineTo(size/2, -size/2);
-      ctx.lineTo(0, -size);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      
-      // Porta de madeira escura
-      ctx.fillStyle = '#654321';
-      ctx.fillRect(-size/8, size/4, size/4, size/4);
-      ctx.strokeRect(-size/8, size/4, size/4, size/4);
-      
-      // Janelas com moldura de madeira
-      ctx.fillStyle = '#87CEEB';
-      ctx.fillRect(-size/3, -size/8, size/6, size/6);
-      ctx.fillRect(size/6, -size/8, size/6, size/6);
-      ctx.strokeStyle = '#654321';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(-size/3, -size/8, size/6, size/6);
-      ctx.strokeRect(size/6, -size/8, size/6, size/6);
-      
-      // Detalhes de madeira na fachada
-      ctx.strokeStyle = '#8B4513';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      // Linhas verticais de madeira
-      ctx.moveTo(-size/4, -size/2);
-      ctx.lineTo(-size/4, size/2);
-      ctx.moveTo(size/4, -size/2);
-      ctx.lineTo(size/4, size/2);
-      ctx.stroke();
+    // Usar sprite se disponível
+    const sprite = spritesRef.current[house.type];
+    if (sprite && spritesLoadedRef.current) {
+      // Desenhar sprite
+      ctx.drawImage(sprite, -size/2, -size/2, size, size);
     } else {
-      // Casa padrão
-      ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];
-      ctx.fillRect(-size/2, -size/2, size, size);
-      
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(-size/2, -size/2, size, size);
-      
-      // Teto marrom
-      ctx.fillStyle = '#8B4513';
-      ctx.beginPath();
-      ctx.moveTo(-size/2, -size/2);
-      ctx.lineTo(size/2, -size/2);
-      ctx.lineTo(0, -size);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      // Fallback para desenho básico se sprite não estiver disponível
+      if (house.type === HouseType.FARMER) {
+        // Casa do fazendeiro - estilo especial baseado na imagem
+        // Base branca
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-size/2, -size/2, size, size);
+        
+        // Borda preta
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-size/2, -size/2, size, size);
+        
+        // Teto vermelho triangular
+        ctx.fillStyle = '#DC143C';
+        ctx.beginPath();
+        ctx.moveTo(-size/2, -size/2);
+        ctx.lineTo(size/2, -size/2);
+        ctx.lineTo(0, -size);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Porta frontal (sempre na frente considerando rotação)
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(-size/8, size/4, size/4, size/4);
+        ctx.strokeRect(-size/8, size/4, size/4, size/4);
+        
+        // Janelas
+        ctx.fillStyle = '#87CEEB';
+        ctx.fillRect(-size/3, -size/8, size/6, size/6);
+        ctx.fillRect(size/6, -size/8, size/6, size/6);
+        ctx.strokeRect(-size/3, -size/8, size/6, size/6);
+        ctx.strokeRect(size/6, -size/8, size/6, size/6);
+      } else if (house.type === HouseType.LUMBERJACK) {
+        // Casa do lenhador - estilo baseado na imagem anexada
+        // Base bege/creme
+        ctx.fillStyle = '#F5F5DC';
+        ctx.fillRect(-size/2, -size/2, size, size);
+        
+        // Borda preta
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-size/2, -size/2, size, size);
+        
+        // Teto marrom/laranja triangular
+        ctx.fillStyle = '#D2691E';
+        ctx.beginPath();
+        ctx.moveTo(-size/2, -size/2);
+        ctx.lineTo(size/2, -size/2);
+        ctx.lineTo(0, -size);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Porta de madeira escura
+        ctx.fillStyle = '#654321';
+        ctx.fillRect(-size/8, size/4, size/4, size/4);
+        ctx.strokeRect(-size/8, size/4, size/4, size/4);
+        
+        // Janelas com moldura de madeira
+        ctx.fillStyle = '#87CEEB';
+        ctx.fillRect(-size/3, -size/8, size/6, size/6);
+        ctx.fillRect(size/6, -size/8, size/6, size/6);
+        ctx.strokeStyle = '#654321';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-size/3, -size/8, size/6, size/6);
+        ctx.strokeRect(size/6, -size/8, size/6, size/6);
+        
+        // Detalhes de madeira na fachada
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        // Linhas verticais de madeira
+        ctx.moveTo(-size/4, -size/2);
+        ctx.lineTo(-size/4, size/2);
+        ctx.moveTo(size/4, -size/2);
+        ctx.lineTo(size/4, size/2);
+        ctx.stroke();
+      } else {
+        // Casa padrão
+        ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];
+        ctx.fillRect(-size/2, -size/2, size, size);
+        
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-size/2, -size/2, size, size);
+        
+        // Teto marrom
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.moveTo(-size/2, -size/2);
+        ctx.lineTo(size/2, -size/2);
+        ctx.lineTo(0, -size);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
     }
     
     ctx.restore();
