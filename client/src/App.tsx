@@ -28,14 +28,7 @@ export default function App() {
           </div>
         </div>
         
-        {/* Game Menu Bar */}
-        <div className="win98-game-menubar">
-          <span className="win98-menu-item">Arquivo</span>
-          <span className="win98-menu-item">Editar</span>
-          <span className="win98-menu-item">Visualizar</span>
-          <span className="win98-menu-item">Ferramentas</span>
-          <span className="win98-menu-item">Ajuda</span>
-        </div>
+
         
         {/* Game Content Area */}
         <div className="win98-game-content">
