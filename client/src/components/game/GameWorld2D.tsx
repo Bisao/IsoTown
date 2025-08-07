@@ -81,11 +81,15 @@ export default function GameWorld2D() {
       updateNPCMovement();
       
       // Update lumberjack behavior for each NPC
-      Object.values(npcs).forEach(npc => {
+      Object.values(npcs).forEach((npc) => {
         if (npc.profession === 'LUMBERJACK' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
           console.log('Atualizando comportamento do lenhador:', npc.id, 'estado:', npc.state);
-          const { updateLumberjackBehavior } = useNPCStore.getState();
-          updateLumberjackBehavior(npc);
+          try {
+            const { updateLumberjackBehavior } = useNPCStore.getState();
+            updateLumberjackBehavior(npc);
+          } catch (error) {
+            console.error('Erro ao atualizar comportamento do lenhador:', error);
+          }
         }
       });
       
