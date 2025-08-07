@@ -553,6 +553,7 @@ canvas {
     0 0 20px rgba(0,0,0,0.5),
     inset 0 0 20px rgba(255,255,255,0.2);
   overflow: hidden;
+  transform: translateY(-25%);
 }
 
 .health-orb {
