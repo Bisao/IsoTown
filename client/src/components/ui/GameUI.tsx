@@ -122,26 +122,26 @@ export default function GameUI() {
     }
 
     if (targetTree) {
-      console.log('Cortando árvore manualmente:', targetTree.id);
+      console.log('TOC! Cortando árvore manualmente:', targetTree.id, 'na posição:', targetTree.position);
 
       // Damage the tree
       const treeDestroyed = damageTree(targetTree.id, 1);
 
-      // Add chopping animation
+      // Add chopping animation to NPC
       useNPCStore.getState().setNPCAnimation(selectedNPC, {
         type: 'chopping',
         startTime: Date.now(),
         duration: CHOPPING_ANIMATION_DURATION
       });
 
-      // Add visual effect at tree position
+      // Add visual effect at tree position (trunk of the tree) - not player position
       addTextEffect(targetTree.position, 'TOC!', 1000);
 
       console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
     } else {
       console.log('Nenhuma árvore adjacente encontrada para cortar');
 
-      // Add visual feedback
+      // Add visual feedback at player position
       addTextEffect(npc.position, 'Sem árvores!', 1000);
     }
   };
