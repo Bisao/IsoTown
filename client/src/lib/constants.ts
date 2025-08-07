@@ -48,5 +48,5 @@ export const CONTROLLED_CHOP_COOLDOWN = 800; // 800ms cooldown for controlled NP
 
 // Stone constants
 export const STONE_COLOR = '#808080';
-export const STONE_DENSITY = 1.0; // 100% chance of stone per tile (1 pedra por tile)
+export const STONE_DENSITY = 0.05; // 5% chance of stone per tile
 export const STONE_MAX_HEALTH = 5; // Number of hits to break a stone
