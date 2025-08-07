@@ -80,13 +80,13 @@ export default function GameWorld2D() {
       // Update NPC movement
       updateNPCMovement();
       
-      // Update lumberjack behavior for each NPC
+      // Update lumberjack behavior for each NPC with access to tree data
       Object.values(npcs).forEach((npc) => {
         if (npc.profession === 'LUMBERJACK' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
           console.log('Atualizando comportamento do lenhador:', npc.id, 'estado:', npc.state);
           try {
-            const { updateLumberjackBehavior } = useNPCStore.getState();
-            updateLumberjackBehavior(npc);
+            // Create enhanced lumberjack behavior with access to trees
+            updateLumberjackBehaviorWithTrees(npc, trees);
           } catch (error) {
             console.error('Erro ao atualizar comportamento do lenhador:', error);
           }
@@ -102,7 +102,121 @@ export default function GameWorld2D() {
     }, 100); // Run every 100ms for smooth updates
     
     return () => clearInterval(gameLoop);
-  }, [npcs, updateNPCMovement, updateEffects]);
+  }, [npcs, trees, updateNPCMovement, updateEffects]);
+
+  // Enhanced lumberjack behavior with tree access
+  const updateLumberjackBehaviorWithTrees = useCallback((npc: any, availableTrees: Record<string, any>) => {
+    if (npc.profession !== 'LUMBERJACK' || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
+      return;
+    }
+
+    const currentTime = Date.now();
+    const { moveNPC, setNPCControlMode } = useNPCStore.getState();
+    const { damageTree } = useTreeStore.getState();
+    
+    console.log('Lenhador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
+
+    switch (npc.state) {
+      case 'IDLE': {
+        // Find nearest tree within range
+        const treesArray = Object.values(availableTrees).filter(tree => !tree.isFalling);
+        let nearestTree = null;
+        let nearestDistance = Infinity;
+        
+        for (const tree of treesArray) {
+          const distance = Math.abs(tree.position.x - npc.position.x) + 
+                         Math.abs(tree.position.z - npc.position.z);
+          
+          if (distance <= LUMBERJACK_WORK_RANGE && distance < nearestDistance) {
+            nearestTree = tree;
+            nearestDistance = distance;
+          }
+        }
+        
+        console.log('Árvores disponíveis:', treesArray.length, 'mais próxima:', nearestTree?.id, 'distância:', nearestDistance);
+        
+        if (nearestTree) {
+          // Check if adjacent to tree (distance = 1)
+          if (nearestDistance === 1) {
+            // Adjacent to tree - start working
+            console.log('Lenhador adjacente à árvore', nearestTree.id, 'começando trabalho');
+            useNPCStore.getState().setNPCState(npc.id, 'WORKING', {
+              type: 'cut_tree',
+              targetId: nearestTree.id,
+              targetPosition: nearestTree.position,
+              progress: 0,
+              maxProgress: nearestTree.health
+            });
+          } else {
+            // Move towards tree
+            console.log('Movendo lenhador em direção à árvore', nearestTree.id);
+            
+            const dx = nearestTree.position.x - npc.position.x;
+            const dz = nearestTree.position.z - npc.position.z;
+            
+            let direction = { x: 0, z: 0 };
+            
+            // Choose direction - prioritize getting closer
+            if (Math.abs(dx) > Math.abs(dz)) {
+              direction.x = dx > 0 ? 1 : -1;
+            } else {
+              direction.z = dz > 0 ? 1 : -1;
+            }
+            
+            // Use the existing moveNPC function
+            moveNPC(npc.id, direction);
+          }
+        }
+        break;
+      }
+      
+      case 'WORKING': {
+        if (!npc.currentTask || npc.currentTask.type !== 'cut_tree') {
+          console.log('Tarefa inválida, voltando ao idle');
+          useNPCStore.getState().setNPCState(npc.id, 'IDLE');
+          return;
+        }
+        
+        // Check if tree still exists
+        const tree = availableTrees[npc.currentTask.targetId];
+        if (!tree || tree.isFalling) {
+          console.log('Árvore não existe ou está caindo, voltando ao idle');
+          useNPCStore.getState().setNPCState(npc.id, 'IDLE');
+          return;
+        }
+        
+        // Check if enough time has passed since last chop
+        if (currentTime - npc.lastMovement >= LUMBERJACK_CHOP_INTERVAL) {
+          console.log('TOC! Cortando árvore', tree.id);
+          
+          // Damage the tree
+          const treeDestroyed = damageTree(tree.id, 1);
+          
+          // Update NPC animation and progress
+          const newProgress = npc.currentTask.progress + 1;
+          
+          if (treeDestroyed) {
+            console.log('Árvore destruída! Lenhador volta ao idle');
+            useNPCStore.getState().setNPCState(npc.id, 'IDLE');
+          } else {
+            // Continue working
+            useNPCStore.getState().updateNPCTask(npc.id, {
+              ...npc.currentTask,
+              progress: newProgress
+            });
+          }
+          
+          // Add chopping animation
+          useNPCStore.getState().setNPCAnimation(npc.id, {
+            type: 'chopping',
+            startTime: currentTime,
+            duration: CHOPPING_ANIMATION_DURATION
+          });
+        }
+        break;
+      }
+    }
+  }, []);
   
   
 

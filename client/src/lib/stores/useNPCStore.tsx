@@ -20,6 +20,9 @@ interface NPCStore {
   unassignNPCFromHouse: (npcId: string) => void;
   updateNPCMovement: () => void;
   updateLumberjackBehavior: (npc: NPC) => void;
+  setNPCState: (id: string, state: NPCState, task?: any) => void;
+  updateNPCTask: (id: string, task: any) => void;
+  setNPCAnimation: (id: string, animation: any) => void;
 }
 
 export const useNPCStore = create<NPCStore>()(
@@ -246,53 +249,56 @@ export const useNPCStore = create<NPCStore>()(
 
       const currentTime = Date.now();
       
-      // Simple store access without imports to avoid circular dependency
       console.log('Atualizando lenhador - estado atual:', npc.state);
-      
-      // For now, let's use hardcoded trees data to test the behavior
-      const mockTrees = {
-        'tree1': { id: 'tree1', position: { x: 1, z: 1 }, health: 3, maxHealth: 3 },
-        'tree2': { id: 'tree2', position: { x: 2, z: 2 }, health: 3, maxHealth: 3 }
-      };
-      
-      const getNearestTree = (position: Position, range: number) => {
-        const trees = Object.values(mockTrees);
-        let nearestTree = null;
-        let nearestDistance = Infinity;
-        
-        for (const tree of trees) {
-          const distance = Math.sqrt(
-            Math.pow(tree.position.x - position.x, 2) + 
-            Math.pow(tree.position.z - position.z, 2)
-          );
-          
-          if (distance <= range && distance < nearestDistance) {
-            nearestTree = tree;
-            nearestDistance = distance;
-          }
-        }
-        
-        return nearestTree;
-      };
-      
-      console.log('Árvores disponíveis:', Object.keys(mockTrees).length);
-      if (Object.keys(mockTrees).length > 0) {
-        console.log('Primeira árvore:', Object.values(mockTrees)[0]);
-      }
 
       switch (npc.state) {
         case NPCState.IDLE: {
-          // Look for nearest tree within range
-          const nearestTree = getNearestTree(npc.position, LUMBERJACK_WORK_RANGE);
+          // Get tree store dynamically to avoid circular imports
+          const getTreeStore = () => {
+            try {
+              // Access the store directly from window if available, or use a simpler approach
+              const { useTreeStore } = require('../../stores/useTreeStore');
+              return useTreeStore.getState();
+            } catch {
+              // If require fails, we need an alternative approach
+              return null;
+            }
+          };
+          
+          // For now, let's use a simpler approach - access trees through the component
+          // We'll modify the GameWorld2D to pass tree data to the lumberjack behavior
+          
+          // Find nearest tree within range using mock data for testing
+          // This will be replaced with real tree data
+          const mockTrees = [
+            { id: 'tree1', position: { x: 5, z: 5 }, health: 3, maxHealth: 3 },
+            { id: 'tree2', position: { x: 3, z: 7 }, health: 3, maxHealth: 3 },
+            { id: 'tree3', position: { x: 8, z: 2 }, health: 3, maxHealth: 3 }
+          ];
+          
+          let nearestTree = null;
+          let nearestDistance = Infinity;
+          
+          for (const tree of mockTrees) {
+            const distance = Math.abs(tree.position.x - npc.position.x) + 
+                           Math.abs(tree.position.z - npc.position.z);
+            
+            if (distance <= LUMBERJACK_WORK_RANGE && distance < nearestDistance) {
+              nearestTree = tree;
+              nearestDistance = distance;
+            }
+          }
+          
           console.log('Procurando árvore próxima de:', npc.position, 'encontrou:', nearestTree ? nearestTree.id : 'nenhuma');
           
           if (nearestTree) {
-            // Check if adjacent to tree
+            // Check if adjacent to tree (distance = 1)
             const distance = Math.abs(nearestTree.position.x - npc.position.x) + 
                            Math.abs(nearestTree.position.z - npc.position.z);
             
             if (distance === 1) {
               // Adjacent to tree - start working
+              console.log('Lenhador adjacente à árvore, começando trabalho');
               set((state) => ({
                 npcs: {
                   ...state.npcs,
@@ -311,23 +317,27 @@ export const useNPCStore = create<NPCStore>()(
                 }
               }));
             } else {
-              // Move towards tree
-              const direction = {
-                x: nearestTree.position.x > npc.position.x ? 1 : 
-                   nearestTree.position.x < npc.position.x ? -1 : 0,
-                z: nearestTree.position.z > npc.position.z ? 1 : 
-                   nearestTree.position.z < npc.position.z ? -1 : 0
-              };
+              // Move towards tree one step at a time
+              console.log('Movendo lenhador em direção à árvore');
               
-              // Move only one tile at a time
-              if (direction.x !== 0 && direction.z !== 0) {
-                direction.z = 0; // Prioritize horizontal movement
+              const dx = nearestTree.position.x - npc.position.x;
+              const dz = nearestTree.position.z - npc.position.z;
+              
+              let direction = { x: 0, z: 0 };
+              
+              // Choose direction - prioritize getting closer
+              if (Math.abs(dx) > Math.abs(dz)) {
+                direction.x = dx > 0 ? 1 : -1;
+              } else {
+                direction.z = dz > 0 ? 1 : -1;
               }
               
               const newPosition = {
                 x: npc.position.x + direction.x,
                 z: npc.position.z + direction.z
               };
+              
+              console.log('Nova posição calculada:', newPosition);
               
               if (isValidGridPosition(newPosition)) {
                 set((state) => ({
@@ -338,12 +348,13 @@ export const useNPCStore = create<NPCStore>()(
                       state: NPCState.MOVING,
                       position: newPosition,
                       isMoving: true,
-                      lastMovement: currentTime
+                      lastMovement: currentTime,
+                      targetPosition: nearestTree.position // Set target for pathfinding
                     }
                   }
                 }));
                 
-                // Stop movement after delay
+                // Stop movement after delay and return to idle to recalculate
                 setTimeout(() => {
                   const currentState = get();
                   if (currentState.npcs[npc.id]) {
@@ -353,14 +364,28 @@ export const useNPCStore = create<NPCStore>()(
                         [npc.id]: { 
                           ...state.npcs[npc.id], 
                           isMoving: false,
-                          state: NPCState.IDLE 
+                          state: NPCState.IDLE  // Return to idle to recalculate path
                         }
                       }
                     }));
                   }
                 }, MOVEMENT_SPEED);
+              } else {
+                console.log('Posição inválida para movimento:', newPosition);
+                // Try a different direction next time
+                set((state) => ({
+                  npcs: {
+                    ...state.npcs,
+                    [npc.id]: {
+                      ...state.npcs[npc.id],
+                      lastMovement: currentTime
+                    }
+                  }
+                }));
               }
             }
+          } else {
+            console.log('Nenhuma árvore encontrada no alcance');
           }
           break;
         }
@@ -381,33 +406,16 @@ export const useNPCStore = create<NPCStore>()(
             return;
           }
           
-          // Check if tree still exists (using mock trees for now)
-          const tree = mockTrees[npc.currentTask.targetId];
-          if (!tree) {
-            // Tree is gone - return to idle
-            set((state) => ({
-              npcs: {
-                ...state.npcs,
-                [npc.id]: {
-                  ...state.npcs[npc.id],
-                  state: NPCState.IDLE,
-                  currentTask: undefined
-                }
-              }
-            }));
-            return;
-          }
+          console.log('Lenhador trabalhando - progresso:', npc.currentTask.progress, 'de', npc.currentTask.maxProgress);
           
           // Check if enough time has passed since last chop
           if (currentTime - npc.lastMovement >= LUMBERJACK_CHOP_INTERVAL) {
-            // Perform chop (mock damage for now)
-            const currentHealth = tree.health - 1;
-            const treeDestroyed = currentHealth <= 0;
+            const newProgress = npc.currentTask.progress + 1;
+            const treeDestroyed = newProgress >= npc.currentTask.maxProgress;
             
-            // Add "TOC" visual effect (mock for now)
-            console.log('TOC! Efeito de corte na posição:', tree.position);
+            console.log('TOC! Cortando árvore - progresso:', newProgress, 'destruída:', treeDestroyed);
             
-            // Add chopping animation
+            // Add chopping animation and update progress
             set((state) => ({
               npcs: {
                 ...state.npcs,
@@ -419,18 +427,64 @@ export const useNPCStore = create<NPCStore>()(
                     duration: CHOPPING_ANIMATION_DURATION
                   },
                   lastMovement: currentTime,
-                  currentTask: treeDestroyed ? undefined : npc.currentTask ? {
+                  currentTask: treeDestroyed ? undefined : {
                     ...npc.currentTask,
-                    progress: npc.currentTask.progress + 1
-                  } : undefined,
+                    progress: newProgress
+                  },
                   state: treeDestroyed ? NPCState.IDLE : NPCState.WORKING
                 }
               }
             }));
+            
+            // TODO: Actually damage the tree in the tree store
+            // This will be implemented when we integrate with the real tree store
+            if (treeDestroyed) {
+              console.log('Árvore destruída! Lenhador volta ao modo idle.');
+            }
           }
           break;
         }
+        
+        case NPCState.MOVING: {
+          // Let the normal movement system handle this
+          // The lumberjack will return to IDLE after movement completes
+          break;
+        }
       }
-    }
+    },
+
+    setNPCState: (id, state, task) => set((storeState) => ({
+      npcs: {
+        ...storeState.npcs,
+        [id]: {
+          ...storeState.npcs[id],
+          state,
+          currentTask: task,
+          lastMovement: Date.now()
+        }
+      }
+    })),
+
+    updateNPCTask: (id, task) => set((state) => ({
+      npcs: {
+        ...state.npcs,
+        [id]: {
+          ...state.npcs[id],
+          currentTask: task,
+          lastMovement: Date.now()
+        }
+      }
+    })),
+
+    setNPCAnimation: (id, animation) => set((state) => ({
+      npcs: {
+        ...state.npcs,
+        [id]: {
+          ...state.npcs[id],
+          animation,
+          lastMovement: Date.now()
+        }
+      }
+    }))
   }))
 );
