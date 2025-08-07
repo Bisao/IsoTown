@@ -287,7 +287,7 @@ export default function GameWorld2D() {
     const size = CELL_SIZE * zoomRef.current;
     
     // Árvores em tamanho proporcional ao NPC
-    const treeScale = 0.9; // Reduzir para 90% do tamanho original
+    const treeScale = 1.2; // Aumentar para 120% do tamanho original
     
     // Tronco
     const trunkWidth = size * 0.25 * treeScale;
