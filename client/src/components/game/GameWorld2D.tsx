@@ -251,10 +251,13 @@ export default function GameWorld2D() {
     const radius = CELL_SIZE * 0.4 * zoomRef.current;
     const isSelected = selectedNPC === npc.id;
     
+    // Ajustar posição Y para que o NPC pareça estar no chão
+    const npcY = screen.y + radius * 0.3; // Move o NPC ligeiramente para baixo
+    
     // Corpo do NPC
     ctx.fillStyle = isSelected ? '#FF4444' : '#FF6B6B';
     ctx.beginPath();
-    ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
+    ctx.arc(screen.x, npcY, radius, 0, Math.PI * 2);
     ctx.fill();
     
     // Borda
@@ -269,14 +272,14 @@ export default function GameWorld2D() {
       
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(screen.x - eyeOffset, screen.y - eyeOffset, eyeSize, 0, Math.PI * 2);
-      ctx.arc(screen.x + eyeOffset, screen.y - eyeOffset, eyeSize, 0, Math.PI * 2);
+      ctx.arc(screen.x - eyeOffset, npcY - eyeOffset, eyeSize, 0, Math.PI * 2);
+      ctx.arc(screen.x + eyeOffset, npcY - eyeOffset, eyeSize, 0, Math.PI * 2);
       ctx.fill();
       
       ctx.fillStyle = '#000000';
       ctx.beginPath();
-      ctx.arc(screen.x - eyeOffset, screen.y - eyeOffset, eyeSize/2, 0, Math.PI * 2);
-      ctx.arc(screen.x + eyeOffset, screen.y - eyeOffset, eyeSize/2, 0, Math.PI * 2);
+      ctx.arc(screen.x - eyeOffset, npcY - eyeOffset, eyeSize/2, 0, Math.PI * 2);
+      ctx.arc(screen.x + eyeOffset, npcY - eyeOffset, eyeSize/2, 0, Math.PI * 2);
       ctx.fill();
     }
   }, [gridToScreen, selectedNPC]);
