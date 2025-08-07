@@ -93,7 +93,7 @@ export default function GameWorld2D() {
     }
     
     ctx.globalAlpha = 1;
-  }, []);  // Remover gridToScreen das dependências
+  }, [gridToScreen]);
 
   // Desenhar casa (memoizado)
   const drawHouse = useCallback((ctx: CanvasRenderingContext2D, house: any, canvasWidth: number, canvasHeight: number) => {
@@ -118,7 +118,7 @@ export default function GameWorld2D() {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  }, []);  // Remover gridToScreen das dependências
+  }, [gridToScreen]);
 
   // Desenhar NPC (memoizado)
   const drawNPC = useCallback((ctx: CanvasRenderingContext2D, npc: any, canvasWidth: number, canvasHeight: number) => {
@@ -154,7 +154,7 @@ export default function GameWorld2D() {
       ctx.arc(screen.x + eyeOffset, screen.y - eyeOffset, eyeSize/2, 0, Math.PI * 2);
       ctx.fill();
     }
-  }, [selectedNPC]);  // Remover gridToScreen das dependências
+  }, [gridToScreen, selectedNPC]);
 
   // Timer para atualização dos NPCs (separado do loop de animação)
   useEffect(() => {
@@ -192,7 +192,7 @@ export default function GameWorld2D() {
     });
     
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, drawGrid, drawHouse, drawNPC, gridToScreen]);
+  }, [houses, npcs, drawGrid, drawHouse, drawNPC]);
 
   // Manipular cliques no canvas
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -303,44 +303,16 @@ export default function GameWorld2D() {
     canvas.height = parent.clientHeight;
   }, []);
 
-  // Inicializar (sem dependência de animate para evitar loops)
+  // Inicializar canvas e iniciar animação
   useEffect(() => {
     handleResize();
-    
-    const startAnimation = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      const animateLoop = () => {
-        // Limpar canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Fundo
-        ctx.fillStyle = '#90EE90';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Desenhar elementos
-        drawGrid(ctx, canvas.width, canvas.height);
-        
-        Object.values(houses).forEach(house => {
-          drawHouse(ctx, house, canvas.width, canvas.height);
-        });
-        
-        Object.values(npcs).forEach(npc => {
-          drawNPC(ctx, npc, canvas.width, canvas.height);
-        });
-        
-        animationRef.current = requestAnimationFrame(animateLoop);
-      };
-      
-      animateLoop();
-    };
-    
-    startAnimation();
     window.addEventListener('resize', handleResize);
+    
+    // Iniciar o loop de animação
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    animate();
     
     return () => {
       if (animationRef.current) {
@@ -348,12 +320,7 @@ export default function GameWorld2D() {
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, []); // Dependências vazias para evitar re-criação
-  
-  // Re-renderizar quando dados mudarem
-  useEffect(() => {
-    // Não precisa fazer nada, o loop de animação já renderiza automaticamente
-  }, [houses, npcs, selectedNPC]);
+  }, [animate, handleResize]);
 
   return (
     <canvas
