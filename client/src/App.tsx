@@ -14,27 +14,9 @@ export default function App() {
       height: '100vh', 
       overflow: 'hidden',
       position: 'relative',
-      touchAction: 'none',
-      background: 'var(--win98-bg)'
+      touchAction: 'none'
     }}>
-      {/* Game Window Border */}
-      <div className="win98-game-window">
-        <div className="win98-game-window-header">
-          <span>🎮 SimCity 98 - Building Simulation</span>
-          <div className="win98-game-window-controls">
-            <div className="win98-window-button">_</div>
-            <div className="win98-window-button">□</div>
-            <div className="win98-window-button">×</div>
-          </div>
-        </div>
-        
-
-        
-        {/* Game Content Area */}
-        <div className="win98-game-content">
-          <GameWorld2D />
-        </div>
-      </div>
+      <GameWorld2D />
       
       <GameUI />
       <HouseSelectionModal open={showHouseModal} />

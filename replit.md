@@ -5,6 +5,7 @@ This is a 2D isometric simulation game built with HTML5 Canvas where players can
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+UI preferences: Clean interface without window borders or decorative frames.
 
 # System Architecture
 
