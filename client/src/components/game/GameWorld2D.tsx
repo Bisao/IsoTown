@@ -18,26 +18,7 @@ export default function GameWorld2D() {
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode } = useGameStore();
   const { addHouse, getHouseAt } = useHouseStore();
   
-  // Inicializar NPCs de teste na primeira renderização
-  useEffect(() => {
-    const npcCount = Object.keys(npcs).length;
-    if (npcCount === 0) {
-      console.log('Criando NPCs de teste...');
-      // Criar alguns NPCs de teste
-      const testPositions = [
-        { x: 2, z: 2 },
-        { x: -3, z: 1 },
-        { x: 0, z: -2 }
-      ];
-      
-      testPositions.forEach((position, index) => {
-        setTimeout(() => {
-          const npcId = addNPC(position);
-          console.log(`NPC teste ${index + 1} criado:`, npcId, 'posição:', position);
-        }, index * 100); // Pequeno delay entre criações
-      });
-    }
-  }, [addNPC, npcs]);
+  
 
   // Converter coordenadas de grid para tela
   const gridToScreen = useCallback((gridX: number, gridZ: number, canvasWidth: number, canvasHeight: number) => {
