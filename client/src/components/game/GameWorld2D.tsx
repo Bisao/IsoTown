@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
+import { useKeyboardActions } from '../../hooks/useKeyboardActions';
 import { useHouseStore } from '../../lib/stores/useHouseStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useTreeStore } from '../../lib/stores/useTreeStore';
@@ -21,11 +22,59 @@ export default function GameWorld2D() {
   const npcs = useNPCStore(state => state.npcs);
   const trees = useTreeStore(state => state.trees);
   const textEffects = useEffectsStore(state => state.effects);
-  const { moveNPC, updateNPCMovement, addNPC, cutTreeManually } = useNPCStore();
+  const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt } = useTreeStore();
   const { updateEffects } = useEffectsStore();
+
+  // Adicionar hooks de teclado para ações
+  useKeyboardActions();
+
+  // Hook personalizado para processar ações de trabalho manual
+  useEffect(() => {
+    const handleManualWork = (event: CustomEvent) => {
+      const { npcId } = event.detail;
+      
+      if (!npcId || !npcs[npcId]) return;
+      
+      const npc = npcs[npcId];
+      if (npc.profession !== NPCProfession.LUMBERJACK) return;
+      
+      // Buscar árvores adjacentes
+      const adjacentPositions = [
+        { x: npc.position.x + 1, z: npc.position.z },
+        { x: npc.position.x - 1, z: npc.position.z },
+        { x: npc.position.x, z: npc.position.z + 1 },
+        { x: npc.position.x, z: npc.position.z - 1 }
+      ];
+      
+      // Buscar árvore válida nas posições adjacentes
+      let targetTree = null;
+      for (const pos of adjacentPositions) {
+        const tree = Object.values(trees).find(t => 
+          t.position.x === pos.x && 
+          t.position.z === pos.z && 
+          !t.isFalling && 
+          t.health > 0
+        );
+        if (tree) {
+          targetTree = tree;
+          break;
+        }
+      }
+      
+      if (targetTree) {
+        console.log('Árvore encontrada para corte manual:', targetTree.id);
+        startCuttingTree(npcId, targetTree.id, targetTree.position, targetTree.health);
+      } else {
+        console.log('Nenhuma árvore adjacente encontrada');
+      }
+    };
+    
+    window.addEventListener('manualWork', handleManualWork as EventListener);
+    return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
+  }, [npcs, trees, startCuttingTree]);
 
   // Carregar sprites das casas
   useEffect(() => {
@@ -652,10 +701,11 @@ export default function GameWorld2D() {
   useEffect(() => {
     const npcUpdateInterval = setInterval(() => {
       updateNPCMovement();
+      updateControlledNPCWork(); // Atualizar trabalho de NPCs controlados
     }, 100); // Atualizar NPCs a cada 100ms, não a cada frame
 
     return () => clearInterval(npcUpdateInterval);
-  }, [updateNPCMovement]);
+  }, [updateNPCMovement, updateControlledNPCWork]);
 
   // Câmera que segue NPC controlado
   useEffect(() => {

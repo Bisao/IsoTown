@@ -3,6 +3,7 @@ import GameUI from './components/ui/GameUI';
 import HouseSelectionModal from './components/ui/HouseSelectionModal';
 import NPCConfigModal from './components/ui/NPCConfigModal';
 import RPGControlModal from './components/ui/RPGControlModal';
+import NPCActionButtons from './components/ui/NPCActionButtons';
 import { useGameStore } from './lib/stores/useGameStore';
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
       <HouseSelectionModal open={showHouseModal} />
       <NPCConfigModal open={showNPCModal} />
       <RPGControlModal />
+      <NPCActionButtons />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPI
 import { nanoid } from 'nanoid';
 import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid';
 import { getRandomDirection, findPath } from '../utils/pathfinding';
+import { NPCActionSystem } from '../systems/NPCActionSystem';
 
 interface NPCStore {
   npcs: Record<string, NPC>;
@@ -23,6 +24,13 @@ interface NPCStore {
   setNPCState: (id: string, state: NPCState, task?: any) => void;
   updateNPCTask: (id: string, task: any) => void;
   setNPCAnimation: (id: string, animation: any) => void;
+  
+  // Ações manuais para NPCs controlados
+  performWork: (id: string) => { success: boolean; message: string; adjacentPositions?: any[] };
+  startManualTreeCutting: (id: string) => { success: boolean; message: string; adjacentPositions?: any[] };
+  startCuttingTree: (npcId: string, treeId: string, treePosition: any, treeHealth: number) => { success: boolean; message: string };
+  stopWork: (id: string) => { success: boolean; message: string };
+  updateControlledNPCWork: () => void;
 }
 
 export const useNPCStore = create<NPCStore>()(
@@ -490,23 +498,171 @@ export const useNPCStore = create<NPCStore>()(
       }
     })),
 
-    cutTreeManually: (npcId: string) => {
-      const npc = get().npcs[npcId];
-      if (!npc || npc.controlMode !== NPCControlMode.CONTROLLED) {
-        console.log('NPC não encontrado ou não está em modo controlado');
-        return false;
+    // Ações manuais para NPCs controlados
+    performWork: (id) => {
+      const npc = get().npcs[id];
+      if (!npc) {
+        return { success: false, message: 'NPC não encontrado!' };
       }
 
-      // Find adjacent trees within 1 tile distance
+      if (npc.controlMode !== NPCControlMode.CONTROLLED) {
+        return { success: false, message: 'NPC não está em modo controlado!' };
+      }
+
+      if (npc.state === NPCState.WORKING) {
+        return { success: false, message: 'NPC já está trabalhando!' };
+      }
+
+      // Implementar ação específica da profissão usando o sistema existente
+      switch (npc.profession) {
+        case NPCProfession.LUMBERJACK:
+          return get().startManualTreeCutting(id);
+        case NPCProfession.FARMER:
+          return { success: false, message: 'Sistema de farming ainda não implementado!' };
+        case NPCProfession.MINER:
+          return { success: false, message: 'Sistema de mineração ainda não implementado!' };
+        default:
+          return { success: false, message: 'NPC não tem profissão definida!' };
+      }
+    },
+
+    // Função específica para corte manual de árvores
+    startManualTreeCutting: (npcId) => {
+      const { npcs } = get();
+      const npc = npcs[npcId];
+      
+      if (!npc || npc.profession !== NPCProfession.LUMBERJACK) {
+        return { success: false, message: 'Apenas lenhadores podem cortar árvores!' };
+      }
+
+      // Esta função agora é integrada com o sistema de treeStore via GameWorld2D
+      // Retornar as posições adjacentes para validação externa
       const adjacentPositions = [
-        { x: npc.position.x + 1, z: npc.position.z },     // Right
-        { x: npc.position.x - 1, z: npc.position.z },     // Left
-        { x: npc.position.x, z: npc.position.z + 1 },     // Down
-        { x: npc.position.x, z: npc.position.z - 1 }      // Up
+        { x: npc.position.x + 1, z: npc.position.z },
+        { x: npc.position.x - 1, z: npc.position.z },
+        { x: npc.position.x, z: npc.position.z + 1 },
+        { x: npc.position.x, z: npc.position.z - 1 }
       ];
 
-      // This will be called from GameWorld2D with access to tree store
-      return adjacentPositions;
+      console.log('Tentativa de corte manual, posições adjacentes:', adjacentPositions);
+      
+      return { 
+        success: true, 
+        message: 'Procurando árvores adjacentes...', 
+        adjacentPositions 
+      };
+    },
+
+    // Iniciar trabalho de corte com árvore específica
+    startCuttingTree: (npcId, treeId, treePosition, treeHealth) => {
+      set((state) => ({
+        npcs: {
+          ...state.npcs,
+          [npcId]: {
+            ...state.npcs[npcId],
+            state: NPCState.WORKING,
+            currentTask: {
+              type: 'cut_tree',
+              targetId: treeId,
+              targetPosition: treePosition,
+              progress: 0,
+              maxProgress: treeHealth
+            },
+            animation: {
+              type: 'chopping',
+              startTime: Date.now(),
+              duration: CHOPPING_ANIMATION_DURATION
+            },
+            lastMovement: Date.now()
+          }
+        }
+      }));
+      
+      console.log('Lenhador começou a cortar árvore:', treeId);
+      return { success: true, message: 'Começando a cortar árvore!' };
+    },
+
+    stopWork: (id) => {
+      const npc = get().npcs[id];
+      if (!npc) {
+        return { success: false, message: 'NPC não encontrado!' };
+      }
+
+      const result = NPCActionSystem.stopWork(npc);
+      
+      if (result.success && result.updates) {
+        set((state) => ({
+          npcs: {
+            ...state.npcs,
+            [id]: { ...state.npcs[id], ...result.updates }
+          }
+        }));
+      }
+
+      return { success: result.success, message: result.message };
+    },
+
+    // Atualizar trabalho de NPCs controlados (chamado no loop principal)
+    updateControlledNPCWork: () => {
+      const npcs = get().npcs;
+      const currentTime = Date.now();
+      const updates: Record<string, Partial<NPC>> = {};
+
+      Object.values(npcs).forEach((npc) => {
+        if (npc.controlMode === NPCControlMode.CONTROLLED && 
+            npc.state === NPCState.WORKING && 
+            npc.currentTask) {
+          
+          // Continuar trabalho baseado na profissão
+          switch (npc.profession) {
+            case NPCProfession.LUMBERJACK:
+              // Verificar se é hora de fazer o próximo corte
+              if (currentTime - npc.lastMovement >= LUMBERJACK_CHOP_INTERVAL) {
+                const newProgress = npc.currentTask.progress + 1;
+                const workCompleted = newProgress >= npc.currentTask.maxProgress;
+                
+                console.log('TOC! Cortando árvore manualmente -', 'progresso:', newProgress, 'completo:', workCompleted);
+                
+                updates[npc.id] = {
+                  animation: {
+                    type: 'chopping',
+                    startTime: currentTime,
+                    duration: CHOPPING_ANIMATION_DURATION
+                  },
+                  lastMovement: currentTime,
+                  currentTask: workCompleted ? undefined : {
+                    type: npc.currentTask.type,
+                    targetId: npc.currentTask.targetId,
+                    targetPosition: npc.currentTask.targetPosition,
+                    progress: newProgress,
+                    maxProgress: npc.currentTask.maxProgress
+                  },
+                  state: workCompleted ? NPCState.IDLE : NPCState.WORKING
+                };
+                
+                // Se o trabalho foi completado, destruir a árvore
+                if (workCompleted && npc.currentTask.targetId) {
+                  // A árvore será destruída automaticamente pelo sistema existente
+                  console.log('Árvore cortada com sucesso pelo NPC controlado!');
+                }
+              }
+              break;
+            default:
+              return;
+          }
+        }
+      });
+
+      // Aplicar todas as atualizações
+      if (Object.keys(updates).length > 0) {
+        set((state) => {
+          const newNpcs = { ...state.npcs };
+          Object.entries(updates).forEach(([id, update]) => {
+            newNpcs[id] = { ...newNpcs[id], ...update };
+          });
+          return { npcs: newNpcs };
+        });
+      }
     }
   }))
 );
