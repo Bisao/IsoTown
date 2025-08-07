@@ -22,7 +22,7 @@ export default function GameWorld2D() {
   const npcs = useNPCStore(state => state.npcs);
   const trees = useTreeStore(state => state.trees);
   const textEffects = useEffectsStore(state => state.effects);
-  const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree, updateNPC } = useNPCStore();
+  const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree, setNPCState } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt, updateTree, destroyTree } = useTreeStore();
@@ -63,11 +63,7 @@ export default function GameWorld2D() {
             // Árvore cortada com sucesso
             console.log('Árvore cortada com sucesso pelo NPC controlado!');
             destroyTree(npc.currentTreeId);
-            updateNPC(npcId, { 
-              state: 'IDLE', 
-              currentTreeId: null, 
-              workProgress: 0 
-            });
+            setNPCState(npcId, 'IDLE', null);
           }
           return;
         }
@@ -99,8 +95,7 @@ export default function GameWorld2D() {
       if (targetTree) {
         console.log('Árvore encontrada para corte manual:', targetTree.id);
         // Iniciar corte manual
-        updateNPC(npcId, { 
-          state: 'WORKING', 
+        setNPCState(npcId, 'WORKING', { 
           currentTreeId: targetTree.id, 
           workProgress: 1 
         });
@@ -117,11 +112,7 @@ export default function GameWorld2D() {
         if (newHealth <= 0) {
           console.log('Árvore cortada com sucesso pelo NPC controlado!');
           destroyTree(targetTree.id);
-          updateNPC(npcId, { 
-            state: 'IDLE', 
-            currentTreeId: null, 
-            workProgress: 0 
-          });
+          setNPCState(npcId, 'IDLE', null);
         }
       } else {
         console.log('Nenhuma árvore adjacente encontrada');
@@ -130,7 +121,7 @@ export default function GameWorld2D() {
     
     window.addEventListener('manualWork', handleManualWork as EventListener);
     return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
-  }, [npcs, trees, updateTree, updateNPC, destroyTree, addTextEffect]);
+  }, [npcs, trees, updateTree, setNPCState, destroyTree, addTextEffect]);
 
   // Carregar sprites das casas
   useEffect(() => {
