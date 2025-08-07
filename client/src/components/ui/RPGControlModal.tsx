@@ -18,40 +18,42 @@ export default function RPGControlModal() {
 
   return (
     <div className="rpg-control-modal">
-      {/* Left side orb (Health) */}
-      <div className="rpg-orb-container left">
-        <div className="rpg-orb health-orb">
-          <div className="orb-shine"></div>
-        </div>
-      </div>
-
-      {/* Left side buttons */}
-      <div className="rpg-buttons-left">
-        <button className="rpg-button">CHAR</button>
-        <button className="rpg-button">QUESTS</button>
-        <button className="rpg-button">MAP</button>
-      </div>
-
-      {/* Center inventory bar */}
-      <div className="rpg-inventory-bar">
-        {Array.from({ length: 8 }, (_, i) => (
-          <div key={i} className="rpg-inventory-slot">
-            {i < 4 && <div className="item-placeholder red"></div>}
-            {i >= 4 && i < 7 && <div className="item-placeholder blue"></div>}
+      <div className="rpg-control-content">
+        {/* Left side buttons */}
+        <div className="rpg-buttons-left">
+          <button className="rpg-button">CHAR</button>
+          <button className="rpg-button">QUESTS</button>
+          <button className="rpg-button">MAP</button>
+          
+          {/* Health orb above QUESTS button */}
+          <div className="rpg-orb-container health">
+            <div className="rpg-orb health-orb">
+              <div className="orb-shine"></div>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* Right side buttons */}
-      <div className="rpg-buttons-right">
-        <button className="rpg-button">INV</button>
-        <button className="rpg-button">MENU</button>
-      </div>
+        {/* Center inventory bar */}
+        <div className="rpg-inventory-bar">
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} className="rpg-inventory-slot">
+              {i < 4 && <div className="item-placeholder red"></div>}
+              {i >= 4 && i < 7 && <div className="item-placeholder blue"></div>}
+            </div>
+          ))}
+        </div>
 
-      {/* Right side orb (Mana) */}
-      <div className="rpg-orb-container right">
-        <div className="rpg-orb mana-orb">
-          <div className="orb-shine"></div>
+        {/* Right side buttons */}
+        <div className="rpg-buttons-right">
+          <button className="rpg-button">INV</button>
+          <button className="rpg-button">MENU</button>
+          
+          {/* Mana orb above MENU button */}
+          <div className="rpg-orb-container mana">
+            <div className="rpg-orb mana-orb">
+              <div className="orb-shine"></div>
+            </div>
+          </div>
         </div>
       </div>
 

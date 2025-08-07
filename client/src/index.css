@@ -524,12 +524,12 @@ canvas {
   bottom: 40px;
   left: 8px;
   right: 8px;
-  height: 80px;
+  height: 100px;
   background: linear-gradient(135deg, #8B7355 0%, #A0916B 50%, #8B7355 100%);
   border: 3px outset #8B7355;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: space-between;
   padding: 8px 16px;
   z-index: 999;
   font-family: 'MS Sans Serif', serif;
@@ -538,17 +538,18 @@ canvas {
 
 .rpg-control-content {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   width: 100%;
-  max-width: 600px;
+  height: 100%;
 }
 
 .rpg-orbs-container {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 20px;
   position: absolute;
+  top: 8px;
   left: 50%;
   transform: translateX(-50%);
 }
@@ -560,9 +561,21 @@ canvas {
   position: relative;
 }
 
+.rpg-orb-container.health {
+  position: absolute;
+  top: -45px;
+  left: 48px;
+}
+
+.rpg-orb-container.mana {
+  position: absolute;
+  top: -45px;
+  right: 48px;
+}
+
 .rpg-orb {
-  width: 65px;
-  height: 65px;
+  width: 81px;
+  height: 81px;
   border-radius: 50%;
   position: relative;
   border: 3px solid #4A4A4A;
@@ -582,10 +595,10 @@ canvas {
 
 .orb-shine {
   position: absolute;
-  top: 10px;
-  left: 16px;
-  width: 25px;
-  height: 25px;
+  top: 12px;
+  left: 20px;
+  width: 31px;
+  height: 31px;
   background: radial-gradient(circle, rgba(255,255,255,0.8), transparent);
   border-radius: 50%;
 }
@@ -594,7 +607,8 @@ canvas {
   display: flex;
   flex-direction: row;
   gap: 6px;
-  align-items: center;
+  align-items: flex-end;
+  margin-bottom: 4px;
 }
 
 .rpg-button {
