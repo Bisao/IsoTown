@@ -111,30 +111,15 @@ export default function GameWorld2D() {
       return;
     }
 
-    // Find adjacent trees within 1 tile distance
-    const adjacentPositions = [
-      { x: npc.position.x + 1, z: npc.position.z },     // Right
-      { x: npc.position.x - 1, z: npc.position.z },     // Left
-      { x: npc.position.x, z: npc.position.z + 1 },     // Down
-      { x: npc.position.x, z: npc.position.z - 1 }      // Up
-    ];
-
-    // Find the first adjacent tree that can be cut
-    let targetTree = null;
-    for (const pos of adjacentPositions) {
-      const tree = getTreeAt(pos);
-      if (tree && !tree.isFalling) {
-        targetTree = tree;
-        break;
-      }
-    }
-
-    if (targetTree) {
-      console.log('Cortando árvore manualmente:', targetTree.id);
+    // Check if there's a tree at the NPC's exact position
+    const treeAtPosition = getTreeAt(npc.position);
+    
+    if (treeAtPosition && !treeAtPosition.isFalling) {
+      console.log('Cortando árvore manualmente:', treeAtPosition.id, 'na mesma posição do NPC');
 
       // Damage the tree
       const { damageTree } = useTreeStore.getState();
-      const treeDestroyed = damageTree(targetTree.id, 1);
+      const treeDestroyed = damageTree(treeAtPosition.id, 1);
 
       // Add chopping animation
       useNPCStore.getState().setNPCAnimation(npcId, {
@@ -145,16 +130,16 @@ export default function GameWorld2D() {
 
       // Add visual effect at tree position
       const { addTextEffect } = useEffectsStore.getState();
-      addTextEffect(targetTree.position, 'TOC!', 1000);
+      addTextEffect(treeAtPosition.position, 'TOC!', 1000);
 
       console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
       return true;
     } else {
-      console.log('Nenhuma árvore adjacente encontrada para cortar');
+      console.log('NPC deve estar no mesmo tile da árvore para cortá-la');
 
       // Add visual feedback
       const { addTextEffect } = useEffectsStore.getState();
-      addTextEffect(npc.position, 'Sem árvores!', 1000);
+      addTextEffect(npc.position, 'Precisa estar na árvore!', 1000);
       return false;
     }
   }, [npcs, getTreeAt]);

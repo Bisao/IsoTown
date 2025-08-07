@@ -103,29 +103,14 @@ export default function GameUI() {
 
     const npc = currentNPC;
 
-    // Find adjacent trees within 1 tile distance
-    const adjacentPositions = [
-      { x: npc.position.x + 1, z: npc.position.z },     // Right
-      { x: npc.position.x - 1, z: npc.position.z },     // Left
-      { x: npc.position.x, z: npc.position.z + 1 },     // Down
-      { x: npc.position.x, z: npc.position.z - 1 }      // Up
-    ];
-
-    // Find the first adjacent tree that can be cut
-    let targetTree = null;
-    for (const pos of adjacentPositions) {
-      const tree = getTreeAt(pos);
-      if (tree && !tree.isFalling) {
-        targetTree = tree;
-        break;
-      }
-    }
-
-    if (targetTree) {
-      console.log('TOC! Cortando árvore manualmente:', targetTree.id, 'na posição:', targetTree.position);
+    // Check if there's a tree at the NPC's exact position
+    const treeAtPosition = getTreeAt(npc.position);
+    
+    if (treeAtPosition && !treeAtPosition.isFalling) {
+      console.log('TOC! Cortando árvore manualmente:', treeAtPosition.id, 'na posição:', treeAtPosition.position);
 
       // Damage the tree
-      const treeDestroyed = damageTree(targetTree.id, 1);
+      const treeDestroyed = damageTree(treeAtPosition.id, 1);
 
       // Add chopping animation to NPC
       useNPCStore.getState().setNPCAnimation(selectedNPC, {
@@ -135,7 +120,7 @@ export default function GameUI() {
       });
 
       // Add visual effect at tree position (trunk of the tree) - not player position
-      addTextEffect(targetTree.position, 'TOC!', 1000);
+      addTextEffect(treeAtPosition.position, 'TOC!', 1000);
 
       console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
     } else {
@@ -253,7 +238,7 @@ export default function GameUI() {
                     🪓 Cut Tree (Space)
                   </button>
                   <div style={{ fontSize: '10px', color: '#666', textAlign: 'center' }}>
-                    Stand next to a tree and click or press Space
+                    Move onto a tree tile and click or press Space
                   </div>
                 </div>
               </div>
