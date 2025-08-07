@@ -485,6 +485,25 @@ export const useNPCStore = create<NPCStore>()(
           lastMovement: Date.now()
         }
       }
-    }))
+    })),
+
+    cutTreeManually: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc || npc.controlMode !== NPCControlMode.CONTROLLED) {
+        console.log('NPC não encontrado ou não está em modo controlado');
+        return false;
+      }
+
+      // Find adjacent trees within 1 tile distance
+      const adjacentPositions = [
+        { x: npc.position.x + 1, z: npc.position.z },     // Right
+        { x: npc.position.x - 1, z: npc.position.z },     // Left
+        { x: npc.position.x, z: npc.position.z + 1 },     // Down
+        { x: npc.position.x, z: npc.position.z - 1 }      // Up
+      ];
+
+      // This will be called from GameWorld2D with access to tree store
+      return adjacentPositions;
+    }
   }))
 );

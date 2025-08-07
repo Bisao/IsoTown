@@ -22,7 +22,7 @@ export default function GameWorld2D() {
   const npcs = useNPCStore(state => state.npcs);
   const trees = useTreeStore(state => state.trees);
   const textEffects = useEffectsStore(state => state.effects);
-  const { moveNPC, updateNPCMovement, addNPC } = useNPCStore();
+  const { moveNPC, updateNPCMovement, addNPC, cutTreeManually } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt } = useTreeStore();
@@ -103,6 +103,72 @@ export default function GameWorld2D() {
     
     return () => clearInterval(gameLoop);
   }, [npcs, trees, updateNPCMovement, updateEffects]);
+
+  // Manual tree cutting for controlled NPCs
+  const handleManualTreeCutting = useCallback((npcId: string) => {
+    const npc = npcs[npcId];
+    if (!npc || npc.controlMode !== NPCControlMode.CONTROLLED) {
+      console.log('NPC não encontrado ou não está em modo controlado');
+      return;
+    }
+
+    // Find adjacent trees within 1 tile distance
+    const adjacentPositions = [
+      { x: npc.position.x + 1, z: npc.position.z },     // Right
+      { x: npc.position.x - 1, z: npc.position.z },     // Left
+      { x: npc.position.x, z: npc.position.z + 1 },     // Down
+      { x: npc.position.x, z: npc.position.z - 1 }      // Up
+    ];
+
+    // Find the first adjacent tree that can be cut
+    let targetTree = null;
+    for (const pos of adjacentPositions) {
+      const tree = getTreeAt(pos);
+      if (tree && !tree.isFalling) {
+        targetTree = tree;
+        break;
+      }
+    }
+
+    if (targetTree) {
+      console.log('Cortando árvore manualmente:', targetTree.id);
+      
+      // Damage the tree
+      const { damageTree } = useTreeStore.getState();
+      const treeDestroyed = damageTree(targetTree.id, 1);
+      
+      // Add chopping animation
+      useNPCStore.getState().setNPCAnimation(npcId, {
+        type: 'chopping',
+        startTime: Date.now(),
+        duration: CHOPPING_ANIMATION_DURATION
+      });
+
+      // Add visual effect
+      const { addEffect } = useEffectsStore.getState();
+      addEffect({
+        type: 'text',
+        position: targetTree.position,
+        text: 'TOC!',
+        duration: 1000
+      });
+
+      console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
+      return true;
+    } else {
+      console.log('Nenhuma árvore adjacente encontrada para cortar');
+      
+      // Add visual feedback
+      const { addEffect } = useEffectsStore.getState();
+      addEffect({
+        type: 'text',
+        position: npc.position,
+        text: 'Sem árvores!',
+        duration: 1000
+      });
+      return false;
+    }
+  }, [npcs, getTreeAt]);
 
   // Enhanced lumberjack behavior with tree access
   const updateLumberjackBehaviorWithTrees = useCallback((npc: any, availableTrees: Record<string, any>) => {
@@ -817,6 +883,15 @@ export default function GameWorld2D() {
         event.preventDefault();
         rotateHouse(useGameStore.getState().selectedHouse!);
         return;
+      }
+
+      // Manual tree cutting for controlled NPC
+      if (selectedNPC && npcs[selectedNPC] && npcs[selectedNPC].controlMode === NPCControlMode.CONTROLLED) {
+        if (event.key === ' ' || event.key === 'Spacebar') { // Space bar for cutting
+          event.preventDefault();
+          handleManualTreeCutting(selectedNPC);
+          return;
+        }
       }
 
       if (!selectedNPC || !npcs[selectedNPC] || npcs[selectedNPC].controlMode !== NPCControlMode.CONTROLLED) {

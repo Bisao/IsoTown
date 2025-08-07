@@ -4,6 +4,12 @@ import HouseSelectionModal from './HouseSelectionModal';
 import NPCConfigModal from './NPCConfigModal';
 import VirtualJoystick from './VirtualJoystick';
 import { useGameStore } from '../../lib/stores/useGameStore';
+import { useHouseStore } from '../../lib/stores/useHouseStore';
+import { useNPCStore } from '../../lib/stores/useNPCStore';
+import { useTreeStore } from '../../lib/stores/useTreeStore';
+import { useEffectsStore } from '../../lib/stores/useEffectsStore';
+import { HouseType, HOUSE_NAMES, CHOPPING_ANIMATION_DURATION } from '../../lib/constants';
+import { NPCControlMode, NPCProfession } from '../../lib/types';
 
 export default function GameUI() {
   const isMobile = useIsMobile();
@@ -16,9 +22,16 @@ export default function GameUI() {
     setShowNPCModal,
     setShowStartMenu,
     toggleWindow,
-    focusWindow
+    focusWindow,
+    selectedNPC,
+    selectedHouse
   } = useGameStore();
-  
+
+  const { houses, addHouse, removeHouse } = useHouseStore();
+  const { npcs, addNPC, setNPCControlMode, setNPCProfession } = useNPCStore();
+  const { getTreeAt, damageTree } = useTreeStore();
+  const { addEffect } = useEffectsStore();
+
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update clock every minute
@@ -48,7 +61,7 @@ export default function GameUI() {
 
   const handleMenuItemClick = (action: string) => {
     setShowStartMenu(false);
-    
+
     switch (action) {
       case 'build':
         setShowHouseModal(true);
@@ -76,6 +89,70 @@ export default function GameUI() {
       case 'house': return '🏠 Construir';
       case 'npc': return '👥 NPCs';
       default: return windowId;
+    }
+  };
+
+  const currentNPC = selectedNPC ? npcs[selectedNPC] : null;
+  const currentHouse = selectedHouse ? houses[selectedHouse] : null;
+
+  // Manual tree cutting for controlled NPCs
+  const handleManualCutTree = () => {
+    if (!selectedNPC || !currentNPC || currentNPC.controlMode !== NPCControlMode.CONTROLLED) {
+      return;
+    }
+
+    const npc = currentNPC;
+
+    // Find adjacent trees within 1 tile distance
+    const adjacentPositions = [
+      { x: npc.position.x + 1, z: npc.position.z },     // Right
+      { x: npc.position.x - 1, z: npc.position.z },     // Left
+      { x: npc.position.x, z: npc.position.z + 1 },     // Down
+      { x: npc.position.x, z: npc.position.z - 1 }      // Up
+    ];
+
+    // Find the first adjacent tree that can be cut
+    let targetTree = null;
+    for (const pos of adjacentPositions) {
+      const tree = getTreeAt(pos);
+      if (tree && !tree.isFalling) {
+        targetTree = tree;
+        break;
+      }
+    }
+
+    if (targetTree) {
+      console.log('Cortando árvore manualmente:', targetTree.id);
+
+      // Damage the tree
+      const treeDestroyed = damageTree(targetTree.id, 1);
+
+      // Add chopping animation
+      useNPCStore.getState().setNPCAnimation(selectedNPC, {
+        type: 'chopping',
+        startTime: Date.now(),
+        duration: CHOPPING_ANIMATION_DURATION
+      });
+
+      // Add visual effect
+      addEffect({
+        type: 'text',
+        position: targetTree.position,
+        text: 'TOC!',
+        duration: 1000
+      });
+
+      console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
+    } else {
+      console.log('Nenhuma árvore adjacente encontrada para cortar');
+
+      // Add visual feedback
+      addEffect({
+        type: 'text',
+        position: npc.position,
+        text: 'Sem árvores!',
+        duration: 1000
+      });
     }
   };
 
@@ -110,7 +187,7 @@ export default function GameUI() {
           <span style={{ fontSize: '16px' }}>🪟</span>
           Iniciar
         </button>
-        
+
         {/* Window buttons in taskbar */}
         {openWindows.map((windowId) => (
           <button
@@ -131,7 +208,7 @@ export default function GameUI() {
             {getWindowTitle(windowId)}
           </button>
         ))}
-        
+
         <div className="win98-taskbar-time">
           {formatTime(currentTime)}
         </div>
@@ -160,6 +237,37 @@ export default function GameUI() {
 
       {/* Mobile Virtual Joystick */}
       {isMobile && <VirtualJoystick />}
+
+      {/* Controls for controlled NPC */}
+            {selectedNPC && currentNPC && currentNPC.controlMode === NPCControlMode.CONTROLLED && (
+              <div className="win98-panel" style={{ padding: '8px', marginTop: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: '#000080' }}>
+                  🎮 Manual Controls
+                </div>
+                <div style={{ fontSize: '11px', marginBottom: '8px' }}>
+                  Use WASD or Arrow Keys to move
+                </div>
+
+                {/* Manual cutting button */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                  <button
+                    onClick={handleManualCutTree}
+                    className="win98-button"
+                    style={{ 
+                      padding: '6px 12px',
+                      fontSize: '11px',
+                      backgroundColor: '#c0c0c0',
+                      border: '2px outset #c0c0c0'
+                    }}
+                  >
+                    🪓 Cut Tree (Space)
+                  </button>
+                  <div style={{ fontSize: '10px', color: '#666', textAlign: 'center' }}>
+                    Stand next to a tree and click or press Space
+                  </div>
+                </div>
+              </div>
+            )}
 
       {/* Modals */}
       <HouseSelectionModal open={showHouseModal} />
