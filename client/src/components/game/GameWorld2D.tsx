@@ -693,22 +693,84 @@ export default function GameWorld2D() {
       ctx.stroke();
     }
 
+    // Handle hit animation
+    if (tree.hitStartTime) {
+      const elapsed = Date.now() - tree.hitStartTime;
+      const hitDuration = 300; // 300ms hit animation
+      
+      if (elapsed < hitDuration) {
+        const progress = elapsed / hitDuration;
+        
+        // Shake effect - tremor horizontal
+        const shakeIntensity = (1 - progress) * 8; // Diminui com o tempo
+        const shakeX = Math.sin(progress * Math.PI * 12) * shakeIntensity;
+        
+        // Scale pulse effect - pulso de escala
+        const scaleEffect = 1 + Math.sin(progress * Math.PI * 8) * 0.1 * (1 - progress);
+        
+        // Apply shake translation
+        ctx.translate(shakeX, 0);
+        
+        // Apply scale effect
+        ctx.translate(screen.x, screen.y);
+        ctx.scale(scaleEffect, scaleEffect);
+        ctx.translate(-screen.x, -screen.y);
+        
+        // Red flash effect - flash vermelho
+        const flashIntensity = Math.sin(progress * Math.PI * 6) * 0.3 * (1 - progress);
+        if (flashIntensity > 0) {
+          ctx.fillStyle = `rgba(255, 0, 0, ${flashIntensity})`;
+          ctx.beginPath();
+          ctx.arc(screen.x, screen.y, size * 0.8 * treeScale, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
     // Handle falling animation
     if (tree.isFalling && tree.fallStartTime) {
       const elapsed = Date.now() - tree.fallStartTime;
-      const fallDuration = 1000; // 1 second fall
+      const fallDuration = 1200; // 1.2 seconds fall
       const fallProgress = Math.min(elapsed / fallDuration, 1);
 
-      // Rotate tree as it falls
-      const fallAngle = fallProgress * Math.PI / 2; // 90 degrees
-      ctx.translate(screen.x, screen.y);
+      // Easing function for more realistic fall
+      const easeInQuad = (t: number) => t * t;
+      const easedProgress = easeInQuad(fallProgress);
+
+      // Random fall direction
+      const fallDirection = tree.fallDirection || (Math.random() > 0.5 ? 1 : -1);
+      if (!tree.fallDirection) {
+        // Store fall direction for consistency
+        useTreeStore.getState().updateTree(tree.id, { fallDirection });
+      }
+
+      // Rotate tree as it falls with easing
+      const fallAngle = easedProgress * Math.PI / 2 * fallDirection;
+      
+      // Calculate fall pivot point (base of tree)
+      const pivotY = screen.y + size * 0.3 * treeScale; // Base da árvore
+      
+      ctx.translate(screen.x, pivotY);
       ctx.rotate(fallAngle);
-      ctx.translate(-screen.x, -screen.y);
+      ctx.translate(-screen.x, -pivotY);
+
+      // Bounce effect when hitting ground
+      if (fallProgress >= 0.8) {
+        const bounceProgress = (fallProgress - 0.8) / 0.2;
+        const bounceY = Math.sin(bounceProgress * Math.PI * 3) * 3 * (1 - bounceProgress);
+        ctx.translate(0, bounceY);
+      }
 
       // Fade out after falling
       if (elapsed > fallDuration) {
-        const fadeProgress = (elapsed - fallDuration) / 3000; // 3s fade
+        const fadeProgress = (elapsed - fallDuration) / 2800; // 2.8s fade
         ctx.globalAlpha = Math.max(0, 1 - fadeProgress);
+        
+        // Slight shrink as it fades
+        const shrinkFactor = 1 - fadeProgress * 0.2;
+        ctx.translate(screen.x, screen.y);
+        ctx.scale(shrinkFactor, shrinkFactor);
+        ctx.translate(-screen.x, -screen.y);
       }
     }
 

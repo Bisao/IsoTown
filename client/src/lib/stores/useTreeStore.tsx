@@ -18,6 +18,7 @@ interface TreeStore {
   isPositionOccupiedByTree: (position: Position) => boolean;
   startTreeFalling: (id: string) => void;
   updateFallingTrees: () => void;
+  addHitAnimation: (id: string) => void;
 }
 
 export const useTreeStore = create<TreeStore>()((set, get) => ({
@@ -58,6 +59,9 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   damageTree: (id, damage) => {
     const tree = get().trees[id];
     if (!tree) return false;
+
+    // Add hit animation
+    get().addHitAnimation(id);
 
     const newHealth = tree.health - damage;
     if (newHealth <= 0) {
@@ -124,6 +128,32 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         }
       }
     });
+  },
+
+  addHitAnimation: (id) => {
+    set((state) => ({
+      trees: {
+        ...state.trees,
+        [id]: {
+          ...state.trees[id],
+          hitStartTime: Date.now()
+        }
+      }
+    }));
+
+    // Remove hit animation after duration
+    setTimeout(() => {
+      set((state) => {
+        if (!state.trees[id]) return state;
+        const { hitStartTime, ...treeWithoutHit } = state.trees[id];
+        return {
+          trees: {
+            ...state.trees,
+            [id]: treeWithoutHit
+          }
+        };
+      });
+    }, 300); // 300ms hit animation
   },
 
   getTreeAt: (position) => {

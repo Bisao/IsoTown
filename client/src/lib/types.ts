@@ -91,6 +91,7 @@ export interface Tree {
   maxHealth: number;
   isFalling?: boolean;
   fallStartTime?: number;
+  hitStartTime?: number;
 }
 
 export interface VisualEffect {
