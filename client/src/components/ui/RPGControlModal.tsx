@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
-import { NPCControlMode } from '../../lib/constants';
+import { NPCControlMode } from '../../lib/types';
 
 export default function RPGControlModal() {
   const { showControlModal, setShowControlModal } = useGameStore();

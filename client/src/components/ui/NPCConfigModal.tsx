@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useHouseStore } from '../../lib/stores/useHouseStore';
-import { NPCControlMode, HOUSE_NAMES } from '../../lib/constants';
-import { NPC, House } from '../../lib/types';
+import { HOUSE_NAMES } from '../../lib/constants';
+import { NPC, House, NPCControlMode } from '../../lib/types';
 import { useDraggable } from '../../hooks/use-draggable';
 
 interface NPCConfigModalProps {

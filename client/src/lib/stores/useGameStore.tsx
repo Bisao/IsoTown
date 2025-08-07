@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { HouseType, NPCControlMode } from '../constants';
+import { HouseType } from '../constants';
+import { NPCControlMode } from '../types';
 
 interface GameStore {
   // UI State

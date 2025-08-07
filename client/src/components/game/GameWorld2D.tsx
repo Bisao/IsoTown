@@ -4,7 +4,9 @@ import { useHouseStore } from '../../lib/stores/useHouseStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useTreeStore } from '../../lib/stores/useTreeStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
-import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, NPCControlMode, TREE_COLOR } from '../../lib/constants';
+import { useEffectsStore } from '../../lib/stores/useEffectsStore';
+import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR } from '../../lib/constants';
+import { NPCControlMode } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
 
 export default function GameWorld2D() {
@@ -19,10 +21,12 @@ export default function GameWorld2D() {
   const houses = useHouseStore(state => state.houses);
   const npcs = useNPCStore(state => state.npcs);
   const trees = useTreeStore(state => state.trees);
+  const textEffects = useEffectsStore(state => state.effects);
   const { moveNPC, updateNPCMovement, addNPC } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt } = useTreeStore();
+  const { updateEffects } = useEffectsStore();
 
   // Carregar sprites das casas
   useEffect(() => {
@@ -69,6 +73,31 @@ export default function GameWorld2D() {
       generateRandomTrees();
     }
   }, [generateRandomTrees, trees]);
+
+  // Game loop for NPC behavior and effects
+  useEffect(() => {
+    const gameLoop = setInterval(() => {
+      // Update NPC movement
+      updateNPCMovement();
+      
+      // Update lumberjack behavior for each NPC
+      Object.values(npcs).forEach(npc => {
+        if (npc.profession === 'LUMBERJACK' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
+          const { updateLumberjackBehavior } = useNPCStore.getState();
+          updateLumberjackBehavior(npc);
+        }
+      });
+      
+      // Update tree falling animations
+      const { updateFallingTrees } = useTreeStore.getState();
+      updateFallingTrees();
+      
+      // Update text effects
+      updateEffects();
+    }, 100); // Run every 100ms for smooth updates
+    
+    return () => clearInterval(gameLoop);
+  }, [npcs, updateNPCMovement, updateEffects]);
   
   
 
@@ -254,8 +283,30 @@ export default function GameWorld2D() {
     // Ajustar posição Y para que o NPC pareça estar no chão
     const npcY = screen.y + radius * 0.3; // Move o NPC ligeiramente para baixo
     
+    ctx.save();
+    
+    // Handle chopping animation
+    if (npc.animation && npc.animation.type === 'chopping') {
+      const elapsed = Date.now() - npc.animation.startTime;
+      const progress = elapsed / npc.animation.duration;
+      
+      if (progress < 1) {
+        // Simple scale animation for chopping
+        const scale = 1 + Math.sin(progress * Math.PI * 4) * 0.1; // Quick pulse
+        ctx.translate(screen.x, npcY);
+        ctx.scale(scale, scale);
+        ctx.translate(-screen.x, -npcY);
+      }
+    }
+    
+    // Color based on profession
+    let npcColor = '#FF6B6B'; // Default farmer color
+    if (npc.profession === 'LUMBERJACK') {
+      npcColor = '#8B4513'; // Brown for lumberjack
+    }
+    
     // Corpo do NPC
-    ctx.fillStyle = isSelected ? '#FF4444' : '#FF6B6B';
+    ctx.fillStyle = isSelected ? '#FF4444' : npcColor;
     ctx.beginPath();
     ctx.arc(screen.x, npcY, radius, 0, Math.PI * 2);
     ctx.fill();
@@ -264,6 +315,36 @@ export default function GameWorld2D() {
     ctx.strokeStyle = isSelected ? '#FF0000' : '#000000';
     ctx.lineWidth = 2;
     ctx.stroke();
+    
+    // Profession indicator (small icon)
+    if (npc.profession === 'LUMBERJACK') {
+      // Draw small axe icon
+      ctx.fillStyle = '#654321';
+      ctx.fillRect(screen.x + radius * 0.5, npcY - radius * 0.8, 4, 12);
+      ctx.fillStyle = '#C0C0C0';
+      ctx.fillRect(screen.x + radius * 0.5 - 2, npcY - radius * 0.8, 8, 4);
+    }
+    
+    // Working indicator
+    if (npc.state === 'WORKING' && npc.currentTask && npc.currentTask.maxProgress > 0) {
+      // Draw progress bar above NPC
+      const barWidth = radius * 1.5;
+      const barHeight = 3;
+      const progress = Math.min(npc.currentTask.progress / npc.currentTask.maxProgress, 1);
+      
+      // Background
+      ctx.fillStyle = '#FF0000';
+      ctx.fillRect(screen.x - barWidth/2, npcY - radius * 1.8, barWidth, barHeight);
+      
+      // Progress
+      ctx.fillStyle = '#00FF00';
+      ctx.fillRect(screen.x - barWidth/2, npcY - radius * 1.8, barWidth * progress, barHeight);
+      
+      // Border
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(screen.x - barWidth/2, npcY - radius * 1.8, barWidth, barHeight);
+    }
     
     // Olhos
     if (radius > 8) {
@@ -282,6 +363,8 @@ export default function GameWorld2D() {
       ctx.arc(screen.x + eyeOffset, npcY - eyeOffset, eyeSize/2, 0, Math.PI * 2);
       ctx.fill();
     }
+    
+    ctx.restore();
   }, [gridToScreen, selectedNPC]);
 
   // Desenhar árvore (memoizado)
@@ -292,6 +375,40 @@ export default function GameWorld2D() {
     // Árvores em tamanho proporcional ao NPC
     const treeScale = 1.2; // Aumentar para 120% do tamanho original
     
+    ctx.save();
+    
+    // Handle falling animation
+    if (tree.isFalling && tree.fallStartTime) {
+      const elapsed = Date.now() - tree.fallStartTime;
+      const fallDuration = 1000; // 1 second fall
+      const fallProgress = Math.min(elapsed / fallDuration, 1);
+      
+      // Rotate tree as it falls
+      const fallAngle = fallProgress * Math.PI / 2; // 90 degrees
+      ctx.translate(screen.x, screen.y);
+      ctx.rotate(fallAngle);
+      ctx.translate(-screen.x, -screen.y);
+      
+      // Fade out after falling
+      if (elapsed > fallDuration) {
+        const fadeProgress = (elapsed - fallDuration) / 3000; // 3s fade
+        ctx.globalAlpha = Math.max(0, 1 - fadeProgress);
+      }
+    }
+    
+    // Color based on health
+    let foliageColor = tree.type === 'birch' ? '#90EE90' : 
+                      tree.type === 'oak' ? '#228B22' : '#006400';
+    
+    if (tree.health < tree.maxHealth) {
+      // Damaged tree - darker/brownish color
+      const healthRatio = tree.health / tree.maxHealth;
+      const r = Math.floor(34 + (255 - 34) * (1 - healthRatio));
+      const g = Math.floor(139 + (165 - 139) * healthRatio);
+      const b = Math.floor(34 + (42 - 34) * healthRatio);
+      foliageColor = `rgb(${r}, ${g}, ${b})`;
+    }
+    
     // Tronco
     const trunkWidth = size * 0.25 * treeScale;
     const trunkHeight = size * 0.7 * treeScale;
@@ -300,8 +417,7 @@ export default function GameWorld2D() {
     
     // Copa da árvore baseada no tipo
     const foliageRadius = size * 0.6 * treeScale;
-    ctx.fillStyle = tree.type === 'birch' ? '#90EE90' : 
-                    tree.type === 'oak' ? '#228B22' : '#006400';
+    ctx.fillStyle = foliageColor;
     
     if (tree.type === 'pine') {
       // Árvore triangular (pinheiro) - maior e mais alta
@@ -322,7 +438,56 @@ export default function GameWorld2D() {
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 2;
     ctx.stroke();
+    
+    // Health indicator (small bars above tree)
+    if (!tree.isFalling && tree.health < tree.maxHealth) {
+      const barWidth = size * 0.6;
+      const barHeight = 4;
+      const healthRatio = tree.health / tree.maxHealth;
+      
+      // Background bar
+      ctx.fillStyle = '#FF0000';
+      ctx.fillRect(screen.x - barWidth/2, screen.y - size * 1.2, barWidth, barHeight);
+      
+      // Health bar
+      ctx.fillStyle = '#00FF00';
+      ctx.fillRect(screen.x - barWidth/2, screen.y - size * 1.2, barWidth * healthRatio, barHeight);
+      
+      // Border
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(screen.x - barWidth/2, screen.y - size * 1.2, barWidth, barHeight);
+    }
+    
+    ctx.restore();
   }, [gridToScreen]);
+
+  // Draw text effects
+  const drawTextEffects = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
+    if (!textEffects) return;
+    
+    Object.values(textEffects).forEach(effect => {
+      if (!effect || !effect.position) return;
+      
+      const screen = gridToScreen(effect.position.x, effect.position.z, canvasWidth, canvasHeight);
+      const elapsed = Date.now() - effect.startTime;
+      const progress = elapsed / effect.duration;
+      
+      if (progress < 1) {
+        // Animate upward movement and fade out
+        const offsetY = -progress * 30; // Move up 30 pixels
+        const alpha = 1 - progress; // Fade out
+        
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#FF4444';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(effect.text || '', screen.x, screen.y + offsetY);
+        ctx.restore();
+      }
+    });
+  }, [gridToScreen, textEffects]);
 
   // Timer para atualização dos NPCs (separado do loop de animação)
   useEffect(() => {
@@ -413,8 +578,11 @@ export default function GameWorld2D() {
       drawNPC(ctx, npc, canvas.width, canvas.height);
     });
     
+    // Draw text effects on top
+    drawTextEffects(ctx, canvas.width, canvas.height);
+    
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, trees, drawGrid, drawHouse, drawNPC, drawTree]);
+  }, [houses, npcs, trees, drawGrid, drawHouse, drawNPC, drawTree, drawTextEffects]);
 
   // Manipular cliques no canvas
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {

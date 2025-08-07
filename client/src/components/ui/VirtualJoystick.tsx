@@ -2,7 +2,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
-import { NPCControlMode } from '../../lib/constants';
+import { NPCControlMode } from '../../lib/types';
 
 export default function VirtualJoystick() {
   const joystickRef = useRef<HTMLDivElement>(null);

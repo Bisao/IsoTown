@@ -1,44 +1,48 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { NPC, Position } from '../types';
-import { NPCControlMode, MOVEMENT_SPEED } from '../constants';
+import { NPC, Position, NPCControlMode, NPCProfession, NPCState } from '../types';
+import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPING_ANIMATION_DURATION } from '../constants';
 import { nanoid } from 'nanoid';
 import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid';
-import { getRandomDirection } from '../utils/pathfinding';
+import { getRandomDirection, findPath } from '../utils/pathfinding';
 
 interface NPCStore {
   npcs: Record<string, NPC>;
   
-  addNPC: (position: Position) => string;
+  addNPC: (position: Position, profession?: NPCProfession) => string;
   removeNPC: (id: string) => void;
   moveNPC: (id: string, direction: Position) => void;
   setNPCTarget: (id: string, target: Position) => void;
   setNPCControlMode: (id: string, mode: NPCControlMode) => void;
+  setNPCProfession: (id: string, profession: NPCProfession) => void;
   assignNPCToHouse: (npcId: string, houseId: string) => void;
   unassignNPCFromHouse: (npcId: string) => void;
   updateNPCMovement: () => void;
+  updateLumberjackBehavior: (npc: NPC) => void;
 }
 
 export const useNPCStore = create<NPCStore>()(
   subscribeWithSelector((set, get) => ({
     npcs: {},
 
-    addNPC: (position) => {
+    addNPC: (position, profession = NPCProfession.NONE) => {
       const id = nanoid();
       const npc: NPC = {
         id,
         position,
         controlMode: NPCControlMode.AUTONOMOUS,
+        profession,
+        state: NPCState.IDLE,
         isMoving: false,
-        movementTimer: Date.now()
+        lastMovement: Date.now()
       };
       
       set((state) => ({
         npcs: { ...state.npcs, [id]: npc }
       }));
       
-      console.log('Novo NPC criado:', id, 'na posição:', position);
+      console.log('Novo NPC criado:', id, 'na posição:', position, 'profissão:', profession);
       return id;
     },
 
@@ -76,7 +80,7 @@ export const useNPCStore = create<NPCStore>()(
               ...state.npcs[id], 
               position: newPosition,
               isMoving: true,
-              movementTimer: Date.now()
+              lastMovement: Date.now()
             }
           }
         }));
@@ -113,6 +117,13 @@ export const useNPCStore = create<NPCStore>()(
       }
     })),
 
+    setNPCProfession: (id, profession) => set((state) => ({
+      npcs: {
+        ...state.npcs,
+        [id]: { ...state.npcs[id], profession }
+      }
+    })),
+
     assignNPCToHouse: (npcId, houseId) => set((state) => ({
       npcs: {
         ...state.npcs,
@@ -135,7 +146,7 @@ export const useNPCStore = create<NPCStore>()(
         if (npc.controlMode === NPCControlMode.AUTONOMOUS && !npc.isMoving) {
           // Movimento aleatório a cada 2 segundos
           const currentTime = Date.now();
-          if (!npc.movementTimer || currentTime - npc.movementTimer > 2000) {
+          if (!npc.lastMovement || currentTime - npc.lastMovement > 2000) {
             if (Math.random() < 0.4) { // 40% chance de se mover
               const direction = getRandomDirection();
               const newPosition = {
@@ -147,7 +158,7 @@ export const useNPCStore = create<NPCStore>()(
                 updates[npc.id] = {
                   position: newPosition,
                   isMoving: true,
-                  movementTimer: currentTime
+                  lastMovement: currentTime
                 };
                 
                 // Parar movimento após delay
@@ -165,13 +176,13 @@ export const useNPCStore = create<NPCStore>()(
               } else {
                 // Se não pode mover, reset timer
                 updates[npc.id] = {
-                  movementTimer: currentTime
+                  lastMovement: currentTime
                 };
               }
             } else {
               // Se não moveu, reset timer para tentar novamente
               updates[npc.id] = {
-                movementTimer: currentTime
+                lastMovement: currentTime
               };
             }
           }
@@ -202,7 +213,7 @@ export const useNPCStore = create<NPCStore>()(
               updates[npc.id] = {
                 position: newPosition,
                 isMoving: true,
-                movementTimer: Date.now()
+                lastMovement: Date.now()
               };
               
               // Remover alvo se alcançado
@@ -225,6 +236,168 @@ export const useNPCStore = create<NPCStore>()(
           });
           return { npcs: newNPCs };
         });
+      }
+    },
+
+    updateLumberjackBehavior: (npc) => {
+      if (npc.profession !== NPCProfession.LUMBERJACK || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
+        return;
+      }
+
+      const currentTime = Date.now();
+      
+      // Import tree and effects stores dynamically to avoid circular dependencies
+      const { trees, getNearestTree, damageTree } = require('./useTreeStore').useTreeStore.getState();
+      const { addTextEffect } = require('./useEffectsStore').useEffectsStore.getState();
+
+      switch (npc.state) {
+        case NPCState.IDLE: {
+          // Look for nearest tree within range
+          const nearestTree = getNearestTree(npc.position, LUMBERJACK_WORK_RANGE);
+          
+          if (nearestTree) {
+            // Check if adjacent to tree
+            const distance = Math.abs(nearestTree.position.x - npc.position.x) + 
+                           Math.abs(nearestTree.position.z - npc.position.z);
+            
+            if (distance === 1) {
+              // Adjacent to tree - start working
+              set((state) => ({
+                npcs: {
+                  ...state.npcs,
+                  [npc.id]: {
+                    ...state.npcs[npc.id],
+                    state: NPCState.WORKING,
+                    currentTask: {
+                      type: 'cut_tree',
+                      targetId: nearestTree.id,
+                      targetPosition: nearestTree.position,
+                      progress: 0,
+                      maxProgress: nearestTree.health
+                    },
+                    lastMovement: currentTime
+                  }
+                }
+              }));
+            } else {
+              // Move towards tree
+              const direction = {
+                x: nearestTree.position.x > npc.position.x ? 1 : 
+                   nearestTree.position.x < npc.position.x ? -1 : 0,
+                z: nearestTree.position.z > npc.position.z ? 1 : 
+                   nearestTree.position.z < npc.position.z ? -1 : 0
+              };
+              
+              // Move only one tile at a time
+              if (direction.x !== 0 && direction.z !== 0) {
+                direction.z = 0; // Prioritize horizontal movement
+              }
+              
+              const newPosition = {
+                x: npc.position.x + direction.x,
+                z: npc.position.z + direction.z
+              };
+              
+              if (isValidGridPosition(newPosition)) {
+                set((state) => ({
+                  npcs: {
+                    ...state.npcs,
+                    [npc.id]: {
+                      ...state.npcs[npc.id],
+                      state: NPCState.MOVING,
+                      position: newPosition,
+                      isMoving: true,
+                      lastMovement: currentTime
+                    }
+                  }
+                }));
+                
+                // Stop movement after delay
+                setTimeout(() => {
+                  const currentState = get();
+                  if (currentState.npcs[npc.id]) {
+                    set((state) => ({
+                      npcs: {
+                        ...state.npcs,
+                        [npc.id]: { 
+                          ...state.npcs[npc.id], 
+                          isMoving: false,
+                          state: NPCState.IDLE 
+                        }
+                      }
+                    }));
+                  }
+                }, MOVEMENT_SPEED);
+              }
+            }
+          }
+          break;
+        }
+        
+        case NPCState.WORKING: {
+          if (!npc.currentTask || npc.currentTask.type !== 'cut_tree') {
+            // Invalid task - return to idle
+            set((state) => ({
+              npcs: {
+                ...state.npcs,
+                [npc.id]: {
+                  ...state.npcs[npc.id],
+                  state: NPCState.IDLE,
+                  currentTask: undefined
+                }
+              }
+            }));
+            return;
+          }
+          
+          // Check if tree still exists
+          const tree = trees[npc.currentTask.targetId];
+          if (!tree || tree.isFalling) {
+            // Tree is gone - return to idle
+            set((state) => ({
+              npcs: {
+                ...state.npcs,
+                [npc.id]: {
+                  ...state.npcs[npc.id],
+                  state: NPCState.IDLE,
+                  currentTask: undefined
+                }
+              }
+            }));
+            return;
+          }
+          
+          // Check if enough time has passed since last chop
+          if (currentTime - npc.lastMovement >= LUMBERJACK_CHOP_INTERVAL) {
+            // Perform chop
+            const treeDestroyed = damageTree(npc.currentTask.targetId, 1);
+            
+            // Add "TOC" visual effect
+            addTextEffect(tree.position, "TOC", 1000);
+            
+            // Add chopping animation
+            set((state) => ({
+              npcs: {
+                ...state.npcs,
+                [npc.id]: {
+                  ...state.npcs[npc.id],
+                  animation: {
+                    type: 'chopping',
+                    startTime: currentTime,
+                    duration: CHOPPING_ANIMATION_DURATION
+                  },
+                  lastMovement: currentTime,
+                  currentTask: treeDestroyed ? undefined : {
+                    ...npc.currentTask,
+                    progress: npc.currentTask.progress + 1
+                  },
+                  state: treeDestroyed ? NPCState.IDLE : NPCState.WORKING
+                }
+              }
+            }));
+          }
+          break;
+        }
       }
     }
   }))

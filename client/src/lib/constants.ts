@@ -9,10 +9,7 @@ export enum HouseType {
   LUMBERJACK = 'LUMBERJACK'
 }
 
-export enum NPCControlMode {
-  AUTONOMOUS = 'AUTONOMOUS',
-  CONTROLLED = 'CONTROLLED'
-}
+// NPCControlMode moved to types.ts to avoid circular imports
 
 export const HOUSE_COLORS = {
   [HouseType.SMALL]: '#FF6B6B',
@@ -36,3 +33,14 @@ export const MOVEMENT_SPEED = 200; // ms between tile movements
 // Tree constants
 export const TREE_COLOR = '#228B22';
 export const TREE_DENSITY = 0.15; // 15% chance of tree per tile
+export const TREE_MAX_HEALTH = 3; // Number of hits to cut down a tree
+
+// Profession constants
+export const CHOPPING_ANIMATION_DURATION = 800; // ms
+export const TREE_FALL_DURATION = 1000; // ms
+export const TREE_DESPAWN_DELAY = 3000; // ms after falling
+export const TOC_TEXT_DURATION = 1000; // ms for TOC text effect
+
+// Lumberjack behavior
+export const LUMBERJACK_WORK_RANGE = 5; // How far lumberjack will search for trees
+export const LUMBERJACK_CHOP_INTERVAL = 1000; // ms between chops
