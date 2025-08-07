@@ -2,9 +2,9 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useHouseStore } from '../../lib/stores/useHouseStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
-import { useTreeStore } from '../../lib/stores/useTreeStore';
+
 import { useGameStore } from '../../lib/stores/useGameStore';
-import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, NPCControlMode, TREE_COLOR } from '../../lib/constants';
+import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, NPCControlMode } from '../../lib/constants';
 import { isValidGridPosition } from '../../lib/utils/grid';
 
 export default function GameWorld2D() {
@@ -18,11 +18,11 @@ export default function GameWorld2D() {
 
   const houses = useHouseStore(state => state.houses);
   const npcs = useNPCStore(state => state.npcs);
-  const trees = useTreeStore(state => state.trees);
+
   const { moveNPC, updateNPCMovement, addNPC } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
-  const { generateRandomTrees, getTreeAt } = useTreeStore();
+
 
   // Carregar sprites das casas
   useEffect(() => {
@@ -61,14 +61,7 @@ export default function GameWorld2D() {
     loadSprites();
   }, []);
 
-  // Gerar árvores aleatórias na primeira renderização
-  useEffect(() => {
-    const treeCount = Object.keys(trees).length;
-    if (treeCount === 0) {
-      console.log('Gerando árvores aleatórias...');
-      generateRandomTrees();
-    }
-  }, [generateRandomTrees, trees]);
+  // Tree generation disabled
   
   
 
@@ -397,10 +390,7 @@ export default function GameWorld2D() {
     // Desenhar elementos
     drawGrid(ctx, canvas.width, canvas.height);
     
-    // Desenhar árvores primeiro (fundo)
-    Object.values(trees).forEach(tree => {
-      drawTree(ctx, tree, canvas.width, canvas.height);
-    });
+    // Tree rendering disabled
     
     Object.values(houses).forEach(house => {
       drawHouse(ctx, house, canvas.width, canvas.height);
@@ -411,7 +401,7 @@ export default function GameWorld2D() {
     });
     
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, trees, drawGrid, drawHouse, drawNPC, drawTree]);
+  }, [houses, npcs, drawGrid, drawHouse, drawNPC]);
 
   // Manipular cliques no canvas
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -424,7 +414,7 @@ export default function GameWorld2D() {
 
     if (isPlacingHouse && selectedHouseType) {
       const gridPos = screenToGrid(x, y, canvas.width, canvas.height);
-      if (isValidGridPosition(gridPos) && !getHouseAt(gridPos) && !getTreeAt(gridPos)) {
+      if (isValidGridPosition(gridPos) && !getHouseAt(gridPos)) {
         addHouse(selectedHouseType, gridPos, currentRotation);
         stopPlacingHouse();
       }
