@@ -540,12 +540,13 @@ canvas {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 0 8px;
+  margin: 0 4px;
+  position: relative;
 }
 
 .rpg-orb {
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   position: relative;
   border: 3px solid #4A4A4A;
@@ -553,7 +554,7 @@ canvas {
     0 0 20px rgba(0,0,0,0.5),
     inset 0 0 20px rgba(255,255,255,0.2);
   overflow: hidden;
-  transform: translateY(-50%);
+  transform: translateY(-30%);
 }
 
 .health-orb {
@@ -566,10 +567,10 @@ canvas {
 
 .orb-shine {
   position: absolute;
-  top: 10px;
-  left: 15px;
-  width: 25px;
-  height: 25px;
+  top: 12px;
+  left: 18px;
+  width: 28px;
+  height: 28px;
   background: radial-gradient(circle, rgba(255,255,255,0.8), transparent);
   border-radius: 50%;
 }
