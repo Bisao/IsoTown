@@ -540,7 +540,7 @@ canvas {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 120px;
+  gap: 84px;
   width: 100%;
   height: 100%;
 }
@@ -565,13 +565,13 @@ canvas {
 .rpg-orb-container.health {
   position: absolute;
   top: -45px;
-  left: 80px;
+  left: 56px;
 }
 
 .rpg-orb-container.mana {
   position: absolute;
   top: -45px;
-  right: 80px;
+  right: 56px;
 }
 
 .rpg-orb {
