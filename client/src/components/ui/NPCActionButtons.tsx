@@ -47,8 +47,12 @@ export default function NPCActionButtons() {
   const nearbyInfo = `Posição: (${npc.position.x}, ${npc.position.z})`;
 
   const handleWork = () => {
-    const result = performWork(selectedNPC);
-    showMessage(result.message);
+    // Disparar evento personalizado para processamento no GameWorld2D
+    const customEvent = new CustomEvent('manualWork', { 
+      detail: { npcId: selectedNPC } 
+    });
+    window.dispatchEvent(customEvent);
+    showMessage('Procurando árvores adjacentes...');
   };
 
   const handleStopWork = () => {

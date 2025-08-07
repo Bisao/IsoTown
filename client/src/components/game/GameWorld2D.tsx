@@ -6,7 +6,7 @@ import { useTreeStore } from '../../lib/stores/useTreeStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
 import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION } from '../../lib/constants';
-import { NPCControlMode } from '../../lib/types';
+import { NPCControlMode, NPCProfession } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
 
 export default function GameWorld2D() {
@@ -22,11 +22,11 @@ export default function GameWorld2D() {
   const npcs = useNPCStore(state => state.npcs);
   const trees = useTreeStore(state => state.trees);
   const textEffects = useEffectsStore(state => state.effects);
-  const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree } = useNPCStore();
+  const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree, updateNPC } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
-  const { generateRandomTrees, getTreeAt } = useTreeStore();
-  const { updateEffects } = useEffectsStore();
+  const { generateRandomTrees, getTreeAt, updateTree, destroyTree } = useTreeStore();
+  const { updateEffects, addTextEffect } = useEffectsStore();
 
   // Adicionar hooks de teclado para ações
   useKeyboardActions();
@@ -41,7 +41,39 @@ export default function GameWorld2D() {
       const npc = npcs[npcId];
       if (npc.profession !== NPCProfession.LUMBERJACK) return;
       
-      // Buscar árvores adjacentes
+      // Se já está cortando uma árvore, processar um golpe manual
+      if (npc.currentTreeId && npc.state === 'WORKING') {
+        const targetTree = trees[npc.currentTreeId];
+        if (targetTree && !targetTree.isFalling && targetTree.health > 0) {
+          console.log('Continuando corte manual da árvore:', npc.currentTreeId);
+          
+          // Reduzir vida da árvore
+          const newHealth = Math.max(0, targetTree.health - 1);
+          updateTree(npc.currentTreeId, { health: newHealth });
+          
+          // Adicionar efeito visual
+          addTextEffect(targetTree.position, 'TOC!', '#FFA500', 800);
+          
+          const progress = targetTree.maxHealth - newHealth;
+          const completed = newHealth <= 0;
+          
+          console.log('TOC! Cortando árvore manualmente - progresso:', progress, 'completo:', completed);
+          
+          if (completed) {
+            // Árvore cortada com sucesso
+            console.log('Árvore cortada com sucesso pelo NPC controlado!');
+            destroyTree(npc.currentTreeId);
+            updateNPC(npcId, { 
+              state: 'IDLE', 
+              currentTreeId: null, 
+              workProgress: 0 
+            });
+          }
+          return;
+        }
+      }
+      
+      // Buscar árvores adjacentes para começar novo corte
       const adjacentPositions = [
         { x: npc.position.x + 1, z: npc.position.z },
         { x: npc.position.x - 1, z: npc.position.z },
@@ -66,7 +98,31 @@ export default function GameWorld2D() {
       
       if (targetTree) {
         console.log('Árvore encontrada para corte manual:', targetTree.id);
-        startCuttingTree(npcId, targetTree.id, targetTree.position, targetTree.health);
+        // Iniciar corte manual
+        updateNPC(npcId, { 
+          state: 'WORKING', 
+          currentTreeId: targetTree.id, 
+          workProgress: 1 
+        });
+        
+        // Processar primeiro golpe
+        const newHealth = Math.max(0, targetTree.health - 1);
+        updateTree(targetTree.id, { health: newHealth });
+        
+        // Adicionar efeito visual
+        addTextEffect(targetTree.position, 'TOC!', '#FFA500', 800);
+        
+        console.log('TOC! Cortando árvore manualmente - progresso:', 1, 'completo:', newHealth <= 0);
+        
+        if (newHealth <= 0) {
+          console.log('Árvore cortada com sucesso pelo NPC controlado!');
+          destroyTree(targetTree.id);
+          updateNPC(npcId, { 
+            state: 'IDLE', 
+            currentTreeId: null, 
+            workProgress: 0 
+          });
+        }
       } else {
         console.log('Nenhuma árvore adjacente encontrada');
       }
@@ -74,7 +130,7 @@ export default function GameWorld2D() {
     
     window.addEventListener('manualWork', handleManualWork as EventListener);
     return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
-  }, [npcs, trees, startCuttingTree]);
+  }, [npcs, trees, updateTree, updateNPC, destroyTree, addTextEffect]);
 
   // Carregar sprites das casas
   useEffect(() => {
@@ -580,10 +636,34 @@ export default function GameWorld2D() {
     const screen = gridToScreen(tree.position.x, tree.position.z, canvasWidth, canvasHeight);
     const size = CELL_SIZE * zoomRef.current;
 
+    // Verificar se há NPC controlado lenhador adjacente para highlight
+    const controlledLumberjack = Object.values(npcs).find(npc => 
+      npc.controlMode === NPCControlMode.CONTROLLED && 
+      npc.profession === NPCProfession.LUMBERJACK &&
+      Math.abs(npc.position.x - tree.position.x) + Math.abs(npc.position.z - tree.position.z) === 1
+    );
+
+    const isHighlighted = controlledLumberjack && !tree.isFalling && tree.health > 0;
+
     // Árvores em tamanho proporcional ao NPC
     const treeScale = 1.2; // Aumentar para 120% do tamanho original
 
     ctx.save();
+
+    // Desenhar highlight se aplicável (antes da árvore)
+    if (isHighlighted) {
+      const highlightRadius = size * 0.8 * treeScale;
+      ctx.fillStyle = 'rgba(255, 255, 0, 0.3)'; // Amarelo translúcido
+      ctx.beginPath();
+      ctx.arc(screen.x, screen.y, highlightRadius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Borda do highlight pulsante
+      const pulseIntensity = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+      ctx.strokeStyle = `rgba(255, 215, 0, ${pulseIntensity})`;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
 
     // Handle falling animation
     if (tree.isFalling && tree.fallStartTime) {
@@ -668,7 +748,7 @@ export default function GameWorld2D() {
     }
 
     ctx.restore();
-  }, [gridToScreen]);
+  }, [gridToScreen, npcs]);
 
   // Draw text effects
   const drawTextEffects = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {

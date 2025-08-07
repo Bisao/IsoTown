@@ -2,6 +2,11 @@
 
 This is a 2D isometric simulation game built with HTML5 Canvas where players can place houses, manage NPCs, and control game world interactions. The application features a grid-based isometric world with different types of buildings (farmer, lumberjack, miner houses) and autonomous or player-controlled NPCs. The game uses geometric shapes (squares for houses, circles for NPCs) and includes virtual joysticks for mobile control and pinch-to-zoom functionality for better view control.
 
+## Recent Updates (January 2025)
+- **Manual NPC Actions System**: Implemented comprehensive manual control system for NPCs in controlled mode, allowing players to trigger work actions like tree cutting using keyboard controls (Space/E keys) or UI buttons
+- **Enhanced NPC Interface**: Added NPCActionButtons component with real-time progress tracking, work status display, and intuitive controls for manual NPC management
+- **Integrated Tree Cutting**: Connected manual actions with existing tree system, enabling controlled NPCs to cut adjacent trees with proper progress tracking and completion detection
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -34,18 +39,21 @@ UI preferences: Clean interface without window borders or decorative frames.
 - **Multiple Zustand stores** for different game aspects:
   - `useGameStore`: UI state, selections, modal visibility
   - `useHouseStore`: House placement and management
-  - `useNPCStore`: NPC behavior, movement, and AI
+  - `useNPCStore`: NPC behavior, movement, AI, and manual action system
   - `useAudio`: Sound effects and background music
   - `useGame`: Game phases (ready, playing, ended)
 - **Grid-based positioning system** with world-to-grid coordinate conversion
-- **Real-time movement system** using React Three Fiber's `useFrame` hook
+- **Real-time movement system** using canvas-based 2D rendering
+- **Manual Action System**: Custom event-driven architecture for processing player-initiated NPC actions with real-time feedback and progress tracking
 
-## 3D Rendering Architecture
-- **Custom camera system** with smooth following for selected NPCs
+## 2D Rendering Architecture
+- **Canvas-based isometric rendering** with optimized drawing loops and sprite management
+- **Custom camera system** with smooth following for controlled NPCs and manual panning/zooming
 - **Grid-based world** with visual grid lines and cell-based positioning
-- **3D models** for houses and NPCs with shadow casting/receiving
-- **Animation system** for NPC movement, house selection effects, and UI feedback
-- **Mobile-responsive** 3D controls with virtual joystick implementation
+- **Sprite system** for houses with fallback geometric rendering
+- **Animation system** for NPC movement, work actions (chopping), and visual effects
+- **Mobile-responsive** controls with virtual joystick and touch support
+- **Real-time effect system** for visual feedback (text effects, animations)
 
 ## Authentication and Authorization
 - Basic user schema prepared with username/password fields
