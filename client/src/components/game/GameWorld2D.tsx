@@ -17,8 +17,8 @@ export default function GameWorld2D() {
   const npcs = useNPCStore(state => state.npcs);
   const trees = useTreeStore(state => state.trees);
   const { moveNPC, updateNPCMovement, addNPC } = useNPCStore();
-  const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode } = useGameStore();
-  const { addHouse, getHouseAt } = useHouseStore();
+  const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
+  const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt } = useTreeStore();
 
   // Gerar árvores aleatórias na primeira renderização
@@ -93,24 +93,63 @@ export default function GameWorld2D() {
     const screen = gridToScreen(house.position.x, house.position.z, canvasWidth, canvasHeight);
     const size = CELL_SIZE * zoomRef.current;
     
-    // Base da casa
-    ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];
-    ctx.fillRect(screen.x - size/2, screen.y - size/2, size, size);
+    ctx.save();
+    ctx.translate(screen.x, screen.y);
+    ctx.rotate((house.rotation || 0) * Math.PI / 180);
     
-    // Borda
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(screen.x - size/2, screen.y - size/2, size, size);
+    if (house.type === HouseType.FARMER) {
+      // Casa do fazendeiro - estilo especial baseado na imagem
+      // Base branca
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(-size/2, -size/2, size, size);
+      
+      // Borda preta
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-size/2, -size/2, size, size);
+      
+      // Teto vermelho triangular
+      ctx.fillStyle = '#DC143C';
+      ctx.beginPath();
+      ctx.moveTo(-size/2, -size/2);
+      ctx.lineTo(size/2, -size/2);
+      ctx.lineTo(0, -size);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      // Porta frontal (sempre na frente considerando rotação)
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(-size/8, size/4, size/4, size/4);
+      ctx.strokeRect(-size/8, size/4, size/4, size/4);
+      
+      // Janelas
+      ctx.fillStyle = '#87CEEB';
+      ctx.fillRect(-size/3, -size/8, size/6, size/6);
+      ctx.fillRect(size/6, -size/8, size/6, size/6);
+      ctx.strokeRect(-size/3, -size/8, size/6, size/6);
+      ctx.strokeRect(size/6, -size/8, size/6, size/6);
+    } else {
+      // Casa padrão
+      ctx.fillStyle = HOUSE_COLORS[house.type as HouseType];
+      ctx.fillRect(-size/2, -size/2, size, size);
+      
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-size/2, -size/2, size, size);
+      
+      // Teto marrom
+      ctx.fillStyle = '#8B4513';
+      ctx.beginPath();
+      ctx.moveTo(-size/2, -size/2);
+      ctx.lineTo(size/2, -size/2);
+      ctx.lineTo(0, -size);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
     
-    // Teto
-    ctx.fillStyle = '#8B4513';
-    ctx.beginPath();
-    ctx.moveTo(screen.x - size/2, screen.y - size/2);
-    ctx.lineTo(screen.x + size/2, screen.y - size/2);
-    ctx.lineTo(screen.x, screen.y - size);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    ctx.restore();
   }, [gridToScreen]);
 
   // Desenhar NPC (memoizado)
@@ -241,9 +280,22 @@ export default function GameWorld2D() {
     if (isPlacingHouse && selectedHouseType) {
       const gridPos = screenToGrid(x, y, canvas.width, canvas.height);
       if (isValidGridPosition(gridPos) && !getHouseAt(gridPos) && !getTreeAt(gridPos)) {
-        addHouse(selectedHouseType, gridPos);
+        addHouse(selectedHouseType, gridPos, currentRotation);
         stopPlacingHouse();
       }
+      return;
+    }
+
+    // Selecionar casa
+    const houseClicked = Object.values(houses).find(house => {
+      const screen = gridToScreen(house.position.x, house.position.z, canvas.width, canvas.height);
+      const size = CELL_SIZE * zoomRef.current;
+      return x >= screen.x - size/2 && x <= screen.x + size/2 && 
+             y >= screen.y - size/2 && y <= screen.y + size/2;
+    });
+
+    if (houseClicked) {
+      useGameStore.getState().selectHouse(houseClicked.id);
       return;
     }
 
@@ -283,9 +335,23 @@ export default function GameWorld2D() {
     zoomRef.current = Math.max(0.5, Math.min(3, zoomRef.current * zoomFactor));
   }, []);
 
-  // Manipular teclas para movimento
+  // Manipular teclas para movimento e rotação
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      // Rotação durante colocação de casa
+      if (isPlacingHouse && event.key === 'r') {
+        event.preventDefault();
+        rotateCurrentPlacement();
+        return;
+      }
+
+      // Rotação de casa selecionada
+      if (useGameStore.getState().selectedHouse && event.key === 'r') {
+        event.preventDefault();
+        rotateHouse(useGameStore.getState().selectedHouse!);
+        return;
+      }
+
       if (!selectedNPC || !npcs[selectedNPC] || npcs[selectedNPC].controlMode !== NPCControlMode.CONTROLLED) {
         return;
       }
@@ -326,7 +392,7 @@ export default function GameWorld2D() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [selectedNPC, npcs, moveNPC]);
+  }, [selectedNPC, npcs, moveNPC, isPlacingHouse, rotateCurrentPlacement, rotateHouse]);
 
   // Redimensionar canvas
   const handleResize = useCallback(() => {

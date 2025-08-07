@@ -7,6 +7,7 @@ export interface House {
   id: string;
   type: string;
   position: Position;
+  rotation: number; // 0, 90, 180, 270 degrees
 }
 
 export interface NPC {

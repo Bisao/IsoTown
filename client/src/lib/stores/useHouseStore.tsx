@@ -8,23 +8,25 @@ interface HouseStore {
   houses: Record<string, House>;
   
   // Actions
-  addHouse: (type: HouseType, position: Position) => string;
+  addHouse: (type: HouseType, position: Position, rotation?: number) => string;
   removeHouse: (id: string) => void;
   getHouseAt: (position: Position) => House | undefined;
   assignNPCToHouse: (houseId: string, npcId: string) => void;
   unassignNPCFromHouse: (houseId: string) => void;
+  rotateHouse: (houseId: string) => void;
 }
 
 export const useHouseStore = create<HouseStore>()(
   subscribeWithSelector((set, get) => ({
     houses: {},
 
-    addHouse: (type, position) => {
+    addHouse: (type, position, rotation = 0) => {
       const id = nanoid();
       const house: House = {
         id,
         type,
         position,
+        rotation,
       };
       
       set((state) => ({
@@ -80,5 +82,18 @@ export const useHouseStore = create<HouseStore>()(
         [houseId]: { ...state.houses[houseId], npcId: undefined }
       }
     })),
+
+    rotateHouse: (houseId) => set((state) => {
+      const house = state.houses[houseId];
+      if (!house) return state;
+      
+      const newRotation = (house.rotation + 90) % 360;
+      return {
+        houses: {
+          ...state.houses,
+          [houseId]: { ...house, rotation: newRotation }
+        }
+      };
+    }),
   }))
 );

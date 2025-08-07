@@ -4,7 +4,8 @@ export const CELL_SIZE = 32;
 export enum HouseType {
   SMALL = 'SMALL',
   MEDIUM = 'MEDIUM',
-  LARGE = 'LARGE'
+  LARGE = 'LARGE',
+  FARMER = 'FARMER'
 }
 
 export enum NPCControlMode {
@@ -15,13 +16,15 @@ export enum NPCControlMode {
 export const HOUSE_COLORS = {
   [HouseType.SMALL]: '#FF6B6B',
   [HouseType.MEDIUM]: '#4ECDC4', 
-  [HouseType.LARGE]: '#45B7D1'
+  [HouseType.LARGE]: '#45B7D1',
+  [HouseType.FARMER]: '#FFFFFF'
 };
 
 export const HOUSE_NAMES = {
   [HouseType.SMALL]: 'Small House',
   [HouseType.MEDIUM]: 'Medium House',
-  [HouseType.LARGE]: 'Large House'
+  [HouseType.LARGE]: 'Large House',
+  [HouseType.FARMER]: 'Farmer House'
 };
 
 export const NPC_COLOR = '#FF6B6B';
