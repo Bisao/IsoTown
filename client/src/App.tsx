@@ -2,6 +2,7 @@ import GameWorld2D from './components/game/GameWorld2D';
 import GameUI from './components/ui/GameUI';
 import HouseSelectionModal from './components/ui/HouseSelectionModal';
 import NPCConfigModal from './components/ui/NPCConfigModal';
+import RPGControlModal from './components/ui/RPGControlModal';
 import { useGameStore } from './lib/stores/useGameStore';
 
 export default function App() {
@@ -45,6 +46,7 @@ export default function App() {
       <GameUI />
       <HouseSelectionModal open={showHouseModal} />
       <NPCConfigModal open={showNPCModal} />
+      <RPGControlModal />
     </div>
   );
 }

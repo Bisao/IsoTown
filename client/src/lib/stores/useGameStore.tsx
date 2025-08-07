@@ -7,6 +7,7 @@ interface GameStore {
   showHouseModal: boolean;
   showNPCModal: boolean;
   showStartMenu: boolean;
+  showControlModal: boolean;
   openWindows: string[];
   
   // Game State
@@ -20,6 +21,7 @@ interface GameStore {
   setShowHouseModal: (show: boolean) => void;
   setShowNPCModal: (show: boolean) => void;
   setShowStartMenu: (show: boolean) => void;
+  setShowControlModal: (show: boolean) => void;
   toggleWindow: (windowId: string) => void;
   focusWindow: (windowId: string) => void;
   startPlacingHouse: (type: HouseType) => void;
@@ -35,6 +37,7 @@ export const useGameStore = create<GameStore>((set) => ({
   showHouseModal: false,
   showNPCModal: false,
   showStartMenu: false,
+  showControlModal: false,
   openWindows: ['game'], // Game is always open
   
   // Game State
@@ -58,6 +61,7 @@ export const useGameStore = create<GameStore>((set) => ({
       : state.openWindows.filter(id => id !== 'npc')
   })),
   setShowStartMenu: (show) => set({ showStartMenu: show }),
+  setShowControlModal: (show) => set({ showControlModal: show }),
   
   toggleWindow: (windowId) => set((state) => {
     const isOpen = state.openWindows.includes(windowId);
