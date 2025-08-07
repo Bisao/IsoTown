@@ -31,12 +31,14 @@ export const useNPCStore = create<NPCStore>()(
         position,
         controlMode: NPCControlMode.AUTONOMOUS,
         isMoving: false,
+        movementTimer: Date.now()
       };
       
       set((state) => ({
         npcs: { ...state.npcs, [id]: npc }
       }));
       
+      console.log('Novo NPC criado:', id, 'na posição:', position);
       return id;
     },
 
@@ -48,14 +50,25 @@ export const useNPCStore = create<NPCStore>()(
     moveNPC: (id, direction) => {
       const npcs = get().npcs;
       const npc = npcs[id];
-      if (!npc) return;
+      if (!npc) {
+        console.log('NPC não encontrado:', id);
+        return;
+      }
+
+      if (npc.isMoving) {
+        console.log('NPC já está se movendo:', id);
+        return;
+      }
 
       const newPosition = {
         x: npc.position.x + direction.x,
         z: npc.position.z + direction.z
       };
 
+      console.log('Tentando mover NPC:', id, 'de', npc.position, 'para', newPosition);
+
       if (isValidGridPosition(newPosition)) {
+        console.log('Posição válida, movendo NPC');
         set((state) => ({
           npcs: {
             ...state.npcs,
@@ -70,13 +83,19 @@ export const useNPCStore = create<NPCStore>()(
 
         // Parar movimento após delay
         setTimeout(() => {
-          set((state) => ({
-            npcs: {
-              ...state.npcs,
-              [id]: { ...state.npcs[id], isMoving: false }
-            }
-          }));
+          const currentState = get();
+          if (currentState.npcs[id]) {
+            console.log('Parando movimento do NPC:', id);
+            set((state) => ({
+              npcs: {
+                ...state.npcs,
+                [id]: { ...state.npcs[id], isMoving: false }
+              }
+            }));
+          }
         }, MOVEMENT_SPEED);
+      } else {
+        console.log('Posição inválida:', newPosition);
       }
     },
 
@@ -115,8 +134,9 @@ export const useNPCStore = create<NPCStore>()(
       Object.values(npcs).forEach((npc) => {
         if (npc.controlMode === NPCControlMode.AUTONOMOUS && !npc.isMoving) {
           // Movimento aleatório a cada 2 segundos
-          if (!npc.movementTimer || Date.now() - npc.movementTimer > 2000) {
-            if (Math.random() < 0.3) { // 30% chance de se mover
+          const currentTime = Date.now();
+          if (!npc.movementTimer || currentTime - npc.movementTimer > 2000) {
+            if (Math.random() < 0.4) { // 40% chance de se mover
               const direction = getRandomDirection();
               const newPosition = {
                 x: npc.position.x + direction.x,
@@ -127,9 +147,32 @@ export const useNPCStore = create<NPCStore>()(
                 updates[npc.id] = {
                   position: newPosition,
                   isMoving: true,
-                  movementTimer: Date.now()
+                  movementTimer: currentTime
+                };
+                
+                // Parar movimento após delay
+                setTimeout(() => {
+                  const currentState = get();
+                  if (currentState.npcs[npc.id]) {
+                    set((state) => ({
+                      npcs: {
+                        ...state.npcs,
+                        [npc.id]: { ...state.npcs[npc.id], isMoving: false }
+                      }
+                    }));
+                  }
+                }, MOVEMENT_SPEED);
+              } else {
+                // Se não pode mover, reset timer
+                updates[npc.id] = {
+                  movementTimer: currentTime
                 };
               }
+            } else {
+              // Se não moveu, reset timer para tentar novamente
+              updates[npc.id] = {
+                movementTimer: currentTime
+              };
             }
           }
         }
@@ -171,12 +214,14 @@ export const useNPCStore = create<NPCStore>()(
         }
       });
 
-      // Aplicar atualizações
+      // Aplicar atualizações se houver
       if (Object.keys(updates).length > 0) {
         set((state) => {
           const newNPCs = { ...state.npcs };
           Object.entries(updates).forEach(([id, update]) => {
-            newNPCs[id] = { ...newNPCs[id], ...update };
+            if (newNPCs[id]) {
+              newNPCs[id] = { ...newNPCs[id], ...update };
+            }
           });
           return { npcs: newNPCs };
         });
