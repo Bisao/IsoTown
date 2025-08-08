@@ -47,6 +47,22 @@ export const STONE_COLOR = '#808080';
 export const STONE_DENSITY = 0.01; // 1% chance of stone per tile (reduzido para mundo grande)
 export const STONE_MAX_HEALTH = 5; // Number of hits to break a stone
 
+// Miner behavior
+export const MINER_WORK_RANGE = 5; // How far miner will search for stones
+export const MINER_MINE_INTERVAL = 1200; // ms between mining hits
+export const MINING_ANIMATION_DURATION = 800; // ms
+export const STONE_BREAK_DURATION = 800; // ms
+export const STONE_DESPAWN_DELAY = 2000; // ms after breaking
+
+// Resource carrying system
+export const DEFAULT_CARRY_CAPACITY = 20; // Default max items an NPC can carry
+export const HOUSE_STORAGE_CAPACITY = 1000; // Default house storage capacity
+export const RESOURCE_WEIGHTS = {
+  wood: 1,
+  stone: 2,
+  food: 0.5
+} as const;
+
 // Inventory constants
 export const INVENTORY_MAX_SLOTS = 20;
 export const STACK_MAX_SIZE = 99;

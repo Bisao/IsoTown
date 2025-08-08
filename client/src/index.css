@@ -75,6 +75,138 @@
   box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
 }
 
+.win98-title-bar {
+  background: linear-gradient(90deg, var(--win98-active-title) 0%, #1084d0 100%);
+  color: var(--win98-active-title-text);
+  padding: 3px 5px;
+  font-weight: bold;
+  font-size: 11px;
+  border-bottom: 1px solid var(--win98-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.win98-close-button {
+  width: 16px;
+  height: 14px;
+  background: var(--win98-button-face);
+  border: 1px outset var(--win98-button-face);
+  font-size: 10px;
+  line-height: 1;
+  padding: 0;
+  min-width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.win98-close-button:active {
+  border: 1px inset var(--win98-button-face);
+}
+
+.win98-content {
+  padding: 8px;
+  background: var(--win98-dialog-bg);
+}
+
+.win98-input {
+  background: var(--win98-input-bg);
+  border: 2px inset var(--win98-surface);
+  padding: 2px 4px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: var(--win98-text);
+}
+
+.win98-input:focus {
+  outline: none;
+  background: var(--win98-input-bg);
+}
+
+.win98-input:disabled {
+  background: var(--win98-button-face);
+  color: var(--win98-disabled);
+}
+
+.win98-select {
+  background: var(--win98-input-bg);
+  border: 2px inset var(--win98-surface);
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: var(--win98-text);
+  padding: 2px;
+}
+
+.win98-listbox {
+  background: var(--win98-input-bg);
+  border: 2px inset var(--win98-surface);
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: var(--win98-text);
+  padding: 2px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.win98-listbox-item {
+  padding: 1px 4px;
+  cursor: pointer;
+}
+
+.win98-listbox-item:hover {
+  background: #0a0a7a;
+  color: white;
+}
+
+.win98-listbox-item.selected {
+  background: #0a0a7a;
+  color: white;
+}
+
+.win98-group {
+  border: 2px inset var(--win98-surface);
+  padding: 8px;
+  margin: 4px 0;
+  background: var(--win98-dialog-bg);
+}
+
+.win98-group-title {
+  background: var(--win98-dialog-bg);
+  padding: 0 4px;
+  margin-top: -16px;
+  margin-left: 8px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.win98-panel {
+  border: 1px inset var(--win98-surface);
+  background: var(--win98-dialog-bg);
+  padding: 4px;
+}
+
+.win98-status-bar {
+  border: 1px inset var(--win98-surface);
+  background: var(--win98-dialog-bg);
+  padding: 2px 4px;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.win98-progress {
+  border: 2px inset var(--win98-surface);
+  background: var(--win98-dialog-bg);
+  height: 20px;
+  overflow: hidden;
+}
+
+.win98-progress-bar {
+  background: #0a0a7a;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
 .win98-window-header {
   background: var(--win98-active-title);
   color: var(--win98-active-title-text);

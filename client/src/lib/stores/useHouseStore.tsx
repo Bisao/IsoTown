@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { House, Position } from '../types';
-import { HouseType } from '../constants';
+import { House, Position, ResourceInventory } from '../types';
+import { HouseType, HOUSE_STORAGE_CAPACITY } from '../constants';
 import { nanoid } from 'nanoid';
 
 interface HouseStore {
@@ -14,6 +14,12 @@ interface HouseStore {
   assignNPCToHouse: (houseId: string, npcId: string) => void;
   unassignNPCFromHouse: (houseId: string) => void;
   rotateHouse: (houseId: string) => void;
+  
+  // Inventory management
+  addResourceToHouse: (houseId: string, resource: keyof ResourceInventory, amount: number) => boolean;
+  removeResourceFromHouse: (houseId: string, resource: keyof ResourceInventory, amount: number) => boolean;
+  getHouseInventory: (houseId: string) => ResourceInventory | undefined;
+  getHouseStorageSpace: (houseId: string) => number; // Available space
 }
 
 export const useHouseStore = create<HouseStore>()(
@@ -27,6 +33,12 @@ export const useHouseStore = create<HouseStore>()(
         type,
         position,
         rotation,
+        inventory: {
+          wood: 0,
+          stone: 0,
+          food: 0
+        },
+        maxStorageCapacity: HOUSE_STORAGE_CAPACITY
       };
       
       set((state) => ({
@@ -105,5 +117,61 @@ export const useHouseStore = create<HouseStore>()(
         }
       };
     }),
+
+    addResourceToHouse: (houseId, resource, amount) => {
+      const state = get();
+      const house = state.houses[houseId];
+      if (!house) return false;
+
+      const currentTotal = house.inventory.wood + house.inventory.stone + house.inventory.food;
+      if (currentTotal + amount > house.maxStorageCapacity) return false;
+
+      set((state) => ({
+        houses: {
+          ...state.houses,
+          [houseId]: {
+            ...state.houses[houseId],
+            inventory: {
+              ...state.houses[houseId].inventory,
+              [resource]: state.houses[houseId].inventory[resource] + amount
+            }
+          }
+        }
+      }));
+      return true;
+    },
+
+    removeResourceFromHouse: (houseId, resource, amount) => {
+      const state = get();
+      const house = state.houses[houseId];
+      if (!house || house.inventory[resource] < amount) return false;
+
+      set((state) => ({
+        houses: {
+          ...state.houses,
+          [houseId]: {
+            ...state.houses[houseId],
+            inventory: {
+              ...state.houses[houseId].inventory,
+              [resource]: Math.max(0, state.houses[houseId].inventory[resource] - amount)
+            }
+          }
+        }
+      }));
+      return true;
+    },
+
+    getHouseInventory: (houseId) => {
+      const house = get().houses[houseId];
+      return house?.inventory;
+    },
+
+    getHouseStorageSpace: (houseId) => {
+      const house = get().houses[houseId];
+      if (!house) return 0;
+      
+      const currentTotal = house.inventory.wood + house.inventory.stone + house.inventory.food;
+      return house.maxStorageCapacity - currentTotal;
+    },
   }))
 );

@@ -69,10 +69,17 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
   }
 
   return (
-    <div className="win98-modal-overlay" onClick={(e) => e.stopPropagation()}>
+    <>
+      {/* Windows 98 overlay */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        onClick={handleClose}
+      />
+      
+      {/* Windows 98 Modal Window */}
       <div
         ref={elementRef}
-        className={`win98-window win98-draggable-window ${isDragging ? 'dragging' : ''}`}
+        className="win98-window fixed z-50"
         style={{ 
           minWidth: '320px', 
           maxWidth: '450px',
@@ -197,6 +204,6 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
           onClose={() => setShowInventory(false)}
         />
       )}
-    </div>
+    </>
   );
 }

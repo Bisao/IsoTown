@@ -8,6 +8,14 @@ export interface House {
   type: string;
   position: Position;
   rotation: number; // 0, 90, 180, 270 degrees
+  inventory: ResourceInventory;
+  maxStorageCapacity: number;
+}
+
+export interface ResourceInventory {
+  wood: number;
+  stone: number;
+  food: number;
 }
 
 export enum NPCControlMode {
@@ -75,9 +83,9 @@ export interface NPC {
   skills?: {
     [key: string]: number; // Nome da habilidade -> nível (1-100)
   };
-  inventory?: {
-    [key: string]: number; // Item -> quantidade
-  };
+  inventory: ResourceInventory;
+  maxCarryCapacity: number;
+  currentCarriedWeight: number;
   health?: number;
   energy?: number;
   experience?: number;
