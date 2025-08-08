@@ -1,6 +1,6 @@
 import { NPCProfession } from './types';
 
-export const GRID_SIZE = 20;
+export const GRID_SIZE = 10000;
 export const CELL_SIZE = 32;
 
 export enum HouseType {
@@ -28,7 +28,7 @@ export const MOVEMENT_SPEED = 200; // ms between tile movements
 
 // Tree constants
 export const TREE_COLOR = '#228B22';
-export const TREE_DENSITY = 0.15; // 15% chance of tree per tile
+export const TREE_DENSITY = 0.02; // 2% chance of tree per tile (reduzido para mundo grande)
 export const TREE_MAX_HEALTH = 3; // Number of hits to cut down a tree
 
 // Profession constants
@@ -44,7 +44,7 @@ export const CONTROLLED_CHOP_COOLDOWN = 800; // 800ms cooldown for controlled NP
 
 // Stone constants
 export const STONE_COLOR = '#808080';
-export const STONE_DENSITY = 0.05; // 5% chance of stone per tile
+export const STONE_DENSITY = 0.01; // 1% chance of stone per tile (reduzido para mundo grande)
 export const STONE_MAX_HEALTH = 5; // Number of hits to break a stone
 
 // Inventory constants

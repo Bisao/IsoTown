@@ -466,29 +466,42 @@ export default function GameWorld2D() {
     return { x: gridX, z: gridZ };
   }, []);
 
-  // Desenhar grid (memoizado)
+  // Desenhar grid (memoizado) - otimizado para renderizar apenas área visível
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
     ctx.strokeStyle = '#CCCCCC';
     ctx.lineWidth = 1;
     ctx.globalAlpha = 0.5;
 
-    const halfGrid = Math.floor(GRID_SIZE / 2);
+    // Calcular área visível baseada no zoom e pan
+    const visibleRange = Math.ceil(50 / zoomRef.current); // Renderizar apenas tiles visíveis
+    const centerX = Math.floor(-panRef.current.x / (CELL_SIZE * zoomRef.current));
+    const centerZ = Math.floor(-panRef.current.y / (CELL_SIZE * zoomRef.current));
+    
+    const startX = Math.max(-GRID_SIZE/2, centerX - visibleRange);
+    const endX = Math.min(GRID_SIZE/2, centerX + visibleRange);
+    const startZ = Math.max(-GRID_SIZE/2, centerZ - visibleRange);
+    const endZ = Math.min(GRID_SIZE/2, centerZ + visibleRange);
 
-    for (let x = -halfGrid; x <= halfGrid; x++) {
-      for (let z = -halfGrid; z <= halfGrid; z++) {
+    for (let x = startX; x <= endX; x++) {
+      for (let z = startZ; z <= endZ; z++) {
         const screen = gridToScreen(x, z, canvasWidth, canvasHeight);
-        const screenRight = gridToScreen(x + 1, z, canvasWidth, canvasHeight);
-        const screenDown = gridToScreen(x, z + 1, canvasWidth, canvasHeight);
-        const screenDiag = gridToScreen(x + 1, z + 1, canvasWidth, canvasHeight);
+        
+        // Só desenhar se estiver na tela
+        if (screen.x >= -100 && screen.x <= canvasWidth + 100 && 
+            screen.y >= -100 && screen.y <= canvasHeight + 100) {
+          const screenRight = gridToScreen(x + 1, z, canvasWidth, canvasHeight);
+          const screenDown = gridToScreen(x, z + 1, canvasWidth, canvasHeight);
+          const screenDiag = gridToScreen(x + 1, z + 1, canvasWidth, canvasHeight);
 
-        // Desenhar losango
-        ctx.beginPath();
-        ctx.moveTo(screen.x, screen.y);
-        ctx.lineTo(screenRight.x, screenRight.y);
-        ctx.lineTo(screenDiag.x, screenDiag.y);
-        ctx.lineTo(screenDown.x, screenDown.y);
-        ctx.closePath();
-        ctx.stroke();
+          // Desenhar losango
+          ctx.beginPath();
+          ctx.moveTo(screen.x, screen.y);
+          ctx.lineTo(screenRight.x, screenRight.y);
+          ctx.lineTo(screenDiag.x, screenDiag.y);
+          ctx.lineTo(screenDown.x, screenDown.y);
+          ctx.closePath();
+          ctx.stroke();
+        }
       }
     }
 

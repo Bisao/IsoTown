@@ -15,6 +15,7 @@ interface TreeStore {
   getTreeAt: (position: Position) => Tree | undefined;
   getNearestTree: (position: Position, maxDistance: number) => Tree | undefined;
   generateRandomTrees: () => void;
+  generateTreesInChunk: (chunkX: number, chunkZ: number, chunkSize?: number) => void;
   isPositionOccupiedByTree: (position: Position) => boolean;
   startTreeFalling: (id: string) => void;
   updateFallingTrees: () => void;
@@ -168,17 +169,34 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   },
 
   generateRandomTrees: () => {
-    const { addTree } = get();
-    const halfGrid = Math.floor(GRID_SIZE / 2);
-    const treeTypes: Array<'pine' | 'oak' | 'birch'> = ['pine', 'oak', 'birch'];
+    set({ trees: {} });
+    console.log('Gerando árvores por chunks para otimização...');
 
-    for (let x = -halfGrid; x <= halfGrid; x++) {
-      for (let z = -halfGrid; z <= halfGrid; z++) {
+    // Gerar árvores apenas em uma área inicial menor para performance
+    const initialArea = 100; // Área inicial de 200x200 ao redor do centro
+    const halfArea = Math.floor(initialArea / 2);
+
+    for (let x = -halfArea; x <= halfArea; x++) {
+      for (let z = -halfArea; z <= halfArea; z++) {
         const position = { x, z };
 
         if (isValidGridPosition(position) && Math.random() < TREE_DENSITY) {
-          const randomType = treeTypes[Math.floor(Math.random() * treeTypes.length)];
-          addTree(position, randomType);
+          get().addTree(position);
+        }
+      }
+    }
+  },
+
+  generateTreesInChunk: (chunkX: number, chunkZ: number, chunkSize: number = 50) => {
+    const startX = chunkX * chunkSize;
+    const startZ = chunkZ * chunkSize;
+
+    for (let x = startX; x < startX + chunkSize; x++) {
+      for (let z = startZ; z < startZ + chunkSize; z++) {
+        const position = { x, z };
+
+        if (isValidGridPosition(position) && Math.random() < TREE_DENSITY) {
+          get().addTree(position);
         }
       }
     }

@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { Stone, Position } from '../types';
 import { nanoid } from 'nanoid';
@@ -20,6 +19,7 @@ interface StoneStore {
   startStoneBreaking: (id: string) => void;
   updateBreakingStones: () => void;
   addHitAnimation: (id: string) => void;
+  generateStonesInChunk: (chunkX: number, chunkZ: number, chunkSize?: number) => void;
 }
 
 export const useStoneStore = create<StoneStore>()((set, get) => ({
@@ -169,17 +169,37 @@ export const useStoneStore = create<StoneStore>()((set, get) => ({
   },
 
   generateRandomStones: () => {
-    const { addStone } = get();
-    const halfGrid = Math.floor(GRID_SIZE / 2);
-    const stoneTypes: Array<'small' | 'medium' | 'large'> = ['small', 'medium', 'large'];
+    console.log('Gerando pedras por chunks para otimização...');
 
-    for (let x = -halfGrid; x <= halfGrid; x++) {
-      for (let z = -halfGrid; z <= halfGrid; z++) {
+    // Gerar pedras apenas em uma área inicial menor para performance
+    const initialArea = 100; // Área inicial de 200x200 ao redor do centro
+    const halfArea = Math.floor(initialArea / 2);
+    const stoneTypes = ['small', 'medium', 'large'] as const; // Alterado para os tipos corretos
+
+    for (let x = -halfArea; x <= halfArea; x++) {
+      for (let z = -halfArea; z <= halfArea; z++) {
         const position = { x, z };
 
         if (isValidGridPosition(position) && Math.random() < STONE_DENSITY) {
           const randomType = stoneTypes[Math.floor(Math.random() * stoneTypes.length)];
-          addStone(position, randomType);
+          get().addStone(position, randomType);
+        }
+      }
+    }
+  },
+
+  generateStonesInChunk: (chunkX: number, chunkZ: number, chunkSize: number = 50) => {
+    const stoneTypes = ['small', 'medium', 'large'] as const; // Alterado para os tipos corretos
+    const startX = chunkX * chunkSize;
+    const startZ = chunkZ * chunkSize;
+
+    for (let x = startX; x < startX + chunkSize; x++) {
+      for (let z = startZ; z < startZ + chunkSize; z++) {
+        const position = { x, z };
+
+        if (isValidGridPosition(position) && Math.random() < STONE_DENSITY) {
+          const randomType = stoneTypes[Math.floor(Math.random() * stoneTypes.length)];
+          get().addStone(position, randomType);
         }
       }
     }
