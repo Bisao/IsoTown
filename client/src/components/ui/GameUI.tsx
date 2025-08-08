@@ -105,7 +105,7 @@ export default function GameUI() {
 
     // Check if there's a tree at the NPC's exact position
     const treeAtPosition = getTreeAt(npc.position);
-    
+
     if (treeAtPosition && !treeAtPosition.isFalling) {
       console.log('TOC! Cortando árvore manualmente:', treeAtPosition.id, 'na posição:', treeAtPosition.position);
 
@@ -213,13 +213,19 @@ export default function GameUI() {
       {/* Mobile Virtual Joystick */}
       {isMobile && <VirtualJoystick />}
 
-      
 
-      
+
+
 
       {/* Modals */}
-      <HouseSelectionModal open={showHouseModal} />
+      {/* Modal de Configuração do NPC */}
       <NPCConfigModal open={showNPCModal} />
+
+      {/* Modal de Seleção de Casa */}
+      <HouseSelectionModal 
+        open={showHouseModal}
+        onClose={() => setShowHouseModal(false)}
+      />
     </>
   );
 }
