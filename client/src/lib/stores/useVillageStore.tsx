@@ -93,38 +93,96 @@ export const useVillageStore = create<VillageStore>()(
 
       const { centerPosition, size } = village;
       
-      // Gerar apenas algumas ruas simples para vila pequena
-      // Rua principal horizontal pequena
-      for (let x = centerPosition.x - 2; x <= centerPosition.x + 2; x++) {
+      // Criar um layout mais conectado de ruas
+      const roadPositions = new Set<string>();
+      
+      // Rua principal horizontal
+      for (let x = centerPosition.x - size; x <= centerPosition.x + size; x++) {
         const roadId = nanoid();
-        const road: Road = {
-          id: roadId,
-          position: { x, z: centerPosition.z },
-          type: 'horizontal'
-        };
-        addRoadToVillage(villageId, road);
+        const position = { x, z: centerPosition.z };
+        const posKey = `${x},${centerPosition.z}`;
+        
+        if (!roadPositions.has(posKey)) {
+          roadPositions.add(posKey);
+          const road: Road = {
+            id: roadId,
+            position,
+            type: x === centerPosition.x ? 'cross' : 'horizontal'
+          };
+          addRoadToVillage(villageId, road);
+        }
       }
       
-      // Rua principal vertical pequena
-      for (let z = centerPosition.z - 2; z <= centerPosition.z + 2; z++) {
-        if (z === centerPosition.z) continue; // Evitar sobrepor com a horizontal
+      // Rua principal vertical
+      for (let z = centerPosition.z - size; z <= centerPosition.z + size; z++) {
+        if (z === centerPosition.z) continue; // Evitar sobrepor com cruzamento central
         const roadId = nanoid();
-        const road: Road = {
-          id: roadId,
-          position: { x: centerPosition.x, z },
-          type: 'vertical'
-        };
-        addRoadToVillage(villageId, road);
+        const position = { x: centerPosition.x, z };
+        const posKey = `${centerPosition.x},${z}`;
+        
+        if (!roadPositions.has(posKey)) {
+          roadPositions.add(posKey);
+          const road: Road = {
+            id: roadId,
+            position,
+            type: 'vertical'
+          };
+          addRoadToVillage(villageId, road);
+        }
       }
       
-      // Cruzamento no centro
-      const centerRoadId = nanoid();
-      const centerRoad: Road = {
-        id: centerRoadId,
-        position: centerPosition,
-        type: 'cross'
-      };
-      addRoadToVillage(villageId, centerRoad);
+      // Adicionar algumas ruas secundárias para melhor conectividade
+      const secondaryRoads = [
+        // Rua horizontal secundária
+        { offset: { x: 0, z: 2 }, direction: 'horizontal', length: 3 },
+        { offset: { x: 0, z: -2 }, direction: 'horizontal', length: 3 },
+        // Ruas verticais secundárias
+        { offset: { x: 2, z: 0 }, direction: 'vertical', length: 3 },
+        { offset: { x: -2, z: 0 }, direction: 'vertical', length: 3 }
+      ];
+      
+      secondaryRoads.forEach(roadConfig => {
+        const startPos = {
+          x: centerPosition.x + roadConfig.offset.x,
+          z: centerPosition.z + roadConfig.offset.z
+        };
+        
+        const length = Math.min(roadConfig.length, size);
+        
+        if (roadConfig.direction === 'horizontal') {
+          for (let i = -length; i <= length; i++) {
+            const position = { x: startPos.x + i, z: startPos.z };
+            const posKey = `${position.x},${position.z}`;
+            
+            if (!roadPositions.has(posKey)) {
+              roadPositions.add(posKey);
+              const roadId = nanoid();
+              const road: Road = {
+                id: roadId,
+                position,
+                type: 'horizontal'
+              };
+              addRoadToVillage(villageId, road);
+            }
+          }
+        } else if (roadConfig.direction === 'vertical') {
+          for (let i = -length; i <= length; i++) {
+            const position = { x: startPos.x, z: startPos.z + i };
+            const posKey = `${position.x},${position.z}`;
+            
+            if (!roadPositions.has(posKey)) {
+              roadPositions.add(posKey);
+              const roadId = nanoid();
+              const road: Road = {
+                id: roadId,
+                position,
+                type: 'vertical'
+              };
+              addRoadToVillage(villageId, road);
+            }
+          }
+        }
+      });
 
       // Gerar casas automaticamente ao redor das ruas
       setTimeout(() => {

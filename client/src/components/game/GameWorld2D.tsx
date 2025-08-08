@@ -756,52 +756,66 @@ export default function GameWorld2D() {
     // Cor das ruas - marrom para diferenciar da grama
     ctx.fillStyle = '#8B4513';
     
-    // Desenhar forma da rua baseada no tipo
-    switch (road.type) {
-      case 'horizontal':
-        ctx.fillRect(screen.x - size/2, screen.y - size/4, size, size/2);
-        break;
-      case 'vertical':
-        ctx.fillRect(screen.x - size/4, screen.y - size/2, size/2, size);
-        break;
-      case 'cross':
-        // Cruzamento - rua completa
-        ctx.fillRect(screen.x - size/2, screen.y - size/4, size, size/2); // horizontal
-        ctx.fillRect(screen.x - size/4, screen.y - size/2, size/2, size); // vertical
-        break;
-      case 'corner_ne':
-        ctx.fillRect(screen.x, screen.y - size/4, size/2, size/2); // direita
-        ctx.fillRect(screen.x - size/4, screen.y - size/2, size/2, size/2); // cima
-        break;
-      case 'corner_nw':
-        ctx.fillRect(screen.x - size/2, screen.y - size/4, size/2, size/2); // esquerda
-        ctx.fillRect(screen.x - size/4, screen.y - size/2, size/2, size/2); // cima
-        break;
-      case 'corner_se':
-        ctx.fillRect(screen.x, screen.y - size/4, size/2, size/2); // direita
-        ctx.fillRect(screen.x - size/4, screen.y, size/2, size/2); // baixo
-        break;
-      case 'corner_sw':
-        ctx.fillRect(screen.x - size/2, screen.y - size/4, size/2, size/2); // esquerda
-        ctx.fillRect(screen.x - size/4, screen.y, size/2, size/2); // baixo
-        break;
-    }
+    // Para visualização isométrica, as ruas devem ocupar toda a forma do losango
+    // Desenhar losango completo para a rua
+    const halfSize = size / 2;
+    const quarterSize = size / 4;
+    
+    ctx.beginPath();
+    ctx.moveTo(screen.x, screen.y - quarterSize); // topo
+    ctx.lineTo(screen.x + halfSize, screen.y); // direita
+    ctx.lineTo(screen.x, screen.y + quarterSize); // baixo
+    ctx.lineTo(screen.x - halfSize, screen.y); // esquerda
+    ctx.closePath();
+    ctx.fill();
 
     // Borda mais escura para definir melhor a rua
     ctx.strokeStyle = '#654321';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Textura de pedra/terra batida (pontos pequenos)
+    // Textura de pedra/terra batida (pontos pequenos) - usando seed fixo para consistência
+    const seed = (road.position.x * 1000 + road.position.z) * 0.001;
     ctx.fillStyle = '#A0522D';
-    for (let i = 0; i < 3; i++) {
-      const offsetX = (Math.random() - 0.5) * size * 0.6;
-      const offsetY = (Math.random() - 0.5) * size * 0.6;
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2 + seed;
+      const distance = (Math.sin(seed + i) * 0.5 + 0.5) * quarterSize;
+      const offsetX = Math.cos(angle) * distance;
+      const offsetY = Math.sin(angle) * distance * 0.5; // Reduzir na direção Y para isométrico
       ctx.beginPath();
-      ctx.arc(screen.x + offsetX, screen.y + offsetY, 1, 0, Math.PI * 2);
+      ctx.arc(screen.x + offsetX, screen.y + offsetY, 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
+    // Adicionar linhas de direção baseadas no tipo
+    ctx.strokeStyle = '#654321';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 2]);
+    
+    switch (road.type) {
+      case 'horizontal':
+        ctx.beginPath();
+        ctx.moveTo(screen.x - halfSize * 0.6, screen.y);
+        ctx.lineTo(screen.x + halfSize * 0.6, screen.y);
+        ctx.stroke();
+        break;
+      case 'vertical':
+        ctx.beginPath();
+        ctx.moveTo(screen.x, screen.y - quarterSize * 0.6);
+        ctx.lineTo(screen.x, screen.y + quarterSize * 0.6);
+        ctx.stroke();
+        break;
+      case 'cross':
+        ctx.beginPath();
+        ctx.moveTo(screen.x - halfSize * 0.6, screen.y);
+        ctx.lineTo(screen.x + halfSize * 0.6, screen.y);
+        ctx.moveTo(screen.x, screen.y - quarterSize * 0.6);
+        ctx.lineTo(screen.x, screen.y + quarterSize * 0.6);
+        ctx.stroke();
+        break;
+    }
+    
+    ctx.setLineDash([]);
     ctx.restore();
   }, [gridToScreen]);
 
