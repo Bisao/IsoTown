@@ -31,7 +31,7 @@ export default function GameWorld2D() {
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt, updateTree, removeTree } = useTreeStore();
-  const { generateRandomStones, getStoneAt } = useStoneStore();
+  const { generateRandomStones, getStoneAt, updateStone, damageStone, removeStone } = useStoneStore();
   const { updateEffects, addTextEffect } = useEffectsStore();
   const { createVillage, getRoadAt } = useVillageStore();
 
@@ -90,99 +90,190 @@ export default function GameWorld2D() {
       if (!npcId || !npcs[npcId]) return;
 
       const npc = npcs[npcId];
-      if (npc.profession !== NPCProfession.LUMBERJACK) return;
 
-      // Verificar cooldown
-      if (useNPCStore.getState().isNPCOnCooldown(npcId)) {
-        console.log('NPC em cooldown, aguarde para próximo golpe');
-        addTextEffect(npc.position, 'Aguarde!', '#FFB347', 600);
-        return;
-      }
+      // Handle manual tree cutting
+      if (npc.profession === NPCProfession.LUMBERJACK) {
+        // Verificar cooldown
+        if (useNPCStore.getState().isNPCOnCooldown(npcId)) {
+          console.log('NPC em cooldown, aguarde para próximo golpe');
+          addTextEffect(npc.position, 'Aguarde!', '#FFB347', 600);
+          return;
+        }
 
-      // Se já está cortando uma árvore, processar um golpe manual
-      if (npc.currentTreeId && npc.state === NPCState.WORKING) {
-        const targetTree = trees[npc.currentTreeId];
-        if (targetTree && !targetTree.isFalling && targetTree.health > 0) {
-          console.log('Continuando corte manual da árvore:', npc.currentTreeId);
+        // Se já está cortando uma árvore, processar um golpe manual
+        if (npc.currentTreeId && npc.state === NPCState.WORKING) {
+          const targetTree = trees[npc.currentTreeId];
+          if (targetTree && !targetTree.isFalling && targetTree.health > 0) {
+            console.log('Continuando corte manual da árvore:', npc.currentTreeId);
 
-          // Reduzir vida da árvore
-          const newHealth = Math.max(0, targetTree.health - 1);
-          updateTree(npc.currentTreeId, { health: newHealth });
+            // Reduzir vida da árvore
+            const newHealth = Math.max(0, targetTree.health - 1);
+            updateTree(npc.currentTreeId, { health: newHealth });
+
+            // Adicionar efeito visual
+            addTextEffect(targetTree.position, 'TOC!', '#FFA500', 800);
+
+            // Aplicar cooldown
+            useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN);
+
+            const progress = targetTree.maxHealth - newHealth;
+            const completed = newHealth <= 0;
+
+            console.log('TOC! Cortando árvore manualmente - progresso:', progress, 'completo:', completed);
+
+            if (completed) {
+              // Árvore cortada com sucesso - adicionar madeira ao inventário
+              console.log('Árvore cortada com sucesso pelo NPC controlado!');
+              const woodResult = addItemToInventory(npcId, 'WOOD', 2); // Ganhar 2 madeiras por árvore
+              if (woodResult.success) {
+                addTextEffect(targetTree.position, '+2 Madeira', '#8B4513', 1200);
+              } else {
+                addTextEffect(targetTree.position, 'Inventário cheio!', '#FF0000', 1200);
+              }
+
+              const { removeTree } = useTreeStore.getState();
+              removeTree(npc.currentTreeId);
+              setNPCState(npcId, NPCState.IDLE, null);
+            }
+            return;
+          }
+        }
+
+        // Buscar árvore prioritária adjacente para começar novo corte
+        const priorityTree = getPriorityTreeForNPC(npc);
+
+        if (priorityTree) {
+          console.log('Árvore encontrada para corte manual:', priorityTree.id);
+          // Iniciar corte manual
+          setNPCState(npcId, NPCState.WORKING, { 
+            currentTreeId: priorityTree.id, 
+            workProgress: 1 
+          });
+
+          // Processar primeiro golpe
+          const newHealth = Math.max(0, priorityTree.health - 1);
+          updateTree(priorityTree.id, { health: newHealth });
 
           // Adicionar efeito visual
-          addTextEffect(targetTree.position, 'TOC!', '#FFA500', 800);
+          addTextEffect(priorityTree.position, 'TOC!', '#FFA500', 800);
 
           // Aplicar cooldown
           useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN);
 
-          const progress = targetTree.maxHealth - newHealth;
-          const completed = newHealth <= 0;
+          console.log('TOC! Cortando árvore manualmente - progresso:', 1, 'completo:', newHealth <= 0);
 
-          console.log('TOC! Cortando árvore manualmente - progresso:', progress, 'completo:', completed);
-
-          if (completed) {
-            // Árvore cortada com sucesso - adicionar madeira ao inventário
+          if (newHealth <= 0) {
             console.log('Árvore cortada com sucesso pelo NPC controlado!');
-            const woodResult = addItemToInventory(npcId, 'WOOD', 2); // Ganhar 2 madeiras por árvore
+            // Adicionar madeira ao inventário
+            const woodResult = addItemToInventory(npcId, 'WOOD', 2);
             if (woodResult.success) {
-              addTextEffect(targetTree.position, '+2 Madeira', '#8B4513', 1200);
+              addTextEffect(priorityTree.position, '+2 Madeira', '#8B4513', 1200);
             } else {
-              addTextEffect(targetTree.position, 'Inventário cheio!', '#FF0000', 1200);
+              addTextEffect(priorityTree.position, 'Inventário cheio!', '#FF0000', 1200);
             }
 
             const { removeTree } = useTreeStore.getState();
-            removeTree(npc.currentTreeId);
+            removeTree(priorityTree.id);
             setNPCState(npcId, NPCState.IDLE, null);
           }
-          return;
+        } else {
+          console.log('Nenhuma árvore adjacente encontrada');
         }
       }
-
-      // Buscar árvore prioritária adjacente para começar novo corte
-      const priorityTree = getPriorityTreeForNPC(npc);
-
-      if (priorityTree) {
-        console.log('Árvore encontrada para corte manual:', priorityTree.id);
-        // Iniciar corte manual
-        setNPCState(npcId, NPCState.WORKING, { 
-          currentTreeId: priorityTree.id, 
-          workProgress: 1 
-        });
-
-        // Processar primeiro golpe
-        const newHealth = Math.max(0, priorityTree.health - 1);
-        updateTree(priorityTree.id, { health: newHealth });
-
-        // Adicionar efeito visual
-        addTextEffect(priorityTree.position, 'TOC!', '#FFA500', 800);
-
-        // Aplicar cooldown
-        useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN);
-
-        console.log('TOC! Cortando árvore manualmente - progresso:', 1, 'completo:', newHealth <= 0);
-
-        if (newHealth <= 0) {
-          console.log('Árvore cortada com sucesso pelo NPC controlado!');
-          // Adicionar madeira ao inventário
-          const woodResult = addItemToInventory(npcId, 'WOOD', 2);
-          if (woodResult.success) {
-            addTextEffect(priorityTree.position, '+2 Madeira', '#8B4513', 1200);
-          } else {
-            addTextEffect(priorityTree.position, 'Inventário cheio!', '#FF0000', 1200);
-          }
-
-          const { removeTree } = useTreeStore.getState();
-          removeTree(priorityTree.id);
-          setNPCState(npcId, NPCState.IDLE, null);
+      // Handle manual stone mining
+      else if (npc.profession === NPCProfession.MINER) {
+        // Verificar cooldown
+        if (useNPCStore.getState().isNPCOnCooldown(npcId)) {
+          console.log('NPC em cooldown, aguarde para próxima mineração');
+          addTextEffect(npc.position, 'Aguarde!', '#FFB347', 600);
+          return;
         }
-      } else {
-        console.log('Nenhuma árvore adjacente encontrada');
+
+        // If already mining a stone, process a manual mine
+        if (npc.currentStoneId && npc.state === NPCState.WORKING) {
+          const targetStone = stones[npc.currentStoneId];
+          if (targetStone && !targetStone.isBreaking && targetStone.health > 0) {
+            console.log('Continuando mineração manual da pedra:', npc.currentStoneId);
+
+            // Reduzir vida da pedra
+            const newHealth = Math.max(0, targetStone.health - 1);
+            updateStone(npc.currentStoneId, { health: newHealth });
+
+            // Adicionar efeito visual
+            addTextEffect(targetStone.position, 'CLANG!', '#A0522D', 800);
+
+            // Aplicar cooldown
+            useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN); // Reusing chop cooldown for now
+
+            const progress = targetStone.maxHealth - newHealth;
+            const completed = newHealth <= 0;
+
+            console.log('CLANG! Minerando pedra manualmente - progresso:', progress, 'completo:', completed);
+
+            if (completed) {
+              // Pedra destruída com sucesso - adicionar recurso ao inventário
+              console.log('Pedra destruída com sucesso pelo NPC controlado!');
+              const stoneResult = addItemToInventory(npcId, 'STONE', 2); // Ganhar 2 pedras por pedra
+              if (stoneResult.success) {
+                addTextEffect(targetStone.position, '+2 Pedra', '#808080', 1200);
+              } else {
+                addTextEffect(targetStone.position, 'Inventário cheio!', '#FF0000', 1200);
+              }
+
+              const { removeStone } = useStoneStore.getState();
+              removeStone(npc.currentStoneId);
+              setNPCState(npcId, NPCState.IDLE, null);
+            }
+            return;
+          }
+        }
+
+        // Buscar pedra prioritária adjacente para começar nova mineração
+        const priorityStone = getPriorityStoneForNPC(npc); // Assuming getPriorityStoneForNPC exists
+
+        if (priorityStone) {
+          console.log('Pedra encontrada para mineração manual:', priorityStone.id);
+          // Iniciar mineração manual
+          setNPCState(npcId, NPCState.WORKING, { 
+            currentStoneId: priorityStone.id, 
+            workProgress: 1 
+          });
+
+          // Processar primeiro golpe
+          const newHealth = Math.max(0, priorityStone.health - 1);
+          updateStone(priorityStone.id, { health: newHealth });
+
+          // Adicionar efeito visual
+          addTextEffect(priorityStone.position, 'CLANG!', '#A0522D', 800);
+
+          // Aplicar cooldown
+          useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN);
+
+          console.log('CLANG! Minerando pedra manualmente - progresso:', 1, 'completo:', newHealth <= 0);
+
+          if (newHealth <= 0) {
+            console.log('Pedra destruída com sucesso pelo NPC controlado!');
+            // Adicionar recurso ao inventário
+            const stoneResult = addItemToInventory(npcId, 'STONE', 2);
+            if (stoneResult.success) {
+              addTextEffect(priorityStone.position, '+2 Pedra', '#808080', 1200);
+            } else {
+              addTextEffect(priorityStone.position, 'Inventário cheio!', '#FF0000', 1200);
+            }
+
+            const { removeStone } = useStoneStore.getState();
+            removeStone(priorityStone.id);
+            setNPCState(npcId, NPCState.IDLE, null);
+          }
+        } else {
+          console.log('Nenhuma pedra adjacente encontrada');
+        }
       }
     };
 
     window.addEventListener('manualWork', handleManualWork as EventListener);
     return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
-  }, [npcs, trees, updateTree, setNPCState, addTextEffect]);
+  }, [npcs, trees, stones, updateTree, updateStone, setNPCState, addTextEffect, getPriorityTreeForNPC, getPriorityStoneForNPC]); // Added getPriorityStoneForNPC dependency
 
   // Carregar sprites das casas
   useEffect(() => {
@@ -279,7 +370,7 @@ export default function GameWorld2D() {
       // Gerar área central com vilas pequenas
       generateProceduralMap({ x: 0, z: 0 }, 30);
 
-    }, 1000);
+    }, 100); // Pequeno delay para garantir que os chunks iniciais sejam gerados
   }, [generateChunkIfNeeded]);
 
   // Game loop for NPC behavior and effects
@@ -291,15 +382,21 @@ export default function GameWorld2D() {
       // Update cooldowns
       useNPCStore.getState().updateCooldowns();
 
-      // Update lumberjack behavior for each NPC with access to tree data
+      // Update lumberjack and miner behavior for each NPC
       Object.values(npcs).forEach((npc) => {
         if (npc.profession === 'LUMBERJACK' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
           console.log('Atualizando comportamento do lenhador:', npc.id, 'estado:', npc.state);
           try {
-            // Create enhanced lumberjack behavior with access to trees
             updateLumberjackBehaviorWithTrees(npc, trees);
           } catch (error) {
             console.error('Erro ao atualizar comportamento do lenhador:', error);
+          }
+        } else if (npc.profession === 'MINER' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
+          console.log('Atualizando comportamento do minerador:', npc.id, 'estado:', npc.state);
+          try {
+            updateMinerBehaviorWithStones(npc, stones);
+          } catch (error) {
+            console.error('Erro ao atualizar comportamento do minerador:', error);
           }
         }
       });
@@ -317,7 +414,7 @@ export default function GameWorld2D() {
     }, 100); // Run every 100ms for smooth updates
 
     return () => clearInterval(gameLoop);
-  }, [npcs, trees, updateNPCMovement, updateEffects]);
+  }, [npcs, trees, stones, updateNPCMovement, updateEffects, updateLumberjackBehaviorWithTrees, updateMinerBehaviorWithStones]);
 
   // Manual tree cutting for controlled NPCs
   const handleManualTreeCutting = useCallback((npcId: string) => {
@@ -373,15 +470,16 @@ export default function GameWorld2D() {
     }
 
     const currentTime = Date.now();
-    const { moveNPC, setNPCControlMode } = useNPCStore.getState();
-    const { damageTree } = useTreeStore.getState();
+    const { moveNPC, setNPCState, updateNPCTask } = useNPCStore.getState();
+    const { damageTree, removeTree } = useTreeStore.getState();
+    const { addTextEffect } = useEffectsStore.getState();
 
     console.log('Lenhador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
 
     switch (npc.state) {
       case NPCState.IDLE: {
         // Find nearest tree within range
-        const treesArray = Object.values(availableTrees).filter(tree => !tree.isFalling);
+        const treesArray = Object.values(availableTrees).filter(tree => !tree.isFalling && tree.health > 0);
         let nearestTree = null;
         let nearestDistance = Infinity;
 
@@ -402,7 +500,7 @@ export default function GameWorld2D() {
           if (nearestDistance === 1) {
             // Adjacent to tree - start working
             console.log('Lenhador adjacente à árvore', nearestTree.id, 'começando trabalho');
-            useNPCStore.getState().setNPCState(npc.id, 'WORKING', {
+            setNPCState(npc.id, 'WORKING', {
               type: 'cut_tree',
               targetId: nearestTree.id,
               targetPosition: nearestTree.position,
@@ -435,27 +533,27 @@ export default function GameWorld2D() {
       case NPCState.WORKING: {
         if (!npc.currentTask || npc.currentTask.type !== 'cut_tree') {
           console.log('Tarefa inválida, voltando ao idle');
-          useNPCStore.getState().setNPCState(npc.id, NPCState.IDLE);
+          setNPCState(npc.id, NPCState.IDLE);
           return;
         }
 
         // Check if tree still exists
         const tree = availableTrees[npc.currentTask.targetId];
-        if (!tree || tree.isFalling) {
-          console.log('Árvore não existe ou está caindo, voltando ao idle');
-          useNPCStore.getState().setNPCState(npc.id, NPCState.IDLE);
+        if (!tree || tree.isFalling || tree.health <= 0) {
+          console.log('Árvore não existe, está caindo ou foi destruída, voltando ao idle');
+          setNPCState(npc.id, NPCState.IDLE);
           return;
         }
 
         // Check if enough time has passed since last chop
-        if (currentTime - npc.lastMovement >= LUMBERJACK_CHOP_INTERVAL) {
+        if (currentTime - (npc.lastActionTime || 0) >= LUMBERJACK_CHOP_INTERVAL) {
           console.log('TOC! Cortando árvore', tree.id);
 
           // Damage the tree
           const treeDestroyed = damageTree(tree.id, 1);
 
           // Update NPC animation and progress
-          const newProgress = npc.currentTask.progress + 1;
+          const newProgress = (npc.currentTask.progress || 0) + 1;
 
           if (treeDestroyed) {
             console.log('Árvore destruída! Lenhador volta ao idle');
@@ -467,18 +565,18 @@ export default function GameWorld2D() {
               addTextEffect(tree.position, 'Inventário cheio!', '#FF0000', 1200);
             }
 
-            const { removeTree } = useTreeStore.getState();
             removeTree(tree.id);
-            useNPCStore.getState().setNPCState(npc.id, NPCState.IDLE);
+            setNPCState(npc.id, NPCState.IDLE);
           } else {
             // Continue working
-            useNPCStore.getState().updateNPCTask(npc.id, {
+            updateNPCTask(npc.id, {
               ...npc.currentTask,
               progress: newProgress
             });
           }
 
           // Add chopping animation
+          setNPCState(npc.id, NPCState.WORKING, { ...npc.currentTask, progress: newProgress, lastActionTime: currentTime});
           useNPCStore.getState().setNPCAnimation(npc.id, {
             type: 'chopping',
             startTime: currentTime,
@@ -490,7 +588,326 @@ export default function GameWorld2D() {
     }
   }, []);
 
+  // Enhanced miner behavior with stone access
+  const updateMinerBehaviorWithStones = useCallback((npc: any, availableStones: Record<string, any>) => {
+    if (npc.profession !== 'MINER' || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
+      return;
+    }
 
+    const currentTime = Date.now();
+    const MINER_WORK_RANGE = 5;
+    const MINER_MINE_INTERVAL = 1200;
+    const { moveNPC, setNPCState, updateNPCTask } = useNPCStore.getState();
+    const { damageStone, removeStone } = useStoneStore.getState();
+    const { addTextEffect } = useEffectsStore.getState();
+
+    console.log('Minerador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
+
+    switch (npc.state) {
+      case NPCState.IDLE: {
+        // Find nearest stone within range
+        const stonesArray = Object.values(availableStones).filter(stone => !stone.isBreaking && stone.health > 0);
+        let nearestStone = null;
+        let nearestDistance = Infinity;
+
+        for (const stone of stonesArray) {
+          const distance = Math.abs(stone.position.x - npc.position.x) + 
+                         Math.abs(stone.position.z - npc.position.z);
+
+          if (distance <= MINER_WORK_RANGE && distance < nearestDistance) {
+            nearestStone = stone;
+            nearestDistance = distance;
+          }
+        }
+
+        console.log('Pedras disponíveis:', stonesArray.length, 'mais próxima:', nearestStone?.id, 'distância:', nearestDistance);
+
+        if (nearestStone) {
+          // Check if adjacent to stone (distance = 1)
+          if (nearestDistance === 1) {
+            // Adjacent to stone - start working
+            console.log('Minerador adjacente à pedra', nearestStone.id, 'começando trabalho');
+            setNPCState(npc.id, 'WORKING', {
+              type: 'mine_stone',
+              targetId: nearestStone.id,
+              targetPosition: nearestStone.position,
+              progress: 0,
+              maxProgress: nearestStone.health
+            });
+          } else {
+            // Move towards stone
+            console.log('Movendo minerador em direção à pedra', nearestStone.id);
+
+            const dx = nearestStone.position.x - npc.position.x;
+            const dz = nearestStone.position.z - npc.position.z;
+
+            let direction = { x: 0, z: 0 };
+
+            // Choose direction - prioritize getting closer
+            if (Math.abs(dx) > Math.abs(dz)) {
+              direction.x = dx > 0 ? 1 : -1;
+            } else {
+              direction.z = dz > 0 ? 1 : -1;
+            }
+
+            // Use the existing moveNPC function
+            moveNPC(npc.id, direction);
+          }
+        }
+        break;
+      }
+
+      case NPCState.WORKING: {
+        if (!npc.currentTask || npc.currentTask.type !== 'mine_stone') {
+          console.log('Tarefa inválida, voltando ao idle');
+          setNPCState(npc.id, NPCState.IDLE);
+          return;
+        }
+
+        // Check if stone still exists
+        const stone = availableStones[npc.currentTask.targetId];
+        if (!stone || stone.isBreaking || stone.health <= 0) {
+          console.log('Pedra não existe, está quebrando ou foi destruída, voltando ao idle');
+          setNPCState(npc.id, NPCState.IDLE);
+          return;
+        }
+
+        // Check if enough time has passed since last mine
+        if (currentTime - (npc.lastActionTime || 0) >= MINER_MINE_INTERVAL) {
+          console.log('CLANG! Minerando pedra', stone.id);
+
+          // Damage the stone
+          const stoneDestroyed = damageStone(stone.id, 1);
+
+          // Update NPC animation and progress
+          const newProgress = (npc.currentTask.progress || 0) + 1;
+
+          if (stoneDestroyed) {
+            console.log('Pedra destruída! Minerador coletou recursos');
+            // Adicionar pedra ao inventário do NPC autônomo
+            const stoneResult = useNPCStore.getState().addResourceToNPC(npc.id, 'stone', 2);
+            if (stoneResult) {
+              addTextEffect(stone.position, '+2 Pedra', '#808080', 1200);
+            } else {
+              addTextEffect(stone.position, 'Inventário cheio!', '#FF0000', 1200);
+            }
+
+            removeStone(stone.id);
+            setNPCState(npc.id, NPCState.IDLE);
+          } else {
+            // Continue working
+            updateNPCTask(npc.id, {
+              ...npc.currentTask,
+              progress: newProgress
+            });
+          }
+
+          // Add mining animation
+          setNPCState(npc.id, NPCState.WORKING, { ...npc.currentTask, progress: newProgress, lastActionTime: currentTime});
+          useNPCStore.getState().setNPCAnimation(npc.id, {
+            type: 'mining',
+            startTime: currentTime,
+            duration: 900 // 900ms mining animation
+          });
+        }
+        break;
+      }
+    }
+  }, []);
+
+  // Hook personalizado para processar ações de trabalho manual
+  useEffect(() => {
+    const handleManualWork = (event: CustomEvent) => {
+      const { npcId } = event.detail;
+
+      if (!npcId || !npcs[npcId]) return;
+
+      const npc = npcs[npcId];
+
+      // Handle manual tree cutting
+      if (npc.profession === NPCProfession.LUMBERJACK) {
+        // ... (existing lumberjack manual work logic) ...
+        // Verificar cooldown
+        if (useNPCStore.getState().isNPCOnCooldown(npcId)) {
+          console.log('NPC em cooldown, aguarde para próximo golpe');
+          addTextEffect(npc.position, 'Aguarde!', '#FFB347', 600);
+          return;
+        }
+
+        // Se já está cortando uma árvore, processar um golpe manual
+        if (npc.currentTreeId && npc.state === NPCState.WORKING) {
+          const targetTree = trees[npc.currentTreeId];
+          if (targetTree && !targetTree.isFalling && targetTree.health > 0) {
+            console.log('Continuando corte manual da árvore:', npc.currentTreeId);
+
+            // Reduzir vida da árvore
+            const newHealth = Math.max(0, targetTree.health - 1);
+            updateTree(npc.currentTreeId, { health: newHealth });
+
+            // Adicionar efeito visual
+            addTextEffect(targetTree.position, 'TOC!', '#FFA500', 800);
+
+            // Aplicar cooldown
+            useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN);
+
+            const progress = targetTree.maxHealth - newHealth;
+            const completed = newHealth <= 0;
+
+            console.log('TOC! Cortando árvore manualmente - progresso:', progress, 'completo:', completed);
+
+            if (completed) {
+              // Árvore cortada com sucesso - adicionar madeira ao inventário
+              console.log('Árvore cortada com sucesso pelo NPC controlado!');
+              const woodResult = addItemToInventory(npcId, 'WOOD', 2); // Ganhar 2 madeiras por árvore
+              if (woodResult.success) {
+                addTextEffect(targetTree.position, '+2 Madeira', '#8B4513', 1200);
+              } else {
+                addTextEffect(targetTree.position, 'Inventário cheio!', '#FF0000', 1200);
+              }
+
+              const { removeTree } = useTreeStore.getState();
+              removeTree(npc.currentTreeId);
+              setNPCState(npcId, NPCState.IDLE, null);
+            }
+            return;
+          }
+        }
+
+        // Buscar árvore prioritária adjacente para começar novo corte
+        const priorityTree = getPriorityTreeForNPC(npc);
+
+        if (priorityTree) {
+          console.log('Árvore encontrada para corte manual:', priorityTree.id);
+          // Iniciar corte manual
+          setNPCState(npcId, NPCState.WORKING, { 
+            currentTreeId: priorityTree.id, 
+            workProgress: 1 
+          });
+
+          // Processar primeiro golpe
+          const newHealth = Math.max(0, priorityTree.health - 1);
+          updateTree(priorityTree.id, { health: newHealth });
+
+          // Adicionar efeito visual
+          addTextEffect(priorityTree.position, 'TOC!', '#FFA500', 800);
+
+          // Aplicar cooldown
+          useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN);
+
+          console.log('TOC! Cortando árvore manualmente - progresso:', 1, 'completo:', newHealth <= 0);
+
+          if (newHealth <= 0) {
+            console.log('Árvore cortada com sucesso pelo NPC controlado!');
+            // Adicionar madeira ao inventário
+            const woodResult = addItemToInventory(npcId, 'WOOD', 2);
+            if (woodResult.success) {
+              addTextEffect(priorityTree.position, '+2 Madeira', '#8B4513', 1200);
+            } else {
+              addTextEffect(priorityTree.position, 'Inventário cheio!', '#FF0000', 1200);
+            }
+
+            const { removeTree } = useTreeStore.getState();
+            removeTree(priorityTree.id);
+            setNPCState(npcId, NPCState.IDLE, null);
+          }
+        } else {
+          console.log('Nenhuma árvore adjacente encontrada');
+        }
+      }
+      // Handle manual stone mining
+      else if (npc.profession === NPCProfession.MINER) {
+        // Verificar cooldown
+        if (useNPCStore.getState().isNPCOnCooldown(npcId)) {
+          console.log('NPC em cooldown, aguarde para próxima mineração');
+          addTextEffect(npc.position, 'Aguarde!', '#FFB347', 600);
+          return;
+        }
+
+        // If already mining a stone, process a manual mine
+        if (npc.currentStoneId && npc.state === NPCState.WORKING) {
+          const targetStone = stones[npc.currentStoneId];
+          if (targetStone && !targetStone.isBreaking && targetStone.health > 0) {
+            console.log('Continuando mineração manual da pedra:', npc.currentStoneId);
+
+            // Reduzir vida da pedra
+            const newHealth = Math.max(0, targetStone.health - 1);
+            updateStone(npc.currentStoneId, { health: newHealth });
+
+            // Adicionar efeito visual
+            addTextEffect(targetStone.position, 'CLANG!', '#A0522D', 800);
+
+            // Aplicar cooldown
+            useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN); // Reusing chop cooldown for now
+
+            const progress = targetStone.maxHealth - newHealth;
+            const completed = newHealth <= 0;
+
+            console.log('CLANG! Minerando pedra manualmente - progresso:', progress, 'completo:', completed);
+
+            if (completed) {
+              // Pedra destruída com sucesso - adicionar recurso ao inventário
+              console.log('Pedra destruída com sucesso pelo NPC controlado!');
+              const stoneResult = addItemToInventory(npcId, 'STONE', 2); // Ganhar 2 pedras por pedra
+              if (stoneResult.success) {
+                addTextEffect(targetStone.position, '+2 Pedra', '#808080', 1200);
+              } else {
+                addTextEffect(targetStone.position, 'Inventário cheio!', '#FF0000', 1200);
+              }
+
+              const { removeStone } = useStoneStore.getState();
+              removeStone(npc.currentStoneId);
+              setNPCState(npcId, NPCState.IDLE, null);
+            }
+            return;
+          }
+        }
+
+        // Buscar pedra prioritária adjacente para começar nova mineração
+        const priorityStone = getPriorityStoneForNPC(npc); // Assuming getPriorityStoneForNPC exists
+
+        if (priorityStone) {
+          console.log('Pedra encontrada para mineração manual:', priorityStone.id);
+          // Iniciar mineração manual
+          setNPCState(npcId, NPCState.WORKING, { 
+            currentStoneId: priorityStone.id, 
+            workProgress: 1 
+          });
+
+          // Processar primeiro golpe
+          const newHealth = Math.max(0, priorityStone.health - 1);
+          updateStone(priorityStone.id, { health: newHealth });
+
+          // Adicionar efeito visual
+          addTextEffect(priorityStone.position, 'CLANG!', '#A0522D', 800);
+
+          // Aplicar cooldown
+          useNPCStore.getState().setNPCCooldown(npcId, CONTROLLED_CHOP_COOLDOWN);
+
+          console.log('CLANG! Minerando pedra manualmente - progresso:', 1, 'completo:', newHealth <= 0);
+
+          if (newHealth <= 0) {
+            console.log('Pedra destruída com sucesso pelo NPC controlado!');
+            // Adicionar recurso ao inventário
+            const stoneResult = addItemToInventory(npcId, 'STONE', 2);
+            if (stoneResult.success) {
+              addTextEffect(priorityStone.position, '+2 Pedra', '#808080', 1200);
+            } else {
+              addTextEffect(priorityStone.position, 'Inventário cheio!', '#FF0000', 1200);
+            }
+
+            const { removeStone } = useStoneStore.getState();
+            removeStone(priorityStone.id);
+            setNPCState(npcId, NPCState.IDLE, null);
+          }
+        } else {
+          console.log('Nenhuma pedra adjacente encontrada');
+        }
+      }
+    };
+
+    window.addEventListener('manualWork', handleManualWork as EventListener);
+    return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
+  }, [npcs, trees, stones, updateTree, updateStone, setNPCState, addTextEffect, getPriorityTreeForNPC, getPriorityStoneForNPC]); // Added getPriorityStoneForNPC dependency
 
   // Converter coordenadas de grid para tela - corrigido para isométrico
   const gridToScreen = useCallback((gridX: number, gridZ: number, canvasWidth: number, canvasHeight: number) => {
@@ -911,7 +1328,8 @@ export default function GameWorld2D() {
     } else if (npc.profession === 'MINER') {
       toolEmoji = '⛏️'; // Pickaxe emoji
     } else if (npc.profession === 'FARMER') {
-      toolEmoji = '🚜'; // Tractor emoji for farmer
+      // Avoid spawning farmers as per user request
+      // toolEmoji = '🚜'; // Tractor emoji for farmer
     }
 
     if (toolEmoji && !npc.animation) { // Only draw tool if not animating (animation handles tool drawing)
@@ -1077,10 +1495,9 @@ export default function GameWorld2D() {
     if (stone.health < stone.maxHealth) {
       // Damaged stone - darker color
       const healthRatio = stone.health / stone.maxHealth;
-      const darkness = 1 - (1 - healthRatio) * 0.3;
-      const r = Math.floor(parseInt(stoneColor.slice(1, 3), 16) * darkness);
-      const g = Math.floor(parseInt(stoneColor.slice(3, 5), 16) * darkness);
-      const b = Math.floor(parseInt(stoneColor.slice(5, 7), 16) * darkness);
+      const r = Math.floor(parseInt(stoneColor.slice(1, 3), 16) * healthRatio);
+      const g = Math.floor(parseInt(stoneColor.slice(3, 5), 16) * healthRatio);
+      const b = Math.floor(parseInt(stoneColor.slice(5, 7), 16) * healthRatio);
       stoneColor = `rgb(${r}, ${g}, ${b})`;
     }
 
@@ -1484,7 +1901,10 @@ export default function GameWorld2D() {
 
     // Desenhar NPCs - sempre renderizar (são poucos e móveis)
     Object.values(npcs).forEach(npc => {
-      drawNPC(ctx, npc, canvas.width, canvas.height);
+      // Verificação para não spawnar fazendeiros
+      if (npc.profession !== NPCProfession.FARMER) {
+        drawNPC(ctx, npc, canvas.width, canvas.height);
+      }
     });
 
     // Draw text effects on top
@@ -1534,6 +1954,9 @@ export default function GameWorld2D() {
 
     // Selecionar NPC
     const npcClicked = Object.values(npcs).find(npc => {
+      // Avoid selecting farmer NPCs
+      if (npc.profession === NPCProfession.FARMER) return false;
+
       const screen = gridToScreen(npc.position.x, npc.position.z, canvas.width, canvas.height);
       const distance = Math.sqrt((x - screen.x) ** 2 + (y - screen.y) ** 2);
       return distance <= CELL_SIZE * 0.4 * zoomRef.current;
@@ -1697,6 +2120,46 @@ export default function GameWorld2D() {
     };
   }, [animate, handleResize]);
 
+  // Função placeholder para encontrar pedra prioritária para um NPC minerador
+  // Esta função precisaria ser implementada com base em critérios semelhantes aos de árvore
+  const getPriorityStoneForNPC = useCallback((npc: any) => {
+    const adjacentPositions = [
+      { x: npc.position.x + 1, z: npc.position.z },
+      { x: npc.position.x - 1, z: npc.position.z },
+      { x: npc.position.x, z: npc.position.z + 1 },
+      { x: npc.position.x, z: npc.position.z - 1 }
+    ];
+
+    const availableStones = [];
+    for (const pos of adjacentPositions) {
+      const stone = Object.values(stones).find(s => 
+        s.position.x === pos.x && 
+        s.position.z === pos.z && 
+        !s.isBreaking && 
+        s.health > 0
+      );
+      if (stone) {
+        availableStones.push(stone);
+      }
+    }
+
+    if (availableStones.length === 0) return null;
+
+    // Priorizar por: 1) Menor vida, 2) Mais próximo do centro (0,0), 3) Posição x menor
+    return availableStones.sort((a, b) => {
+      if (a.health !== b.health) {
+        return a.health - b.health;
+      }
+      const distanceA = Math.abs(a.position.x) + Math.abs(a.position.z);
+      const distanceB = Math.abs(b.position.x) + Math.abs(b.position.z);
+      if (distanceA !== distanceB) {
+        return distanceA - distanceB;
+      }
+      return a.position.x - b.position.x;
+    })[0];
+  }, [stones]);
+
+
   return (
     <canvas
       ref={canvasRef}
@@ -1707,10 +2170,9 @@ export default function GameWorld2D() {
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       style={{
-        display: 'block',
         cursor: isPlacingHouse ? 'crosshair' : 
                isDraggingRef.current ? 'grabbing' :
-               Object.values(npcs).some(npc => npc.controlMode === NPCControlMode.CONTROLLED) ? 'default' : 'grab',
+               Object.values(npcs).some(npc => npc.controlMode === NPCControlMode.CONTROLLED && npc.profession !== NPCProfession.FARMER) ? 'default' : 'grab',
         width: '100%',
         height: '100%',
         touchAction: 'none',

@@ -776,12 +776,16 @@ export const useNPCStore = create<NPCStore>()(
     // Simple resource management for NPCs
     addResourceToNPC: (npcId: string, resource: keyof ResourceInventory, amount: number) => {
       const npc = get().npcs[npcId];
-      if (!npc) return false;
+      if (!npc) {
+        console.log('NPC não encontrado:', npcId);
+        return false;
+      }
 
-      const currentWeight = npc.currentCarriedWeight;
+      const currentWeight = npc.currentCarriedWeight || 0;
       const resourceWeight = amount * (resource === 'wood' ? 1 : resource === 'stone' ? 2 : 0.5);
       
       if (currentWeight + resourceWeight > npc.maxCarryCapacity) {
+        console.log('Capacidade excedida para NPC', npcId, 'peso atual:', currentWeight, 'peso adicional:', resourceWeight, 'capacidade:', npc.maxCarryCapacity);
         return false; // Capacity exceeded
       }
 
@@ -798,6 +802,8 @@ export const useNPCStore = create<NPCStore>()(
           }
         }
       }));
+      
+      console.log('Adicionado', amount, resource, 'ao inventário do NPC', npcId);
       return true;
     },
 

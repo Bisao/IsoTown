@@ -57,21 +57,30 @@ export const useHouseStore = create<HouseStore>()(
                 if (type === 'LUMBERJACK') {
                   profession = NPCProfession.LUMBERJACK;
                 } else if (type === 'FARMER') {
-                  profession = NPCProfession.FARMER;
+                  // TODO: Implementar sistema de farming antes de habilitar
+                  console.log('Casa de fazendeiro criada, mas NPC farmer desabilitado');
+                  profession = NPCProfession.NONE; // Temporariamente desabilitado
                 } else if (type === 'MINER') {
                   profession = NPCProfession.MINER;
                 }
                 
-                const npcId = useNPCStore.getState().addNPC(position, profession);
-                useNPCStore.getState().assignNPCToHouse(npcId, id);
-              
-              // Update house with NPC assignment
-              set((state) => ({
-                houses: {
-                  ...state.houses,
-                  [id]: { ...state.houses[id], npcId }
+                // Só spawnar NPC se tiver profissão válida
+                if (profession !== NPCProfession.NONE) {
+                  const npcId = useNPCStore.getState().addNPC(position, profession, id);
+                  useNPCStore.getState().assignNPCToHouse(npcId, id);
+                  
+                  // Update house with NPC assignment
+                  set((state) => ({
+                    houses: {
+                      ...state.houses,
+                      [id]: { ...state.houses[id], npcId }
+                    }
+                  }));
+                  
+                  console.log('NPC', profession, 'spawnou na casa', id, 'na posição', position);
+                } else {
+                  console.log('Casa criada sem NPC devido à profissão desabilitada');
                 }
-              }));
               }
             });
           });
