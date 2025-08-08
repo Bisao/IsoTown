@@ -25,9 +25,9 @@ export default function RPGControlModal() {
       <div className="rpg-control-content">
         {/* Left side buttons */}
         <div className="rpg-buttons-left">
-          <button className="rpg-button">CHAR</button>
-          <button className="rpg-button">QUESTS</button>
-          <button className="rpg-button">MAP</button>
+          <button className="win98-button rpg-button">CHAR</button>
+          <button className="win98-button rpg-button">QUESTS</button>
+          <button className="win98-button rpg-button">MAP</button>
 
           {/* Health orb above QUESTS button */}
           <div className="rpg-orb-container health">
@@ -49,9 +49,9 @@ export default function RPGControlModal() {
 
         {/* Right side buttons */}
         <div className="rpg-buttons-right">
-          <button className="rpg-button">INV</button>
+          <button className="win98-button rpg-button">INV</button>
           <button
-            className="rpg-button"
+            className="win98-button"
             onClick={handleMenuClick}
             style={{
               backgroundColor: showNPCModal ? '#8B4513' : '#4A4A4A',
@@ -60,7 +60,7 @@ export default function RPGControlModal() {
           >
             MENU
           </button>
-          <button className="rpg-button">QUIT</button>
+          <button className="win98-button rpg-button">QUIT</button>
 
           {/* Mana orb above MENU button */}
           <div className="rpg-orb-container mana">
