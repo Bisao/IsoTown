@@ -864,7 +864,7 @@ export default function GameWorld2D() {
     ctx.stroke();
 
     // Tool emoji in hand based on profession
-    ctx.font = `${Math.max(12, radius * 0.8)}px Arial`;
+    ctx.font = `${Math.max(16, radius * 1.2)}px Arial`; // Increased size
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
@@ -878,9 +878,9 @@ export default function GameWorld2D() {
     }
     
     if (toolEmoji) {
-      // Position tool emoji next to NPC (in their "hand")
-      const toolX = screen.x + radius * 0.8;
-      const toolY = npcY - radius * 0.2;
+      // Position tool emoji to the left side of the NPC
+      const toolX = screen.x - radius * 1.2; // Moved to left side
+      const toolY = npcY;
       
       // Add subtle shadow for better visibility
       ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
