@@ -82,6 +82,44 @@ export default function GameWorld2D() {
     })[0];
   }, [trees]);
 
+  // Função para encontrar pedra prioritária para um NPC minerador
+  const getPriorityStoneForNPC = useCallback((npc: any) => {
+    const adjacentPositions = [
+      { x: npc.position.x + 1, z: npc.position.z },
+      { x: npc.position.x - 1, z: npc.position.z },
+      { x: npc.position.x, z: npc.position.z + 1 },
+      { x: npc.position.x, z: npc.position.z - 1 }
+    ];
+
+    const availableStones = [];
+    for (const pos of adjacentPositions) {
+      const stone = Object.values(stones).find(s => 
+        s.position.x === pos.x && 
+        s.position.z === pos.z && 
+        !s.isBreaking && 
+        s.health > 0
+      );
+      if (stone) {
+        availableStones.push(stone);
+      }
+    }
+
+    if (availableStones.length === 0) return null;
+
+    // Priorizar por: 1) Menor vida, 2) Mais próximo do centro (0,0), 3) Posição x menor
+    return availableStones.sort((a, b) => {
+      if (a.health !== b.health) {
+        return a.health - b.health;
+      }
+      const distanceA = Math.abs(a.position.x) + Math.abs(a.position.z);
+      const distanceB = Math.abs(b.position.x) + Math.abs(b.position.z);
+      if (distanceA !== distanceB) {
+        return distanceA - distanceB;
+      }
+      return a.position.x - b.position.x;
+    })[0];
+  }, [stones]);
+
   // Hook personalizado para processar ações de trabalho manual
   useEffect(() => {
     const handleManualWork = (event: CustomEvent) => {
@@ -229,7 +267,7 @@ export default function GameWorld2D() {
         }
 
         // Buscar pedra prioritária adjacente para começar nova mineração
-        const priorityStone = getPriorityStoneForNPC(npc); // Assuming getPriorityStoneForNPC exists
+        const priorityStone = getPriorityStoneForNPC(npc);
 
         if (priorityStone) {
           console.log('Pedra encontrada para mineração manual:', priorityStone.id);
@@ -273,7 +311,7 @@ export default function GameWorld2D() {
 
     window.addEventListener('manualWork', handleManualWork as EventListener);
     return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
-  }, [npcs, trees, stones, updateTree, updateStone, setNPCState, addTextEffect, getPriorityTreeForNPC, getPriorityStoneForNPC]); // Added getPriorityStoneForNPC dependency
+  }, [npcs, trees, stones, updateTree, updateStone, setNPCState, addTextEffect, getPriorityTreeForNPC, getPriorityStoneForNPC]);
 
   // Carregar sprites das casas
   useEffect(() => {
@@ -2120,44 +2158,7 @@ export default function GameWorld2D() {
     };
   }, [animate, handleResize]);
 
-  // Função placeholder para encontrar pedra prioritária para um NPC minerador
-  // Esta função precisaria ser implementada com base em critérios semelhantes aos de árvore
-  const getPriorityStoneForNPC = useCallback((npc: any) => {
-    const adjacentPositions = [
-      { x: npc.position.x + 1, z: npc.position.z },
-      { x: npc.position.x - 1, z: npc.position.z },
-      { x: npc.position.x, z: npc.position.z + 1 },
-      { x: npc.position.x, z: npc.position.z - 1 }
-    ];
-
-    const availableStones = [];
-    for (const pos of adjacentPositions) {
-      const stone = Object.values(stones).find(s => 
-        s.position.x === pos.x && 
-        s.position.z === pos.z && 
-        !s.isBreaking && 
-        s.health > 0
-      );
-      if (stone) {
-        availableStones.push(stone);
-      }
-    }
-
-    if (availableStones.length === 0) return null;
-
-    // Priorizar por: 1) Menor vida, 2) Mais próximo do centro (0,0), 3) Posição x menor
-    return availableStones.sort((a, b) => {
-      if (a.health !== b.health) {
-        return a.health - b.health;
-      }
-      const distanceA = Math.abs(a.position.x) + Math.abs(a.position.z);
-      const distanceB = Math.abs(b.position.x) + Math.abs(b.position.z);
-      if (distanceA !== distanceB) {
-        return distanceA - distanceB;
-      }
-      return a.position.x - b.position.x;
-    })[0];
-  }, [stones]);
+  
 
 
   return (
