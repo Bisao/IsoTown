@@ -169,34 +169,40 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   },
 
   generateRandomTrees: () => {
-    set({ trees: {} });
-    console.log('Gerando árvores por chunks para otimização...');
-
-    // Gerar árvores apenas em uma área inicial menor para performance
-    const initialArea = 100; // Área inicial de 200x200 ao redor do centro
-    const halfArea = Math.floor(initialArea / 2);
-
-    for (let x = -halfArea; x <= halfArea; x++) {
-      for (let z = -halfArea; z <= halfArea; z++) {
-        const position = { x, z };
-
-        if (isValidGridPosition(position) && Math.random() < TREE_DENSITY) {
-          get().addTree(position);
-        }
-      }
-    }
+    // Não mais usado - substituído pela geração procedural
+    console.log('Sistema de geração procedural ativo');
   },
 
   generateTreesInChunk: (chunkX: number, chunkZ: number, chunkSize: number = 50) => {
     const startX = chunkX * chunkSize;
     const startZ = chunkZ * chunkSize;
 
+    // Usar seed determinística baseada na posição do chunk para gerar sempre os mesmos recursos
+    const chunkSeed = chunkX * 1000 + chunkZ;
+    
     for (let x = startX; x < startX + chunkSize; x++) {
       for (let z = startZ; z < startZ + chunkSize; z++) {
         const position = { x, z };
 
-        if (isValidGridPosition(position) && Math.random() < TREE_DENSITY) {
-          get().addTree(position);
+        if (isValidGridPosition(position)) {
+          // Criar seed única para esta posição
+          const tileSeed = (x + 50000) * 100000 + (z + 50000); // Offset para evitar negativos
+          
+          // Usar função hash simples para pseudo-randomização determinística
+          const hash = (tileSeed * 9301 + 49297) % 233280;
+          const random = hash / 233280.0;
+
+          if (random < TREE_DENSITY) {
+            // Determinar tipo de árvore baseado na posição
+            const typeRandom = ((tileSeed * 7919) % 100) / 100.0;
+            let treeType: 'pine' | 'oak' | 'birch' = 'pine';
+            
+            if (typeRandom < 0.4) treeType = 'oak';
+            else if (typeRandom < 0.7) treeType = 'birch';
+            else treeType = 'pine';
+
+            get().addTree(position, treeType);
+          }
         }
       }
     }

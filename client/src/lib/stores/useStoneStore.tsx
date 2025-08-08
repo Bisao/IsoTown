@@ -169,27 +169,12 @@ export const useStoneStore = create<StoneStore>()((set, get) => ({
   },
 
   generateRandomStones: () => {
-    console.log('Gerando pedras por chunks para otimização...');
-
-    // Gerar pedras apenas em uma área inicial menor para performance
-    const initialArea = 100; // Área inicial de 200x200 ao redor do centro
-    const halfArea = Math.floor(initialArea / 2);
-    const stoneTypes = ['small', 'medium', 'large'] as const; // Alterado para os tipos corretos
-
-    for (let x = -halfArea; x <= halfArea; x++) {
-      for (let z = -halfArea; z <= halfArea; z++) {
-        const position = { x, z };
-
-        if (isValidGridPosition(position) && Math.random() < STONE_DENSITY) {
-          const randomType = stoneTypes[Math.floor(Math.random() * stoneTypes.length)];
-          get().addStone(position, randomType);
-        }
-      }
-    }
+    // Não mais usado - substituído pela geração procedural
+    console.log('Sistema de geração procedural ativo');
   },
 
   generateStonesInChunk: (chunkX: number, chunkZ: number, chunkSize: number = 50) => {
-    const stoneTypes = ['small', 'medium', 'large'] as const; // Alterado para os tipos corretos
+    const stoneTypes = ['small', 'medium', 'large'] as const;
     const startX = chunkX * chunkSize;
     const startZ = chunkZ * chunkSize;
 
@@ -197,9 +182,25 @@ export const useStoneStore = create<StoneStore>()((set, get) => ({
       for (let z = startZ; z < startZ + chunkSize; z++) {
         const position = { x, z };
 
-        if (isValidGridPosition(position) && Math.random() < STONE_DENSITY) {
-          const randomType = stoneTypes[Math.floor(Math.random() * stoneTypes.length)];
-          get().addStone(position, randomType);
+        if (isValidGridPosition(position)) {
+          // Criar seed única para esta posição (diferente das árvores)
+          const tileSeed = (x + 50000) * 100000 + (z + 50000) + 12345; // Offset diferente para pedras
+          
+          // Usar função hash simples para pseudo-randomização determinística
+          const hash = (tileSeed * 9301 + 49297) % 233280;
+          const random = hash / 233280.0;
+
+          if (random < STONE_DENSITY) {
+            // Determinar tipo de pedra baseado na posição
+            const typeRandom = ((tileSeed * 7919) % 100) / 100.0;
+            let stoneType: 'small' | 'medium' | 'large' = 'medium';
+            
+            if (typeRandom < 0.5) stoneType = 'small';
+            else if (typeRandom < 0.8) stoneType = 'medium';
+            else stoneType = 'large';
+
+            get().addStone(position, stoneType);
+          }
         }
       }
     }

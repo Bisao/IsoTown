@@ -215,19 +215,59 @@ export default function GameWorld2D() {
     loadSprites();
   }, []);
 
-  // Gerar árvores e pedras aleatórias na primeira renderização
+  // Sistema de geração procedural por chunks baseado na posição da câmera
+  const CHUNK_SIZE = 50; // Tamanho do chunk em tiles
+  const RENDER_DISTANCE = 3; // Quantos chunks ao redor renderizar
+  const generatedChunksRef = useRef<Set<string>>(new Set());
+
+  // Função para calcular qual chunk uma posição pertence
+  const getChunkKey = useCallback((x: number, z: number) => {
+    const chunkX = Math.floor(x / CHUNK_SIZE);
+    const chunkZ = Math.floor(z / CHUNK_SIZE);
+    return `${chunkX},${chunkZ}`;
+  }, []);
+
+  // Função para gerar recursos em um chunk se ainda não foi gerado
+  const generateChunkIfNeeded = useCallback((chunkX: number, chunkZ: number) => {
+    const chunkKey = `${chunkX},${chunkZ}`;
+    
+    if (!generatedChunksRef.current.has(chunkKey)) {
+      // Gerar árvores e pedras neste chunk
+      generateTreesInChunk(chunkX, chunkZ, CHUNK_SIZE);
+      generateStonesInChunk(chunkX, chunkZ, CHUNK_SIZE);
+      generatedChunksRef.current.add(chunkKey);
+      console.log(`Chunk gerado: ${chunkKey}`);
+    }
+  }, [generateTreesInChunk, generateStonesInChunk]);
+
+  // Gerar chunks baseado na posição da câmera
   useEffect(() => {
-    const treeCount = Object.keys(trees).length;
-    const stoneCount = Object.keys(stones).length;
-    if (treeCount === 0) {
-      console.log('Gerando árvores aleatórias...');
-      generateRandomTrees();
+    // Calcular posição central da câmera no grid
+    const cameraCenterX = Math.floor(-panRef.current.x / (CELL_SIZE * zoomRef.current));
+    const cameraCenterZ = Math.floor(-panRef.current.y / (CELL_SIZE * zoomRef.current));
+
+    // Determinar quais chunks devem estar carregados
+    const centerChunkX = Math.floor(cameraCenterX / CHUNK_SIZE);
+    const centerChunkZ = Math.floor(cameraCenterZ / CHUNK_SIZE);
+
+    // Gerar chunks em um raio ao redor da câmera
+    for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
+      for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
+        const chunkX = centerChunkX + dx;
+        const chunkZ = centerChunkZ + dz;
+        generateChunkIfNeeded(chunkX, chunkZ);
+      }
     }
-    if (stoneCount === 0) {
-      console.log('Gerando pedras aleatórias...');
-      generateRandomStones();
-    }
-  }, [generateRandomTrees, generateRandomStones, trees, stones]);
+  }, [panRef.current.x, panRef.current.y, zoomRef.current, generateChunkIfNeeded]);
+
+  // Gerar chunk inicial ao redor do spawn (0,0)
+  useEffect(() => {
+    generateChunkIfNeeded(0, 0);
+    generateChunkIfNeeded(-1, 0);
+    generateChunkIfNeeded(1, 0);
+    generateChunkIfNeeded(0, -1);
+    generateChunkIfNeeded(0, 1);
+  }, [generateChunkIfNeeded]);
 
   // Game loop for NPC behavior and effects
   useEffect(() => {
@@ -465,6 +505,13 @@ export default function GameWorld2D() {
 
     return { x: gridX, z: gridZ };
   }, []);
+
+  // Função para verificar se um objeto está visível na tela
+  const isObjectVisible = useCallback((position: { x: number, z: number }, canvasWidth: number, canvasHeight: number, margin: number = 100) => {
+    const screen = gridToScreen(position.x, position.z, canvasWidth, canvasHeight);
+    return screen.x >= -margin && screen.x <= canvasWidth + margin && 
+           screen.y >= -margin && screen.y <= canvasHeight + margin;
+  }, [gridToScreen]);
 
   // Desenhar grid (memoizado) - otimizado para renderizar apenas área visível
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
@@ -1263,20 +1310,28 @@ export default function GameWorld2D() {
     // Desenhar elementos
     drawGrid(ctx, canvas.width, canvas.height);
 
-    // Desenhar pedras primeiro (fundo)
+    // Desenhar pedras primeiro (fundo) - apenas as visíveis
     Object.values(stones).forEach(stone => {
-      drawStone(ctx, stone, canvas.width, canvas.height);
+      if (isObjectVisible(stone.position, canvas.width, canvas.height)) {
+        drawStone(ctx, stone, canvas.width, canvas.height);
+      }
     });
 
-    // Desenhar árvores
+    // Desenhar árvores - apenas as visíveis
     Object.values(trees).forEach(tree => {
-      drawTree(ctx, tree, canvas.width, canvas.height);
+      if (isObjectVisible(tree.position, canvas.width, canvas.height)) {
+        drawTree(ctx, tree, canvas.width, canvas.height);
+      }
     });
 
+    // Desenhar casas - apenas as visíveis
     Object.values(houses).forEach(house => {
-      drawHouse(ctx, house, canvas.width, canvas.height);
+      if (isObjectVisible(house.position, canvas.width, canvas.height)) {
+        drawHouse(ctx, house, canvas.width, canvas.height);
+      }
     });
 
+    // Desenhar NPCs - sempre renderizar (são poucos e móveis)
     Object.values(npcs).forEach(npc => {
       drawNPC(ctx, npc, canvas.width, canvas.height);
     });
