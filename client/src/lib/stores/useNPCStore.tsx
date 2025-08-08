@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { NPC, Position, NPCControlMode, NPCProfession, NPCState, NPCAnimation } from '../types';
-import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPING_ANIMATION_DURATION } from '../constants';
+import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPING_ANIMATION_DURATION, GAME_ITEMS, STARTING_INVENTORIES, INVENTORY_MAX_SLOTS, MAX_CARRY_WEIGHT } from '../constants';
 import { nanoid } from 'nanoid';
 import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid';
 import { getRandomDirection, findPath } from '../utils/pathfinding';
@@ -16,6 +16,11 @@ interface NPCStore {
   removeNPC: (id: string) => void;
   moveNPC: (id: string, direction: { x: number; z: number }) => void;
   selectNPC: (id: string) => void;
+  setNPCTarget: (id: string, target: Position) => void;
+  setNPCProfession: (id: string, profession: NPCProfession) => void;
+  assignNPCToHouse: (npcId: string, houseId: string) => void;
+  unassignNPCFromHouse: (npcId: string) => void;
+  updateLumberjackBehavior: (npc: any) => void;
   setNPCControlMode: (id: string, mode: NPCControlMode) => void;
   setNPCState: (id: string, state: NPCState, task?: any) => void;
   setNPCAnimation: (id: string, animation: NPCAnimation | undefined) => void;
@@ -24,11 +29,21 @@ interface NPCStore {
   updateNPCTask: (id: string, task: any) => void;
   performWork: (id: string) => { success: boolean; message: string };
   stopWork: (id: string) => { success: boolean; message: string };
-  startManualTreeCutting: (id: string) => boolean;
+  startManualTreeCutting: (id: string) => { success: boolean; message: string; adjacentPositions?: Position[] };
   startCuttingTree: (npcId: string, treeId: string) => void;
   isNPCOnCooldown: (id: string) => boolean;
   setNPCCooldown: (id: string, duration: number) => void;
   updateCooldowns: () => void;
+  
+  // Inventory functions
+  addItemToInventory: (npcId: string, itemId: string, quantity: number) => boolean;
+  removeItemFromInventory: (npcId: string, itemId: string, quantity: number) => boolean;
+  getInventoryItem: (npcId: string, itemId: string) => number;
+  getInventoryCount: (npcId: string) => number;
+  initializeInventory: (npcId: string, profession: NPCProfession) => void;
+  transferItem: (fromNpcId: string, toNpcId: string, itemId: string, quantity: number) => boolean;
+  clearInventory: (npcId: string) => void;
+  getInventoryItems: (npcId: string) => Array<{id: string, quantity: number, item: any}>;
 }
 
 export const useNPCStore = create<NPCStore>()(
@@ -36,7 +51,7 @@ export const useNPCStore = create<NPCStore>()(
     npcs: {},
     npcCooldowns: {},
 
-    addNPC: (position, profession = NPCProfession.NONE) => {
+    addNPC: (position, profession = NPCProfession.NONE, houseId) => {
       const id = nanoid();
       const npc: NPC = {
         id,
@@ -45,12 +60,17 @@ export const useNPCStore = create<NPCStore>()(
         profession,
         state: NPCState.IDLE,
         isMoving: false,
-        lastMovement: Date.now()
+        lastMovement: Date.now(),
+        houseId,
+        inventory: {}
       };
 
       set((state) => ({
         npcs: { ...state.npcs, [id]: npc }
       }));
+
+      // Initialize inventory based on profession
+      get().initializeInventory(id, profession);
 
       console.log('Novo NPC criado:', id, 'na posição:', position, 'profissão:', profession);
       return id;
@@ -113,7 +133,7 @@ export const useNPCStore = create<NPCStore>()(
       }
     },
 
-    setNPCTarget: (id, target) => set((state) => ({
+    setNPCTarget: (id: string, target: Position) => set((state) => ({
       npcs: {
         ...state.npcs,
         [id]: { ...state.npcs[id], targetPosition: target }
@@ -127,21 +147,21 @@ export const useNPCStore = create<NPCStore>()(
       }
     })),
 
-    setNPCProfession: (id, profession) => set((state) => ({
+    setNPCProfession: (id: string, profession: NPCProfession) => set((state) => ({
       npcs: {
         ...state.npcs,
         [id]: { ...state.npcs[id], profession }
       }
     })),
 
-    assignNPCToHouse: (npcId, houseId) => set((state) => ({
+    assignNPCToHouse: (npcId: string, houseId: string) => set((state) => ({
       npcs: {
         ...state.npcs,
         [npcId]: { ...state.npcs[npcId], houseId }
       }
     })),
 
-    unassignNPCFromHouse: (npcId) => set((state) => ({
+    unassignNPCFromHouse: (npcId: string) => set((state) => ({
       npcs: {
         ...state.npcs,
         [npcId]: { ...state.npcs[npcId], houseId: undefined }
@@ -249,7 +269,7 @@ export const useNPCStore = create<NPCStore>()(
       }
     },
 
-    updateLumberjackBehavior: (npc) => {
+    updateLumberjackBehavior: (npc: any) => {
       if (npc.profession !== NPCProfession.LUMBERJACK || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
         return;
       }
@@ -521,11 +541,11 @@ export const useNPCStore = create<NPCStore>()(
       switch (npc.profession) {
         case NPCProfession.LUMBERJACK:
           // Ao iniciar o corte manual, aplicamos um cooldown
-          const { adjacentPositions } = get().startManualTreeCutting(id);
-          if (adjacentPositions) {
+          const result = get().startManualTreeCutting(id);
+          if (result.adjacentPositions) {
             // Define o cooldown para o lenhador (ex: 1 segundo após tentar cortar)
             get().setNPCCooldown(id, 1000); 
-            return { success: true, message: 'Procurando árvores adjacentes para cortar...', adjacentPositions };
+            return { success: true, message: 'Procurando árvores adjacentes para cortar...', adjacentPositions: result.adjacentPositions };
           } else {
             return { success: false, message: 'Não foi possível iniciar o corte.' };
           }
@@ -664,9 +684,9 @@ export const useNPCStore = create<NPCStore>()(
     },
 
     // Funções de cooldown
-    isNPCOnCooldown: (id) => {
+    isNPCOnCooldown: (id: string) => {
       const cooldowns = get().npcCooldowns;
-      return cooldowns[id] && cooldowns[id] > Date.now();
+      return !!(cooldowns[id] && cooldowns[id] > Date.now());
     },
 
     setNPCCooldown: (id, duration) => {
@@ -689,6 +709,263 @@ export const useNPCStore = create<NPCStore>()(
         });
         return { npcCooldowns: updatedCooldowns };
       });
+    },
+
+    // ===== INVENTORY SYSTEM =====
+    
+    initializeInventory: (npcId: string, profession: NPCProfession) => {
+      const startingItems = STARTING_INVENTORIES[profession] || {};
+      const inventory: Record<string, number> = {};
+      
+      Object.entries(startingItems).forEach(([itemId, quantity]) => {
+        if (GAME_ITEMS[itemId as keyof typeof GAME_ITEMS]) {
+          inventory[itemId] = quantity as number;
+        }
+      });
+      
+      set((state) => ({
+        npcs: {
+          ...state.npcs,
+          [npcId]: {
+            ...state.npcs[npcId],
+            inventory
+          }
+        }
+      }));
+      
+      console.log('Inventário inicializado para NPC', npcId, 'profissão:', profession, 'itens:', inventory);
+    },
+
+    getTotalWeight: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc || !npc.inventory) return 0;
+      
+      let totalWeight = 0;
+      Object.entries(npc.inventory).forEach(([itemId, quantity]) => {
+        const item = GAME_ITEMS[itemId as keyof typeof GAME_ITEMS];
+        if (item && quantity > 0) {
+          totalWeight += item.weight * quantity;
+        }
+      });
+      
+      return Math.round(totalWeight * 10) / 10; // Arredondar para 1 casa decimal
+    },
+
+    getMaxCarryWeight: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc || !npc.inventory) return MAX_CARRY_WEIGHT;
+      
+      let maxWeight = MAX_CARRY_WEIGHT;
+      
+      // Verificar se tem mochila para aumentar capacidade
+      const backpackCount = npc.inventory['BACKPACK'] || 0;
+      if (backpackCount > 0) {
+        maxWeight += 20; // Mochila adiciona 20kg de capacidade
+      }
+      
+      return maxWeight;
+    },
+
+    isOverweight: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc || !npc.inventory) return false;
+      
+      let totalWeight = 0;
+      Object.entries(npc.inventory).forEach(([itemId, quantity]) => {
+        const item = GAME_ITEMS[itemId as keyof typeof GAME_ITEMS];
+        if (item && quantity > 0) {
+          totalWeight += item.weight * quantity;
+        }
+      });
+      
+      let maxWeight = MAX_CARRY_WEIGHT;
+      const backpackCount = npc.inventory['BACKPACK'] || 0;
+      if (backpackCount > 0) {
+        maxWeight += 20;
+      }
+      
+      return totalWeight > maxWeight;
+    },
+
+    canCarryItem: (npcId: string, itemId: string, quantity: number) => {
+      const item = GAME_ITEMS[itemId as keyof typeof GAME_ITEMS];
+      if (!item) {
+        return { canCarry: false, reason: 'Item não encontrado' };
+      }
+      
+      const store = get();
+      const currentWeight = store.getTotalWeight(npcId);
+      const maxWeight = store.getMaxCarryWeight(npcId);
+      const itemWeight = item.weight * quantity;
+      
+      if (currentWeight + itemWeight > maxWeight) {
+        const availableWeight = maxWeight - currentWeight;
+        const maxQuantity = Math.floor(availableWeight / item.weight);
+        return { 
+          canCarry: false, 
+          reason: `Muito pesado! Peso atual: ${currentWeight}kg/${maxWeight}kg. Máximo que pode carregar: ${maxQuantity} ${item.name}` 
+        };
+      }
+      
+      return { canCarry: true };
+    },
+
+    addItemToInventory: (npcId: string, itemId: string, quantity: number) => {
+      const npc = get().npcs[npcId];
+      if (!npc) {
+        return { success: false, reason: 'NPC não encontrado' };
+      }
+      
+      const item = GAME_ITEMS[itemId as keyof typeof GAME_ITEMS];
+      if (!item) {
+        return { success: false, reason: 'Item não existe' };
+      }
+      
+      if (quantity <= 0) {
+        return { success: false, reason: 'Quantidade deve ser positiva' };
+      }
+      
+      // Verificar peso
+      const store = get();
+      const weightCheck = store.canCarryItem(npcId, itemId, quantity);
+      if (!weightCheck.canCarry) {
+        return { success: false, reason: weightCheck.reason };
+      }
+      
+      // Verificar limite de stack
+      const currentQuantity = npc.inventory?.[itemId] || 0;
+      const newQuantity = currentQuantity + quantity;
+      
+      if (newQuantity > item.maxStack) {
+        const canAdd = item.maxStack - currentQuantity;
+        return { 
+          success: false, 
+          reason: `Stack cheio! Máximo: ${item.maxStack}, atual: ${currentQuantity}, pode adicionar: ${canAdd}` 
+        };
+      }
+      
+      // Adicionar item
+      set((state) => ({
+        npcs: {
+          ...state.npcs,
+          [npcId]: {
+            ...state.npcs[npcId],
+            inventory: {
+              ...state.npcs[npcId].inventory,
+              [itemId]: newQuantity
+            }
+          }
+        }
+      }));
+      
+      console.log('Item adicionado:', quantity, 'x', item.name, 'para NPC', npcId);
+      return { success: true };
+    },
+
+    removeItemFromInventory: (npcId: string, itemId: string, quantity: number) => {
+      const npc = get().npcs[npcId];
+      if (!npc || !npc.inventory) return false;
+      
+      const currentQuantity = npc.inventory[itemId] || 0;
+      if (currentQuantity < quantity) return false;
+      
+      const newQuantity = currentQuantity - quantity;
+      
+      set((state) => {
+        const newInventory = { ...state.npcs[npcId].inventory };
+        
+        if (newQuantity <= 0) {
+          delete newInventory[itemId];
+        } else {
+          newInventory[itemId] = newQuantity;
+        }
+        
+        return {
+          npcs: {
+            ...state.npcs,
+            [npcId]: {
+              ...state.npcs[npcId],
+              inventory: newInventory
+            }
+          }
+        };
+      });
+      
+      console.log('Item removido:', quantity, 'x', itemId, 'de NPC', npcId);
+      return true;
+    },
+
+    getInventoryItem: (npcId: string, itemId: string) => {
+      const npc = get().npcs[npcId];
+      return npc?.inventory?.[itemId] || 0;
+    },
+
+    getInventoryCount: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc?.inventory) return 0;
+      
+      return Object.keys(npc.inventory).length;
+    },
+
+    getInventoryItems: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc?.inventory) return [];
+      
+      return Object.entries(npc.inventory)
+        .filter(([_, quantity]) => quantity > 0)
+        .map(([itemId, quantity]) => ({
+          id: itemId,
+          quantity,
+          item: GAME_ITEMS[itemId as keyof typeof GAME_ITEMS]
+        }))
+        .filter(entry => entry.item); // Filtrar itens que não existem mais
+    },
+
+    transferItem: (fromNpcId: string, toNpcId: string, itemId: string, quantity: number) => {
+      const fromNpc = get().npcs[fromNpcId];
+      const toNpc = get().npcs[toNpcId];
+      
+      if (!fromNpc || !toNpc) {
+        return { success: false, reason: 'NPC não encontrado' };
+      }
+      
+      const currentQuantity = fromNpc.inventory?.[itemId] || 0;
+      if (currentQuantity < quantity) {
+        return { success: false, reason: 'Quantidade insuficiente no inventário de origem' };
+      }
+      
+      // Verificar se o NPC de destino pode carregar
+      const store = get();
+      const weightCheck = store.canCarryItem(toNpcId, itemId, quantity);
+      if (!weightCheck.canCarry) {
+        return { success: false, reason: weightCheck.reason };
+      }
+      
+      // Tentar adicionar ao destino
+      const addResult = store.addItemToInventory(toNpcId, itemId, quantity);
+      if (!addResult.success) {
+        return addResult;
+      }
+      
+      // Remover da origem
+      store.removeItemFromInventory(fromNpcId, itemId, quantity);
+      
+      console.log('Item transferido:', quantity, 'x', itemId, 'de', fromNpcId, 'para', toNpcId);
+      return { success: true };
+    },
+
+    clearInventory: (npcId: string) => {
+      set((state) => ({
+        npcs: {
+          ...state.npcs,
+          [npcId]: {
+            ...state.npcs[npcId],
+            inventory: {}
+          }
+        }
+      }));
+      
+      console.log('Inventário limpo para NPC', npcId);
     }
   }))
 );

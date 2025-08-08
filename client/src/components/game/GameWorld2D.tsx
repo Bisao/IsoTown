@@ -24,7 +24,7 @@ export default function GameWorld2D() {
   const trees = useTreeStore(state => state.trees);
   const stones = useStoneStore(state => state.stones);
   const textEffects = useEffectsStore(state => state.effects);
-  const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree, setNPCState } = useNPCStore();
+  const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree, setNPCState, addItemToInventory } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt, updateTree, removeTree } = useTreeStore();
@@ -117,8 +117,15 @@ export default function GameWorld2D() {
           console.log('TOC! Cortando árvore manualmente - progresso:', progress, 'completo:', completed);
 
           if (completed) {
-            // Árvore cortada com sucesso
+            // Árvore cortada com sucesso - adicionar madeira ao inventário
             console.log('Árvore cortada com sucesso pelo NPC controlado!');
+            const woodResult = addItemToInventory(npcId, 'WOOD', 2); // Ganhar 2 madeiras por árvore
+            if (woodResult.success) {
+              addTextEffect(targetTree.position, '+2 Madeira', '#8B4513', 1200);
+            } else {
+              addTextEffect(targetTree.position, 'Inventário cheio!', '#FF0000', 1200);
+            }
+            
             const { removeTree } = useTreeStore.getState();
             removeTree(npc.currentTreeId);
             setNPCState(npcId, 'IDLE', null);
@@ -152,6 +159,14 @@ export default function GameWorld2D() {
 
         if (newHealth <= 0) {
           console.log('Árvore cortada com sucesso pelo NPC controlado!');
+          // Adicionar madeira ao inventário
+          const woodResult = addItemToInventory(npcId, 'WOOD', 2);
+          if (woodResult.success) {
+            addTextEffect(priorityTree.position, '+2 Madeira', '#8B4513', 1200);
+          } else {
+            addTextEffect(priorityTree.position, 'Inventário cheio!', '#FF0000', 1200);
+          }
+          
           const { removeTree } = useTreeStore.getState();
           removeTree(priorityTree.id);
           setNPCState(npcId, 'IDLE', null);
@@ -391,6 +406,14 @@ export default function GameWorld2D() {
 
           if (treeDestroyed) {
             console.log('Árvore destruída! Lenhador volta ao idle');
+            // Adicionar madeira ao inventário do NPC autônomo
+            const woodResult = addItemToInventory(npc.id, 'WOOD', 2);
+            if (woodResult.success) {
+              addTextEffect(tree.position, '+2 Madeira', '#8B4513', 1200);
+            } else {
+              addTextEffect(tree.position, 'Inventário cheio!', '#FF0000', 1200);
+            }
+            
             const { removeTree } = useTreeStore.getState();
             removeTree(tree.id);
             useNPCStore.getState().setNPCState(npc.id, 'IDLE');

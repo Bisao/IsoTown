@@ -1,3 +1,5 @@
+import { NPCProfession } from './types';
+
 export const GRID_SIZE = 20;
 export const CELL_SIZE = 32;
 
@@ -44,3 +46,164 @@ export const CONTROLLED_CHOP_COOLDOWN = 800; // 800ms cooldown for controlled NP
 export const STONE_COLOR = '#808080';
 export const STONE_DENSITY = 0.05; // 5% chance of stone per tile
 export const STONE_MAX_HEALTH = 5; // Number of hits to break a stone
+
+// Inventory constants
+export const INVENTORY_MAX_SLOTS = 20;
+export const STACK_MAX_SIZE = 99;
+export const MAX_CARRY_WEIGHT = 100; // Peso máximo que um NPC pode carregar
+export const OVERWEIGHT_PENALTY = 0.5; // Redução de velocidade quando sobrecarregado
+
+// Item types
+export enum ItemType {
+  RESOURCE = 'RESOURCE',
+  TOOL = 'TOOL',
+  FOOD = 'FOOD',
+  EQUIPMENT = 'EQUIPMENT'
+}
+
+// Game items with weight system
+export const GAME_ITEMS = {
+  // Resources
+  WOOD: {
+    id: 'WOOD',
+    name: 'Madeira',
+    type: ItemType.RESOURCE,
+    maxStack: 50,
+    weight: 2.0, // kg por unidade
+    description: 'Madeira coletada das árvores',
+    color: '#8B4513'
+  },
+  STONE: {
+    id: 'STONE',
+    name: 'Pedra',
+    type: ItemType.RESOURCE,
+    maxStack: 30,
+    weight: 3.0, // kg por unidade
+    description: 'Pedra coletada das rochas',
+    color: '#808080'
+  },
+  WHEAT: {
+    id: 'WHEAT',
+    name: 'Trigo',
+    type: ItemType.RESOURCE,
+    maxStack: 99,
+    weight: 0.1, // kg por unidade
+    description: 'Trigo cultivado pelos fazendeiros',
+    color: '#DAA520'
+  },
+  IRON_ORE: {
+    id: 'IRON_ORE',
+    name: 'Minério de Ferro',
+    type: ItemType.RESOURCE,
+    maxStack: 20,
+    weight: 5.0, // kg por unidade
+    description: 'Minério bruto de ferro',
+    color: '#CD853F'
+  },
+  COAL: {
+    id: 'COAL',
+    name: 'Carvão',
+    type: ItemType.RESOURCE,
+    maxStack: 40,
+    weight: 1.5, // kg por unidade
+    description: 'Combustível essencial',
+    color: '#2F2F2F'
+  },
+  
+  // Tools
+  AXE: {
+    id: 'AXE',
+    name: 'Machado',
+    type: ItemType.TOOL,
+    maxStack: 1,
+    weight: 3.5, // kg
+    description: 'Ferramenta para cortar árvores',
+    color: '#654321'
+  },
+  PICKAXE: {
+    id: 'PICKAXE',
+    name: 'Picareta',
+    type: ItemType.TOOL,
+    maxStack: 1,
+    weight: 4.0, // kg
+    description: 'Ferramenta para quebrar pedras',
+    color: '#2F4F4F'
+  },
+  HOE: {
+    id: 'HOE',
+    name: 'Enxada',
+    type: ItemType.TOOL,
+    maxStack: 1,
+    weight: 2.5, // kg
+    description: 'Ferramenta para cultivar',
+    color: '#8B4513'
+  },
+  SWORD: {
+    id: 'SWORD',
+    name: 'Espada',
+    type: ItemType.EQUIPMENT,
+    maxStack: 1,
+    weight: 3.0, // kg
+    description: 'Arma para defesa',
+    color: '#C0C0C0'
+  },
+  
+  // Food
+  BREAD: {
+    id: 'BREAD',
+    name: 'Pão',
+    type: ItemType.FOOD,
+    maxStack: 16,
+    weight: 0.5, // kg por unidade
+    description: 'Alimento nutritivo que restaura energia',
+    color: '#DEB887'
+  },
+  APPLE: {
+    id: 'APPLE',
+    name: 'Maçã',
+    type: ItemType.FOOD,
+    maxStack: 20,
+    weight: 0.2, // kg por unidade
+    description: 'Fruta fresca que restaura saúde',
+    color: '#FF0000'
+  },
+  MEAT: {
+    id: 'MEAT',
+    name: 'Carne',
+    type: ItemType.FOOD,
+    maxStack: 10,
+    weight: 1.0, // kg por unidade
+    description: 'Alimento proteico',
+    color: '#8B0000'
+  },
+  
+  // Equipment
+  BACKPACK: {
+    id: 'BACKPACK',
+    name: 'Mochila',
+    type: ItemType.EQUIPMENT,
+    maxStack: 1,
+    weight: 2.0, // kg
+    description: 'Aumenta capacidade de carga em 20kg',
+    color: '#8B4513'
+  }
+} as const;
+
+// Starting inventories by profession
+export const STARTING_INVENTORIES = {
+  [NPCProfession.FARMER]: {
+    HOE: 1,
+    WHEAT: 5,
+    BREAD: 3
+  },
+  [NPCProfession.LUMBERJACK]: {
+    AXE: 1,
+    WOOD: 10
+  },
+  [NPCProfession.MINER]: {
+    PICKAXE: 1,
+    STONE: 5,
+    IRON_ORE: 3
+  },
+  [NPCProfession.NONE]: {}
+} as const;

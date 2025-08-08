@@ -5,6 +5,7 @@ import { useHouseStore } from '../../lib/stores/useHouseStore';
 import { HOUSE_NAMES } from '../../lib/constants';
 import { NPC, House, NPCControlMode } from '../../lib/types';
 import { useDraggable } from '../../hooks/use-draggable';
+import NPCInventoryModal from './NPCInventoryModal';
 
 interface NPCConfigModalProps {
   open: boolean;
@@ -21,6 +22,7 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
 
   const [currentNPC, setCurrentNPC] = useState<NPC | null>(null);
   const [currentHouse, setCurrentHouse] = useState<House | null>(null);
+  const [showInventory, setShowInventory] = useState(false);
 
   useEffect(() => {
     if (selectedNPC && npcs[selectedNPC]) {
@@ -142,7 +144,16 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
+            {currentNPC && (
+              <button
+                onClick={() => setShowInventory(true)}
+                className="win98-button"
+                style={{ minWidth: '75px' }}
+              >
+                Inventário
+              </button>
+            )}
             <button
               onClick={handleClose}
               className="win98-button"
@@ -153,6 +164,15 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
           </div>
         </div>
       </div>
+      
+      {/* Modal de Inventário */}
+      {currentNPC && (
+        <NPCInventoryModal
+          npcId={currentNPC.id}
+          isOpen={showInventory}
+          onClose={() => setShowInventory(false)}
+        />
+      )}
     </div>
   );
 }
