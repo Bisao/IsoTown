@@ -184,8 +184,11 @@ export default function GameWorld2D() {
           console.log('Árvore encontrada para corte manual:', priorityTree.id);
           // Iniciar corte manual
           setNPCState(npcId, NPCState.WORKING, { 
-            currentTreeId: priorityTree.id, 
-            workProgress: 1 
+            type: 'cut_tree',
+            targetId: priorityTree.id, 
+            targetPosition: priorityTree.position,
+            progress: 0,
+            maxProgress: priorityTree.health
           });
 
           // Processar primeiro golpe
@@ -273,8 +276,11 @@ export default function GameWorld2D() {
           console.log('Pedra encontrada para mineração manual:', priorityStone.id);
           // Iniciar mineração manual
           setNPCState(npcId, NPCState.WORKING, { 
-            currentStoneId: priorityStone.id, 
-            workProgress: 1 
+            type: 'mine_stone',
+            targetId: priorityStone.id, 
+            targetPosition: priorityStone.position,
+            progress: 0,
+            maxProgress: priorityStone.health
           });
 
           // Processar primeiro golpe
@@ -418,14 +424,26 @@ export default function GameWorld2D() {
     }
 
     const currentTime = Date.now();
-    const { moveNPC, setNPCState, updateNPCTask } = useNPCStore.getState();
+    const { moveNPC, setNPCState, updateNPCTask, transferResourcesToHouse } = useNPCStore.getState(); // Import transferResourcesToHouse
     const { damageTree, removeTree } = useTreeStore.getState();
     const { addTextEffect } = useEffectsStore.getState();
+    const MOVEMENT_SPEED = 300; // Define MOVEMENT_SPEED (ajuste conforme necessário)
 
     console.log('Lenhador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
 
     switch (npc.state) {
       case NPCState.IDLE: {
+        // Check if inventory is full
+        const inventory = npc.inventory || {};
+        const totalItems = Object.values(inventory).reduce((sum, count) => sum + count, 0);
+        const maxInventorySize = 10; // Assuming a max inventory size
+
+        if (totalItems >= maxInventorySize) {
+          console.log('Inventário cheio, lenhador retornando para casa.');
+          setNPCState(npc.id, NPCState.RETURNING_HOME);
+          return;
+        }
+
         // Find nearest tree within range
         const treesArray = Object.values(availableTrees).filter(tree => !tree.isFalling && tree.health > 0);
         let nearestTree = null;
@@ -533,8 +551,55 @@ export default function GameWorld2D() {
         }
         break;
       }
+
+      case NPCState.RETURNING_HOME: {
+        if (!npc.houseId) {
+          console.log('Lenhador sem casa atribuída - voltando ao estado IDLE');
+          setNPCState(npc.id, NPCState.IDLE);
+          return;
+        }
+
+        import('../../lib/stores/useHouseStore').then(({ useHouseStore }) => {
+          const house = useHouseStore.getState().houses[npc.houseId!];
+          if (!house) {
+            console.log('Casa não encontrada para o lenhador:', npc.id, 'Voltando ao IDLE.');
+            setNPCState(npc.id, NPCState.IDLE);
+            return;
+          }
+
+          const distanceToHome = Math.abs(house.position.x - npc.position.x) + 
+                               Math.abs(house.position.z - npc.position.z);
+
+          if (distanceToHome === 0) {
+            // At home - transfer resources
+            console.log('Lenhador chegou em casa - transferindo recursos');
+            transferResourcesToHouse(npc.id, npc.houseId!); // Usando a função importada
+            setNPCState(npc.id, NPCState.IDLE); // Voltar para IDLE após descarregar
+          } else {
+            // Move towards home
+            const direction = {
+              x: house.position.x > npc.position.x ? 1 : house.position.x < npc.position.x ? -1 : 0,
+              z: house.position.z > npc.position.z ? 1 : house.position.z < npc.position.z ? -1 : 0
+            };
+            
+            // Ensure we don't try to move if already at home
+            if (direction.x !== 0 || direction.z !== 0) {
+              setNPCState(npc.id, NPCState.MOVING); // Indicate moving state
+              moveNPC(npc.id, direction);
+            } else {
+              // This case should ideally not be reached if distanceToHome > 0, but as a safeguard:
+              console.log('Lenhador está em casa, mas distanceToHome > 0. Forçando IDLE.');
+              setNPCState(npc.id, NPCState.IDLE);
+            }
+          }
+        }).catch(error => {
+          console.error("Failed to import useHouseStore:", error);
+          setNPCState(npc.id, NPCState.IDLE); // Fallback to IDLE on error
+        });
+        break;
+      }
     }
-  }, []);
+  }, []); // Dependencies will be added as functions are defined or passed
 
   // Enhanced miner behavior with stone access
   const updateMinerBehaviorWithStones = useCallback((npc: any, availableStones: Record<string, any>) => {
@@ -661,7 +726,7 @@ export default function GameWorld2D() {
         break;
       }
     }
-  }, []);
+  }, []); // Dependencies to be added
 
   // Game loop for NPC behavior and effects
   useEffect(() => {
@@ -733,7 +798,7 @@ export default function GameWorld2D() {
 
       // Add visual effect at tree position
       const { addTextEffect } = useEffectsStore.getState();
-      addTextEffect(treeAtPosition.position, 'TOC!', 1000);
+      addTextEffect(treeAtPosition.position, 'TOC!', '#FFA500', 800);
 
       // If tree was destroyed, remove it
       if (treeDestroyed) {
@@ -748,12 +813,12 @@ export default function GameWorld2D() {
 
       // Add visual feedback
       const { addTextEffect } = useEffectsStore.getState();
-      addTextEffect(npc.position, 'Precisa estar na árvore!', 1000);
+      addTextEffect(npc.position, 'Precisa estar na árvore!', '#FF0000', 1000);
       return false;
     }
   }, [npcs, getTreeAt]);
 
-  
+
 
   // Converter coordenadas de grid para tela - corrigido para isométrico
   const gridToScreen = useCallback((gridX: number, gridZ: number, canvasWidth: number, canvasHeight: number) => {
@@ -1966,7 +2031,7 @@ export default function GameWorld2D() {
     };
   }, [animate, handleResize]);
 
-  
+
 
 
   return (

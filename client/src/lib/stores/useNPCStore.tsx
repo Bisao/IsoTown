@@ -837,6 +837,7 @@ export const useNPCStore = create<NPCStore>()(
       // Import house store dynamically
       import('./useHouseStore').then(({ useHouseStore }) => {
         const houseStore = useHouseStore.getState();
+        let totalTransferred = 0;
         
         // Transfer each resource type
         Object.entries(npc.inventory).forEach(([resource, amount]) => {
@@ -844,10 +845,15 @@ export const useNPCStore = create<NPCStore>()(
             const success = houseStore.addResourceToHouse(houseId, resource as keyof ResourceInventory, amount);
             if (success) {
               get().removeResourceFromNPC(npcId, resource as keyof ResourceInventory, amount);
+              totalTransferred += amount;
               console.log(`Transferido ${amount} ${resource} de NPC ${npcId} para casa ${houseId}`);
             }
           }
         });
+
+        if (totalTransferred > 0) {
+          console.log(`Total de ${totalTransferred} recursos transferidos para a casa`);
+        }
 
         // Set NPC state back to IDLE after storing resources
         get().setNPCState(npcId, NPCState.IDLE);
@@ -1228,38 +1234,19 @@ export const useNPCStore = create<NPCStore>()(
               // At home - transfer resources
               console.log('Minerador chegou em casa - transferindo recursos');
               get().transferResourcesToHouse(npc.id, npc.houseId!);
-            } else if (distanceToHome === 1) {
-              // Adjacent to home - move to home
-              const direction = {
-                x: house.position.x > npc.position.x ? 1 : house.position.x < npc.position.x ? -1 : 0,
-                z: house.position.z > npc.position.z ? 1 : house.position.z < npc.position.z ? -1 : 0
-              };
-
-              set((state) => ({
-                npcs: {
-                  ...state.npcs,
-                  [npc.id]: {
-                    ...state.npcs[npc.id],
-                    state: NPCState.MOVING,
-                    position: house.position,
-                    isMoving: true,
-                    lastMovement: currentTime
-                  }
-                }
-              }));
-
-              setTimeout(() => {
-                const currentState = get();
-                if (currentState.npcs[npc.id]?.state === NPCState.MOVING) {
-                  currentState.transferResourcesToHouse(npc.id, npc.houseId!);
-                }
-              }, MOVEMENT_SPEED);
             } else {
-              // Move towards home
-              const direction = {
-                x: house.position.x > npc.position.x ? 1 : house.position.x < npc.position.x ? -1 : 0,
-                z: house.position.z > npc.position.z ? 1 : house.position.z < npc.position.z ? -1 : 0
-              };
+              // Move towards home one step at a time
+              const dx = house.position.x - npc.position.x;
+              const dz = house.position.z - npc.position.z;
+
+              let direction = { x: 0, z: 0 };
+
+              // Choose direction - prioritize getting closer
+              if (Math.abs(dx) > Math.abs(dz)) {
+                direction.x = dx > 0 ? 1 : -1;
+              } else {
+                direction.z = dz > 0 ? 1 : -1;
+              }
 
               const newPosition = {
                 x: npc.position.x + direction.x,
@@ -1283,16 +1270,25 @@ export const useNPCStore = create<NPCStore>()(
                 setTimeout(() => {
                   const currentState = get();
                   if (currentState.npcs[npc.id]) {
-                    set((state) => ({
-                      npcs: {
-                        ...state.npcs,
-                        [npc.id]: { 
-                          ...state.npcs[npc.id], 
-                          isMoving: false,
-                          state: NPCState.RETURNING_HOME
+                    const distanceAfterMove = Math.abs(house.position.x - newPosition.x) + 
+                                            Math.abs(house.position.z - newPosition.z);
+                    
+                    if (distanceAfterMove === 0) {
+                      // Reached home - transfer resources
+                      currentState.transferResourcesToHouse(npc.id, npc.houseId!);
+                    } else {
+                      // Continue moving towards home
+                      set((state) => ({
+                        npcs: {
+                          ...state.npcs,
+                          [npc.id]: { 
+                            ...state.npcs[npc.id], 
+                            isMoving: false,
+                            state: NPCState.RETURNING_HOME
+                          }
                         }
-                      }
-                    }));
+                      }));
+                    }
                   }
                 }, MOVEMENT_SPEED);
               }
