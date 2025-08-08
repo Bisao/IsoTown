@@ -215,35 +215,7 @@ export default function GameUI() {
 
       
 
-      {/* Quick access button for NPC configuration when NPC is selected */}
-      {selectedNPC && currentNPC && (
-        <div className="win98-panel" style={{ 
-          position: 'fixed', 
-          bottom: '20px', 
-          left: '20px', 
-          padding: '8px',
-          zIndex: 1000,
-          backgroundColor: '#c0c0c0',
-          border: '2px outset #c0c0c0'
-        }}>
-          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', color: '#000080' }}>
-            NPC Selecionado: {currentNPC.id.slice(0, 8)}
-          </div>
-          <button
-            onClick={() => setShowNPCModal(true)}
-            className="win98-button"
-            style={{ 
-              padding: '4px 8px',
-              fontSize: '11px',
-              backgroundColor: '#c0c0c0',
-              border: '2px outset #c0c0c0',
-              width: '100%'
-            }}
-          >
-            🔧 Abrir Configuração
-          </button>
-        </div>
-      )}
+      
 
       {/* Modals */}
       <HouseSelectionModal open={showHouseModal} />

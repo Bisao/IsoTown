@@ -4,8 +4,8 @@ import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { NPCControlMode } from '../../lib/types';
 
 export default function RPGControlModal() {
-  const { showControlModal, setShowControlModal } = useGameStore();
-  const { npcs, showNPCModal, setShowNPCModal } = useNPCStore(); // Assuming these states exist in useNPCStore
+  const { showControlModal, setShowControlModal, showNPCModal, setShowNPCModal } = useGameStore();
+  const { npcs } = useNPCStore();
 
   // Check if any NPC is in controlled mode
   const hasControlledNPC = Object.values(npcs).some(npc => npc.controlMode === NPCControlMode.CONTROLLED);
