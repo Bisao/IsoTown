@@ -532,8 +532,8 @@ export default function GameWorld2D() {
     ctx.lineWidth = 1;
     ctx.globalAlpha = 0.5;
 
-    // Calcular área visível baseada no zoom e pan
-    const visibleRange = Math.ceil(50 / zoomRef.current); // Renderizar apenas tiles visíveis
+    // Calcular área visível baseada no zoom e pan - expandir área para garantir cobertura completa
+    const visibleRange = Math.ceil(80 / zoomRef.current); // Aumentar área de renderização
     const centerX = Math.floor(-panRef.current.x / (CELL_SIZE * zoomRef.current));
     const centerZ = Math.floor(-panRef.current.y / (CELL_SIZE * zoomRef.current));
     
@@ -546,9 +546,9 @@ export default function GameWorld2D() {
       for (let z = startZ; z <= endZ; z++) {
         const screen = gridToScreen(x, z, canvasWidth, canvasHeight);
         
-        // Só desenhar se estiver na tela
-        if (screen.x >= -100 && screen.x <= canvasWidth + 100 && 
-            screen.y >= -100 && screen.y <= canvasHeight + 100) {
+        // Expandir margem de clipping para evitar cortes visuais
+        if (screen.x >= -200 && screen.x <= canvasWidth + 200 && 
+            screen.y >= -200 && screen.y <= canvasHeight + 200) {
           const screenRight = gridToScreen(x + 1, z, canvasWidth, canvasHeight);
           const screenDown = gridToScreen(x, z + 1, canvasWidth, canvasHeight);
           const screenDiag = gridToScreen(x + 1, z + 1, canvasWidth, canvasHeight);

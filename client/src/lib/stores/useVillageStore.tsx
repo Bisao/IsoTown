@@ -257,27 +257,39 @@ export const useVillageStore = create<VillageStore>()(
     generateProceduralMap: (centerPosition: Position, mapSize: number) => {
       const mapId = nanoid();
       
-      // Gerar vilas pequenas espalhadas pelo mapa
-      const villageSpacing = 15; // Espaçamento entre vilas
-      const villageSize = 3; // Raio pequeno para cada vila
+      // Gerar vilas mais espalhadas pelo mapa com variação de tamanho
+      const baseVillageSpacing = 45; // Aumentar espaçamento significativamente
+      const minVillageSize = 2;
+      const maxVillageSize = 5;
       
-      for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x += villageSpacing) {
-        for (let z = centerPosition.z - mapSize; z <= centerPosition.z + mapSize; z += villageSpacing) {
-          // Adicionar variação na posição para evitar grade perfeita
-          const offsetX = Math.floor((Math.random() - 0.5) * 6);
-          const offsetZ = Math.floor((Math.random() - 0.5) * 6);
-          
-          const villageCenter = { 
-            x: x + offsetX, 
-            z: z + offsetZ 
-          };
-          
-          // Criar vila pequena
-          get().createVillage(villageCenter, villageSize, 'Vila');
-        }
+      // Gerar menos vilas, mas com mais qualidade e variação
+      const villageCount = Math.floor(mapSize / 25); // Reduzir densidade de vilas
+      
+      for (let i = 0; i < villageCount; i++) {
+        // Posicionamento mais aleatório e espalhado
+        const angle = (i / villageCount) * 2 * Math.PI + Math.random() * 0.5;
+        const distance = Math.random() * mapSize * 0.8; // Usar 80% do raio do mapa
+        
+        const x = centerPosition.x + Math.cos(angle) * distance;
+        const z = centerPosition.z + Math.sin(angle) * distance;
+        
+        // Adicionar variação adicional na posição
+        const offsetX = Math.floor((Math.random() - 0.5) * 20);
+        const offsetZ = Math.floor((Math.random() - 0.5) * 20);
+        
+        const villageCenter = { 
+          x: Math.floor(x + offsetX), 
+          z: Math.floor(z + offsetZ) 
+        };
+        
+        // Tamanho variável para cada vila
+        const villageSize = Math.floor(Math.random() * (maxVillageSize - minVillageSize + 1)) + minVillageSize;
+        
+        // Criar vila com nome único
+        get().createVillage(villageCenter, villageSize, 'Vila');
       }
       
-      console.log(`Mapa procedural gerado com vilas pequenas`);
+      console.log(`Mapa procedural gerado com ${villageCount} vilas espalhadas`);
       return mapId;
     },
 

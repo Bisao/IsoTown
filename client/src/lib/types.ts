@@ -56,6 +56,7 @@ export interface NPC {
   lastMovement: number;
   currentTask?: NPCTask;
   animation?: NPCAnimation;
+  currentTreeId?: string;
   
   // Sistema avançado
   statistics?: {
@@ -92,6 +93,7 @@ export interface Tree {
   isFalling?: boolean;
   fallStartTime?: number;
   hitStartTime?: number;
+  fallDirection?: number;
 }
 
 export interface Stone {
@@ -110,6 +112,7 @@ export interface VisualEffect {
   type: 'text' | 'animation';
   position: Position;
   text?: string;
+  color?: string;
   startTime: number;
   duration: number;
   offsetY?: number;

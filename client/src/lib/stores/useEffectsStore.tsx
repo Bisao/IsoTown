@@ -6,7 +6,7 @@ import { VisualEffect, Position } from '../types';
 interface EffectsStore {
   effects: Record<string, VisualEffect>;
   
-  addTextEffect: (position: Position, text: string, duration?: number) => string;
+  addTextEffect: (position: Position, text: string, color?: string, duration?: number) => string;
   removeEffect: (id: string) => void;
   updateEffects: () => void; // Remove expired effects
 }
@@ -15,13 +15,14 @@ export const useEffectsStore = create<EffectsStore>()(
   subscribeWithSelector((set, get) => ({
     effects: {},
 
-    addTextEffect: (position, text, duration = 1000) => {
+    addTextEffect: (position, text, color = '#FFFFFF', duration = 1000) => {
       const id = nanoid();
       const effect: VisualEffect = {
         id,
         type: 'text',
         position,
         text,
+        color,
         startTime: Date.now(),
         duration,
         offsetY: 0

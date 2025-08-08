@@ -180,6 +180,10 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     // Usar seed determinística baseada na posição do chunk para gerar sempre os mesmos recursos
     const chunkSeed = chunkX * 1000 + chunkZ;
     
+    // Determinar se este chunk é uma área de floresta densa
+    const isDenseForest = ((chunkSeed * 7) % 100) < 15; // 15% dos chunks serão florestas densas
+    const currentDensity = isDenseForest ? TREE_DENSITY * 4 : TREE_DENSITY; // 4x mais árvores em florestas densas
+    
     for (let x = startX; x < startX + chunkSize; x++) {
       for (let z = startZ; z < startZ + chunkSize; z++) {
         const position = { x, z };
@@ -192,7 +196,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
           const hash = (tileSeed * 9301 + 49297) % 233280;
           const random = hash / 233280.0;
 
-          if (random < TREE_DENSITY) {
+          if (random < currentDensity) {
             // Determinar tipo de árvore baseado na posição
             const typeRandom = ((tileSeed * 7919) % 100) / 100.0;
             let treeType: 'pine' | 'oak' | 'birch' = 'pine';
@@ -205,6 +209,10 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
           }
         }
       }
+    }
+    
+    if (isDenseForest) {
+      console.log(`Floresta densa gerada no chunk ${chunkX},${chunkZ}`);
     }
   }
 }));

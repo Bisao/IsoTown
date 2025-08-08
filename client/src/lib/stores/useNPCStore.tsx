@@ -36,7 +36,7 @@ interface NPCStore {
   updateCooldowns: () => void;
   
   // Inventory functions
-  addItemToInventory: (npcId: string, itemId: string, quantity: number) => boolean;
+  addItemToInventory: (npcId: string, itemId: string, quantity: number) => { success: boolean; message?: string };
   removeItemFromInventory: (npcId: string, itemId: string, quantity: number) => boolean;
   getInventoryItem: (npcId: string, itemId: string) => number;
   getInventoryCount: (npcId: string) => number;
