@@ -492,19 +492,20 @@ export default function GameWorld2D() {
 
 
 
-  // Converter coordenadas de grid para tela
+  // Converter coordenadas de grid para tela - corrigido para isométrico
   const gridToScreen = useCallback((gridX: number, gridZ: number, canvasWidth: number, canvasHeight: number) => {
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
     const scale = CELL_SIZE * zoomRef.current;
 
-    const screenX = centerX + panRef.current.x + (gridX - gridZ) * scale;
-    const screenY = centerY + panRef.current.y + (gridX + gridZ) * scale * 0.5;
+    // Projeção isométrica correta - casas devem ficar no chão
+    const screenX = centerX + panRef.current.x + (gridX - gridZ) * scale * 0.5;
+    const screenY = centerY + panRef.current.y + (gridX + gridZ) * scale * 0.25;
 
     return { x: screenX, y: screenY };
   }, []);
 
-  // Converter coordenadas de tela para grid
+  // Converter coordenadas de tela para grid - atualizado para corresponder à projeção isométrica
   const screenToGrid = useCallback((screenX: number, screenY: number, canvasWidth: number, canvasHeight: number) => {
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
@@ -513,8 +514,9 @@ export default function GameWorld2D() {
     const relX = screenX - centerX - panRef.current.x;
     const relY = screenY - centerY - panRef.current.y;
 
-    const gridX = Math.round((relX / scale + relY / (scale * 0.5)) / 2);
-    const gridZ = Math.round((relY / (scale * 0.5) - relX / scale) / 2);
+    // Conversão corrigida para isométrico
+    const gridX = Math.round((relX / (scale * 0.5) + relY / (scale * 0.25)) / 2);
+    const gridZ = Math.round((relY / (scale * 0.25) - relX / (scale * 0.5)) / 2);
 
     return { x: gridX, z: gridZ };
   }, []);
@@ -576,8 +578,8 @@ export default function GameWorld2D() {
     ctx.save();
 
     // Para isométrico, desenhar casa como losango que ocupa todo o tile
-    const halfWidth = cellSize / 2;
-    const quarterHeight = cellSize / 4;
+    const halfWidth = cellSize * 0.5;
+    const quarterHeight = cellSize * 0.25;
 
     // Usar sprite se disponível
     const sprite = spritesRef.current[house.type];
@@ -602,13 +604,13 @@ export default function GameWorld2D() {
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Teto isométrico vermelho
+        // Teto isométrico vermelho - ajustado para altura correta
         ctx.fillStyle = '#DC143C';
         ctx.beginPath();
         ctx.moveTo(screen.x, screen.y - quarterHeight);
-        ctx.lineTo(screen.x + halfWidth/2, screen.y - quarterHeight * 2);
-        ctx.lineTo(screen.x, screen.y - quarterHeight * 3);
-        ctx.lineTo(screen.x - halfWidth/2, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x + quarterHeight, screen.y - quarterHeight * 1.5);
+        ctx.lineTo(screen.x, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x - quarterHeight, screen.y - quarterHeight * 1.5);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -642,13 +644,13 @@ export default function GameWorld2D() {
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Teto isométrico marrom
+        // Teto isométrico marrom - ajustado para altura correta
         ctx.fillStyle = '#D2691E';
         ctx.beginPath();
         ctx.moveTo(screen.x, screen.y - quarterHeight);
-        ctx.lineTo(screen.x + halfWidth/2, screen.y - quarterHeight * 2);
-        ctx.lineTo(screen.x, screen.y - quarterHeight * 3);
-        ctx.lineTo(screen.x - halfWidth/2, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x + quarterHeight, screen.y - quarterHeight * 1.5);
+        ctx.lineTo(screen.x, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x - quarterHeight, screen.y - quarterHeight * 1.5);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -728,13 +730,13 @@ export default function GameWorld2D() {
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Teto simples
+        // Teto simples - ajustado para altura correta
         ctx.fillStyle = '#8B4513';
         ctx.beginPath();
         ctx.moveTo(screen.x, screen.y - quarterHeight);
-        ctx.lineTo(screen.x + halfWidth/2, screen.y - quarterHeight * 2);
-        ctx.lineTo(screen.x, screen.y - quarterHeight * 3);
-        ctx.lineTo(screen.x - halfWidth/2, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x + quarterHeight, screen.y - quarterHeight * 1.5);
+        ctx.lineTo(screen.x, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x - quarterHeight, screen.y - quarterHeight * 1.5);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -756,8 +758,8 @@ export default function GameWorld2D() {
     
     // Para visualização isométrica, as ruas devem ocupar toda a forma do losango
     // Desenhar losango completo para a rua
-    const halfSize = size / 2;
-    const quarterSize = size / 4;
+    const halfSize = size * 0.5;
+    const quarterSize = size * 0.25;
     
     ctx.beginPath();
     ctx.moveTo(screen.x, screen.y - quarterSize); // topo

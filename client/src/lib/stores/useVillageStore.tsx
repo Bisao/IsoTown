@@ -31,6 +31,7 @@ interface VillageStore {
   generateVillageLayout: (villageId: string) => void;
   generateProceduralMap: (centerPosition: Position, mapSize: number) => string;
   generateHousesConnectedToRoads: (centerPosition: Position, mapSize: number) => void;
+  generateVillageHouses: (villageId: string) => void;
 }
 
 export const useVillageStore = create<VillageStore>()(
@@ -131,62 +132,71 @@ export const useVillageStore = create<VillageStore>()(
         }
       }
       
-      // Adicionar algumas ruas secundárias para melhor conectividade
-      const secondaryRoads = [
-        // Rua horizontal secundária
-        { offset: { x: 0, z: 2 }, direction: 'horizontal', length: 3 },
-        { offset: { x: 0, z: -2 }, direction: 'horizontal', length: 3 },
-        // Ruas verticais secundárias
-        { offset: { x: 2, z: 0 }, direction: 'vertical', length: 3 },
-        { offset: { x: -2, z: 0 }, direction: 'vertical', length: 3 }
-      ];
+      // Sistema de grade estruturada como na imagem de referência
+      const roadSpacing = 3; // Espaçamento entre ruas principais (igual à imagem)
+      const additionalRoads = [];
       
-      secondaryRoads.forEach(roadConfig => {
-        const startPos = {
-          x: centerPosition.x + roadConfig.offset.x,
-          z: centerPosition.z + roadConfig.offset.z
-        };
-        
-        const length = Math.min(roadConfig.length, size);
-        
-        if (roadConfig.direction === 'horizontal') {
-          for (let i = -length; i <= length; i++) {
-            const position = { x: startPos.x + i, z: startPos.z };
-            const posKey = `${position.x},${position.z}`;
-            
-            if (!roadPositions.has(posKey)) {
-              roadPositions.add(posKey);
-              const roadId = nanoid();
-              const road: Road = {
-                id: roadId,
-                position,
-                type: 'horizontal'
-              };
-              addRoadToVillage(villageId, road);
-            }
+      // Criar ruas horizontais secundárias
+      for (let z = centerPosition.z - size; z <= centerPosition.z + size; z += roadSpacing) {
+        if (z === centerPosition.z) continue; // Já temos a rua principal
+        for (let x = centerPosition.x - size; x <= centerPosition.x + size; x++) {
+          const roadId = nanoid();
+          const position = { x, z };
+          const posKey = `${x},${z}`;
+          
+          if (!roadPositions.has(posKey)) {
+            roadPositions.add(posKey);
+            const road: Road = {
+              id: roadId,
+              position,
+              type: 'horizontal'
+            };
+            additionalRoads.push(road);
           }
-        } else if (roadConfig.direction === 'vertical') {
-          for (let i = -length; i <= length; i++) {
-            const position = { x: startPos.x, z: startPos.z + i };
-            const posKey = `${position.x},${position.z}`;
+        }
+      }
+      
+      // Criar ruas verticais secundárias
+      for (let x = centerPosition.x - size; x <= centerPosition.x + size; x += roadSpacing) {
+        if (x === centerPosition.x) continue; // Já temos a rua principal
+        for (let z = centerPosition.z - size; z <= centerPosition.z + size; z++) {
+          const roadId = nanoid();
+          const position = { x, z };
+          const posKey = `${x},${z}`;
+          
+          if (!roadPositions.has(posKey)) {
+            roadPositions.add(posKey);
+            // Verificar se cruzamos com uma rua horizontal
+            const existingHorizontalRoad = additionalRoads.find(road => 
+              road.position.x === x && road.position.z === z && road.type === 'horizontal'
+            );
             
-            if (!roadPositions.has(posKey)) {
-              roadPositions.add(posKey);
-              const roadId = nanoid();
-              const road: Road = {
-                id: roadId,
-                position,
-                type: 'vertical'
-              };
-              addRoadToVillage(villageId, road);
+            const road: Road = {
+              id: roadId,
+              position,
+              type: existingHorizontalRoad ? 'cross' : 'vertical'
+            };
+            
+            if (!existingHorizontalRoad) {
+              additionalRoads.push(road);
+            } else {
+              // Atualizar a rua existente para ser um cruzamento
+              existingHorizontalRoad.type = 'cross';
             }
           }
         }
+      }
+      
+      // Adicionar todas as ruas secundárias
+      additionalRoads.forEach(road => {
+        addRoadToVillage(villageId, road);
       });
+      
+      console.log(`Grade de ruas criada para vila ${villageId}: sistema estruturado como na imagem de referência`);
 
       // Gerar casas automaticamente ao redor das ruas
       setTimeout(() => {
-        get().generateVillageLayout(villageId);
+        get().generateHousesConnectedToRoads(village.centerPosition, village.size);
       }, 500);
     },
 
