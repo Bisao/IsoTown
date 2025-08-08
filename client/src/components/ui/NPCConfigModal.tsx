@@ -61,7 +61,12 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
     }
   };
 
-  if (!open || (!currentNPC && !currentHouse)) return null;
+  if (!open) return null;
+  
+  if (!currentNPC && !currentHouse) {
+    console.warn('NPCConfigModal opened but no NPC or house selected');
+    return null;
+  }
 
   return (
     <div className="win98-modal-overlay" onClick={(e) => e.stopPropagation()}>
