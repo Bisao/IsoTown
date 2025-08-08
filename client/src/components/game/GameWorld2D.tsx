@@ -8,7 +8,7 @@ import { useGameStore } from '../../lib/stores/useGameStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
 import { useVillageStore } from '../../lib/stores/useVillageStore';
 import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN } from '../../lib/constants';
-import { NPCControlMode, NPCProfession } from '../../lib/types';
+import { NPCControlMode, NPCProfession, NPCState } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
 
 export default function GameWorld2D() {
@@ -100,7 +100,7 @@ export default function GameWorld2D() {
       }
 
       // Se já está cortando uma árvore, processar um golpe manual
-      if (npc.currentTreeId && npc.state === 'WORKING') {
+      if (npc.currentTreeId && npc.state === NPCState.WORKING) {
         const targetTree = trees[npc.currentTreeId];
         if (targetTree && !targetTree.isFalling && targetTree.health > 0) {
           console.log('Continuando corte manual da árvore:', npc.currentTreeId);
@@ -132,7 +132,7 @@ export default function GameWorld2D() {
             
             const { removeTree } = useTreeStore.getState();
             removeTree(npc.currentTreeId);
-            setNPCState(npcId, 'IDLE', null);
+            setNPCState(npcId, NPCState.IDLE, null);
           }
           return;
         }
@@ -144,7 +144,7 @@ export default function GameWorld2D() {
       if (priorityTree) {
         console.log('Árvore encontrada para corte manual:', priorityTree.id);
         // Iniciar corte manual
-        setNPCState(npcId, 'WORKING', { 
+        setNPCState(npcId, NPCState.WORKING, { 
           currentTreeId: priorityTree.id, 
           workProgress: 1 
         });
@@ -173,7 +173,7 @@ export default function GameWorld2D() {
           
           const { removeTree } = useTreeStore.getState();
           removeTree(priorityTree.id);
-          setNPCState(npcId, 'IDLE', null);
+          setNPCState(npcId, NPCState.IDLE, null);
         }
       } else {
         console.log('Nenhuma árvore adjacente encontrada');
@@ -379,7 +379,7 @@ export default function GameWorld2D() {
     console.log('Lenhador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
 
     switch (npc.state) {
-      case 'IDLE': {
+      case NPCState.IDLE: {
         // Find nearest tree within range
         const treesArray = Object.values(availableTrees).filter(tree => !tree.isFalling);
         let nearestTree = null;
@@ -432,10 +432,10 @@ export default function GameWorld2D() {
         break;
       }
 
-      case 'WORKING': {
+      case NPCState.WORKING: {
         if (!npc.currentTask || npc.currentTask.type !== 'cut_tree') {
           console.log('Tarefa inválida, voltando ao idle');
-          useNPCStore.getState().setNPCState(npc.id, 'IDLE');
+          useNPCStore.getState().setNPCState(npc.id, NPCState.IDLE);
           return;
         }
 
@@ -443,7 +443,7 @@ export default function GameWorld2D() {
         const tree = availableTrees[npc.currentTask.targetId];
         if (!tree || tree.isFalling) {
           console.log('Árvore não existe ou está caindo, voltando ao idle');
-          useNPCStore.getState().setNPCState(npc.id, 'IDLE');
+          useNPCStore.getState().setNPCState(npc.id, NPCState.IDLE);
           return;
         }
 
@@ -469,7 +469,7 @@ export default function GameWorld2D() {
             
             const { removeTree } = useTreeStore.getState();
             removeTree(tree.id);
-            useNPCStore.getState().setNPCState(npc.id, 'IDLE');
+            useNPCStore.getState().setNPCState(npc.id, NPCState.IDLE);
           } else {
             // Continue working
             useNPCStore.getState().updateNPCTask(npc.id, {
@@ -568,175 +568,173 @@ export default function GameWorld2D() {
     ctx.globalAlpha = 1;
   }, [gridToScreen]);
 
-  // Desenhar casa (memoizado)
+  // Desenhar casa (memoizado) - casas ocupam 100% do tile isométrico
   const drawHouse = useCallback((ctx: CanvasRenderingContext2D, house: any, canvasWidth: number, canvasHeight: number) => {
     const screen = gridToScreen(house.position.x, house.position.z, canvasWidth, canvasHeight);
-    const size = CELL_SIZE * zoomRef.current * 1.4; // Aumentar para ocupar mais do tile isométrico
+    const cellSize = CELL_SIZE * zoomRef.current;
 
     ctx.save();
-    ctx.translate(screen.x, screen.y);
-    ctx.rotate((house.rotation || 0) * Math.PI / 180);
+
+    // Para isométrico, desenhar casa como losango que ocupa todo o tile
+    const halfWidth = cellSize / 2;
+    const quarterHeight = cellSize / 4;
 
     // Usar sprite se disponível
     const sprite = spritesRef.current[house.type];
     if (sprite && spritesLoadedRef.current) {
-      // Desenhar sprite
-      ctx.drawImage(sprite, -size/2, -size/2, size, size);
+      // Desenhar sprite ocupando todo o tile isométrico
+      ctx.translate(screen.x, screen.y);
+      ctx.drawImage(sprite, -halfWidth, -quarterHeight, cellSize, cellSize/2);
     } else {
-      // Fallback para desenho básico se sprite não estiver disponível
+      // Renderização isométrica ocupando 100% do tile
       if (house.type === HouseType.FARMER) {
-        // Casa do fazendeiro - estilo especial baseado na imagem
-        // Base branca
+        // Base da casa - losango branco ocupando todo o tile
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(-size/2, -size/2, size, size);
-
-        // Borda preta
+        ctx.beginPath();
+        ctx.moveTo(screen.x, screen.y - quarterHeight); // topo
+        ctx.lineTo(screen.x + halfWidth, screen.y); // direita
+        ctx.lineTo(screen.x, screen.y + quarterHeight); // baixo
+        ctx.lineTo(screen.x - halfWidth, screen.y); // esquerda
+        ctx.closePath();
+        ctx.fill();
+        
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
-        ctx.strokeRect(-size/2, -size/2, size, size);
+        ctx.stroke();
 
-        // Teto vermelho triangular
+        // Teto isométrico vermelho
         ctx.fillStyle = '#DC143C';
         ctx.beginPath();
-        ctx.moveTo(-size/2, -size/2);
-        ctx.lineTo(size/2, -size/2);
-        ctx.lineTo(0, -size);
+        ctx.moveTo(screen.x, screen.y - quarterHeight);
+        ctx.lineTo(screen.x + halfWidth/2, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x, screen.y - quarterHeight * 3);
+        ctx.lineTo(screen.x - halfWidth/2, screen.y - quarterHeight * 2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Porta frontal (sempre na frente considerando rotação)
+        // Porta centralizada
         ctx.fillStyle = '#8B4513';
-        ctx.fillRect(-size/8, size/4, size/4, size/4);
-        ctx.strokeRect(-size/8, size/4, size/4, size/4);
+        const doorWidth = halfWidth / 4;
+        const doorHeight = quarterHeight / 2;
+        ctx.fillRect(screen.x - doorWidth/2, screen.y + quarterHeight/2, doorWidth, doorHeight);
+        ctx.strokeRect(screen.x - doorWidth/2, screen.y + quarterHeight/2, doorWidth, doorHeight);
 
-        // Janelas
+        // Janelas simétricas
         ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(-size/3, -size/8, size/6, size/6);
-        ctx.fillRect(size/6, -size/8, size/6, size/6);
-        ctx.strokeRect(-size/3, -size/8, size/6, size/6);
-        ctx.strokeRect(size/6, -size/8, size/6, size/6);
+        const windowSize = halfWidth / 8;
+        ctx.fillRect(screen.x - halfWidth/2, screen.y - windowSize/2, windowSize, windowSize);
+        ctx.fillRect(screen.x + halfWidth/2 - windowSize, screen.y - windowSize/2, windowSize, windowSize);
+        ctx.strokeRect(screen.x - halfWidth/2, screen.y - windowSize/2, windowSize, windowSize);
+        ctx.strokeRect(screen.x + halfWidth/2 - windowSize, screen.y - windowSize/2, windowSize, windowSize);
       } else if (house.type === HouseType.LUMBERJACK) {
-        // Casa do lenhador - estilo baseado na imagem anexada
-        // Base bege/creme
+        // Base da casa lenhador - losango bege
         ctx.fillStyle = '#F5F5DC';
-        ctx.fillRect(-size/2, -size/2, size, size);
-
-        // Borda preta
+        ctx.beginPath();
+        ctx.moveTo(screen.x, screen.y - quarterHeight);
+        ctx.lineTo(screen.x + halfWidth, screen.y);
+        ctx.lineTo(screen.x, screen.y + quarterHeight);
+        ctx.lineTo(screen.x - halfWidth, screen.y);
+        ctx.closePath();
+        ctx.fill();
+        
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
-        ctx.strokeRect(-size/2, -size/2, size, size);
+        ctx.stroke();
 
-        // Teto marrom/laranja triangular
+        // Teto isométrico marrom
         ctx.fillStyle = '#D2691E';
         ctx.beginPath();
-        ctx.moveTo(-size/2, -size/2);
-        ctx.lineTo(size/2, -size/2);
-        ctx.lineTo(0, -size);
+        ctx.moveTo(screen.x, screen.y - quarterHeight);
+        ctx.lineTo(screen.x + halfWidth/2, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x, screen.y - quarterHeight * 3);
+        ctx.lineTo(screen.x - halfWidth/2, screen.y - quarterHeight * 2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Porta de madeira escura
+        // Porta de madeira
         ctx.fillStyle = '#654321';
-        ctx.fillRect(-size/8, size/4, size/4, size/4);
-        ctx.strokeRect(-size/8, size/4, size/4, size/4);
+        const doorWidth = halfWidth / 4;
+        const doorHeight = quarterHeight / 2;
+        ctx.fillRect(screen.x - doorWidth/2, screen.y + quarterHeight/2, doorWidth, doorHeight);
+        ctx.strokeRect(screen.x - doorWidth/2, screen.y + quarterHeight/2, doorWidth, doorHeight);
 
-        // Janelas com moldura de madeira
+        // Janelas simétricas
         ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(-size/3, -size/8, size/6, size/6);
-        ctx.fillRect(size/6, -size/8, size/6, size/6);
+        const windowSize = halfWidth / 8;
+        ctx.fillRect(screen.x - halfWidth/2, screen.y - windowSize/2, windowSize, windowSize);
+        ctx.fillRect(screen.x + halfWidth/2 - windowSize, screen.y - windowSize/2, windowSize, windowSize);
         ctx.strokeStyle = '#654321';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(-size/3, -size/8, size/6, size/6);
-        ctx.strokeRect(size/6, -size/8, size/6, size/6);
-
-        // Detalhes de madeira na fachada
-        ctx.strokeStyle = '#8B4513';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        // Linhas verticais de madeira
-        ctx.moveTo(-size/4, -size/2);
-        ctx.lineTo(-size/4, size/2);
-        ctx.moveTo(size/4, -size/2);
-        ctx.lineTo(size/4, size/2);
-        ctx.stroke();
+        ctx.strokeRect(screen.x - halfWidth/2, screen.y - windowSize/2, windowSize, windowSize);
+        ctx.strokeRect(screen.x + halfWidth/2 - windowSize, screen.y - windowSize/2, windowSize, windowSize);
       } else if (house.type === HouseType.MINER) {
-        // Casa do minerador - estilo robusto de pedra
-        // Base marrom escuro (madeira/pedra)
-        ctx.fillStyle = '#8B4513';
-        ctx.fillRect(-size/2, -size/2, size, size);
-
-        // Borda preta grossa
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(-size/2, -size/2, size, size);
-
-        // Teto de pedra cinza
+        // Base da casa minerador - losango pedra
         ctx.fillStyle = '#696969';
         ctx.beginPath();
-        ctx.moveTo(-size/2, -size/2);
-        ctx.lineTo(size/2, -size/2);
-        ctx.lineTo(0, -size);
+        ctx.moveTo(screen.x, screen.y - quarterHeight);
+        ctx.lineTo(screen.x + halfWidth, screen.y);
+        ctx.lineTo(screen.x, screen.y + quarterHeight);
+        ctx.lineTo(screen.x - halfWidth, screen.y);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Teto isométrico de pedra escura
+        ctx.fillStyle = '#2F4F4F';
+        ctx.beginPath();
+        ctx.moveTo(screen.x, screen.y - quarterHeight);
+        ctx.lineTo(screen.x + halfWidth/2, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x, screen.y - quarterHeight * 3);
+        ctx.lineTo(screen.x - halfWidth/2, screen.y - quarterHeight * 2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Porta reforçada de ferro
+        // Porta de ferro
         ctx.fillStyle = '#2F4F4F';
-        ctx.fillRect(-size/8, size/4, size/4, size/4);
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-size/8, size/4, size/4, size/4);
+        const doorWidth = halfWidth / 4;
+        const doorHeight = quarterHeight / 2;
+        ctx.fillRect(screen.x - doorWidth/2, screen.y + quarterHeight/2, doorWidth, doorHeight);
+        ctx.strokeRect(screen.x - doorWidth/2, screen.y + quarterHeight/2, doorWidth, doorHeight);
 
         // Janelas pequenas com grades
         ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(-size/3, -size/8, size/8, size/8);
-        ctx.fillRect(size/5, -size/8, size/8, size/8);
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(-size/3, -size/8, size/8, size/8);
-        ctx.strokeRect(size/5, -size/8, size/8, size/8);
+        const windowSize = halfWidth / 10;
+        ctx.fillRect(screen.x - halfWidth/2, screen.y - windowSize/2, windowSize, windowSize);
+        ctx.fillRect(screen.x + halfWidth/2 - windowSize, screen.y - windowSize/2, windowSize, windowSize);
+        ctx.strokeRect(screen.x - halfWidth/2, screen.y - windowSize/2, windowSize, windowSize);
+        ctx.strokeRect(screen.x + halfWidth/2 - windowSize, screen.y - windowSize/2, windowSize, windowSize);
 
-        // Grades nas janelas
-        ctx.strokeStyle = '#2F4F4F';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        // Grade vertical esquerda
-        ctx.moveTo(-size/3 + size/16, -size/8);
-        ctx.lineTo(-size/3 + size/16, -size/8 + size/8);
-        // Grade horizontal esquerda
-        ctx.moveTo(-size/3, -size/8 + size/16);
-        ctx.lineTo(-size/3 + size/8, -size/8 + size/16);
-        // Grade vertical direita
-        ctx.moveTo(size/5 + size/16, -size/8);
-        ctx.lineTo(size/5 + size/16, -size/8 + size/8);
-        // Grade horizontal direita
-        ctx.moveTo(size/5, -size/8 + size/16);
-        ctx.lineTo(size/5 + size/8, -size/8 + size/16);
-        ctx.stroke();
-
-        // Chaminé de pedra
+        // Chaminé
         ctx.fillStyle = '#696969';
-        ctx.fillRect(size/3, -size, size/8, size/2);
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(size/3, -size, size/8, size/2);
+        ctx.fillRect(screen.x + halfWidth/3, screen.y - quarterHeight * 3, halfWidth/8, quarterHeight);
+        ctx.strokeRect(screen.x + halfWidth/3, screen.y - quarterHeight * 3, halfWidth/8, quarterHeight);
       } else {
-        // Casa padrão (fallback)
+        // Casa padrão isométrica
         ctx.fillStyle = HOUSE_COLORS[house.type as HouseType] || '#808080';
-        ctx.fillRect(-size/2, -size/2, size, size);
+        ctx.beginPath();
+        ctx.moveTo(screen.x, screen.y - quarterHeight);
+        ctx.lineTo(screen.x + halfWidth, screen.y);
+        ctx.lineTo(screen.x, screen.y + quarterHeight);
+        ctx.lineTo(screen.x - halfWidth, screen.y);
+        ctx.closePath();
+        ctx.fill();
 
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
-        ctx.strokeRect(-size/2, -size/2, size, size);
+        ctx.stroke();
 
-        // Teto marrom
+        // Teto simples
         ctx.fillStyle = '#8B4513';
         ctx.beginPath();
-        ctx.moveTo(-size/2, -size/2);
-        ctx.lineTo(size/2, -size/2);
-        ctx.lineTo(0, -size);
+        ctx.moveTo(screen.x, screen.y - quarterHeight);
+        ctx.lineTo(screen.x + halfWidth/2, screen.y - quarterHeight * 2);
+        ctx.lineTo(screen.x, screen.y - quarterHeight * 3);
+        ctx.lineTo(screen.x - halfWidth/2, screen.y - quarterHeight * 2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();

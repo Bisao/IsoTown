@@ -186,7 +186,7 @@ export const useVillageStore = create<VillageStore>()(
 
       // Gerar casas automaticamente ao redor das ruas
       setTimeout(() => {
-        get().generateVillageHouses(villageId);
+        get().generateVillageLayout(villageId);
       }, 500);
     },
 
