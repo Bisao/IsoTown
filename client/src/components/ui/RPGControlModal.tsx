@@ -5,7 +5,7 @@ import { NPCControlMode } from '../../lib/types';
 
 export default function RPGControlModal() {
   const { showControlModal, setShowControlModal } = useGameStore();
-  const { npcs } = useNPCStore();
+  const { npcs, showNPCModal, setShowNPCModal } = useNPCStore(); // Assuming these states exist in useNPCStore
 
   // Check if any NPC is in controlled mode
   const hasControlledNPC = Object.values(npcs).some(npc => npc.controlMode === NPCControlMode.CONTROLLED);
@@ -13,6 +13,10 @@ export default function RPGControlModal() {
   useEffect(() => {
     setShowControlModal(hasControlledNPC);
   }, [hasControlledNPC, setShowControlModal]);
+
+  const handleMenuClick = () => {
+    setShowNPCModal(!showNPCModal);
+  };
 
   if (!showControlModal || !hasControlledNPC) return null;
 
@@ -24,7 +28,7 @@ export default function RPGControlModal() {
           <button className="rpg-button">CHAR</button>
           <button className="rpg-button">QUESTS</button>
           <button className="rpg-button">MAP</button>
-          
+
           {/* Health orb above QUESTS button */}
           <div className="rpg-orb-container health">
             <div className="rpg-orb health-orb">
@@ -46,8 +50,18 @@ export default function RPGControlModal() {
         {/* Right side buttons */}
         <div className="rpg-buttons-right">
           <button className="rpg-button">INV</button>
-          <button className="rpg-button">MENU</button>
-          
+          <button
+            className="rpg-button"
+            onClick={handleMenuClick}
+            style={{
+              backgroundColor: showNPCModal ? '#8B4513' : '#4A4A4A',
+              border: showNPCModal ? '2px inset #666' : '2px outset #666'
+            }}
+          >
+            MENU
+          </button>
+          <button className="rpg-button">QUIT</button>
+
           {/* Mana orb above MENU button */}
           <div className="rpg-orb-container mana">
             <div className="rpg-orb mana-orb">

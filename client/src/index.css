@@ -15,6 +15,9 @@
   --win98-active-title-text: #ffffff;
   --win98-dialog-bg: #c0c0c0;
   --win98-window-bg: #c0c0c0;
+  --win98-input-bg: #ffffff; /* Added for input fields */
+  --win98-disabled: #808080; /* Added for disabled states */
+  --win98-border: #808080; /* Added for borders */
 }
 
 @layer base {
@@ -107,7 +110,57 @@
 .win98-window-body {
   padding: 8px;
   background: var(--win98-dialog-bg);
+  color: #000000;
 }
+
+.win98-field-row {
+  margin-bottom: 8px;
+}
+
+.win98-field-label {
+  font-weight: normal;
+  color: #000000;
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.win98-text {
+  color: #000000;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.win98-text-bold {
+  color: #000000;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 14px;
+}
+
+.win98-section {
+  background: #c0c0c0;
+  border: 1px inset #c0c0c0;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.win98-group-box {
+  border: 1px groove #c0c0c0;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: #c0c0c0;
+}
+
+.win98-status-bar {
+  background: #c0c0c0;
+  border-top: 1px solid #808080;
+  padding: 2px 4px;
+  font-size: 11px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
 
 /* Windows 98 Input Styles */
 .win98-input {
@@ -428,38 +481,38 @@
     padding: 6px;
     min-height: 48px;
   }
-  
+
   .win98-button {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
-  
+
   .win98-modal-overlay {
     padding: 10px;
   }
-  
+
   .win98-game-window {
     top: 4px;
     left: 4px;
     right: 4px;
     bottom: 36px;
   }
-  
+
   .win98-game-menubar {
     display: none; /* Hide menu bar on mobile */
   }
-  
+
   .win98-game-window-header {
     font-size: 10px;
     padding: 1px 3px;
   }
-  
+
   .win98-window-button {
     width: 14px;
     height: 12px;
     font-size: 8px;
   }
-  
+
   .rpg-control-modal {
     height: 80px;
     bottom: 36px;
@@ -467,28 +520,28 @@
     right: 4px;
     padding: 4px 8px;
   }
-  
+
   .rpg-orb {
     width: 50px;
     height: 50px;
   }
-  
+
   .rpg-button {
     font-size: 8px;
     padding: 2px 4px;
     min-width: 45px;
   }
-  
+
   .rpg-inventory-slot {
     width: 24px;
     height: 24px;
   }
-  
+
   .item-placeholder {
     width: 18px;
     height: 18px;
   }
-  
+
   .rpg-icon {
     width: 30px;
     height: 30px;
@@ -580,7 +633,7 @@ canvas {
   border-radius: 50%;
   position: relative;
   border: 3px solid #4A4A4A;
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(0,0,0,0.5),
     inset 0 0 20px rgba(255,255,255,0.2);
   overflow: hidden;

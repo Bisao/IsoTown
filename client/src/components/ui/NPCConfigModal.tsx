@@ -94,77 +94,96 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
 
         <div className="win98-window-body">
           {currentNPC && (
-            <div className="win98-panel" style={{ marginBottom: '12px', padding: '8px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>
-                NPC: {currentNPC.id}
+            <div className="win98-group-box">
+              <div className="win98-text-bold" style={{ marginBottom: '6px' }}>
+                NPC Information
               </div>
-              <div style={{ fontSize: '11px', marginBottom: '4px' }}>
-                Position: ({Math.round(currentNPC.position.x)}, {Math.round(currentNPC.position.z)})
+              <div className="win98-field-row">
+                <div className="win98-field-label">Name:</div>
+                <div className="win98-text">{currentNPC.id.slice(0, 12)}...</div>
               </div>
-              <div style={{ fontSize: '11px', marginBottom: '8px' }}>
-                Mode: {currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? 'Autonomous' : 'Controlled'}
+              <div className="win98-field-row">
+                <div className="win98-field-label">Position:</div>
+                <div className="win98-text">({Math.round(currentNPC.position.x)}, {Math.round(currentNPC.position.z)})</div>
               </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <button
-                  onClick={() => handleSetControlMode(NPCControlMode.AUTONOMOUS)}
-                  className="win98-button"
-                  style={{ 
-                    padding: '4px 8px',
-                    fontSize: '11px',
-                    border: currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? '2px inset #c0c0c0' : '2px outset #c0c0c0'
-                  }}
-                >
-                  Autonomous Movement
-                </button>
-
-                <button
-                  onClick={() => handleSetControlMode(NPCControlMode.CONTROLLED)}
-                  className="win98-button"
-                  style={{ 
-                    padding: '4px 8px',
-                    fontSize: '11px',
-                    border: currentNPC.controlMode === NPCControlMode.CONTROLLED ? '2px inset #c0c0c0' : '2px outset #c0c0c0'
-                  }}
-                >
-                  Manual Control
-                </button>
+              <div className="win98-field-row">
+                <div className="win98-field-label">Control Mode:</div>
+                <div className="win98-text">{currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? 'Autonomous' : 'Manual Control'}</div>
               </div>
 
+              <div className="win98-field-row" style={{ marginTop: '12px' }}>
+                <div className="win98-field-label">Change Control Mode:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                  <button
+                    onClick={() => handleSetControlMode(NPCControlMode.AUTONOMOUS)}
+                    className="win98-button"
+                    style={{ 
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      border: currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? '2px inset #c0c0c0' : '2px outset #c0c0c0',
+                      backgroundColor: currentNPC.controlMode === NPCControlMode.AUTONOMOUS ? '#a0a0a0' : '#c0c0c0'
+                    }}
+                  >
+                    ○ Autonomous Movement
+                  </button>
 
+                  <button
+                    onClick={() => handleSetControlMode(NPCControlMode.CONTROLLED)}
+                    className="win98-button"
+                    style={{ 
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      border: currentNPC.controlMode === NPCControlMode.CONTROLLED ? '2px inset #c0c0c0' : '2px outset #c0c0c0',
+                      backgroundColor: currentNPC.controlMode === NPCControlMode.CONTROLLED ? '#a0a0a0' : '#c0c0c0'
+                    }}
+                  >
+                    ● Manual Control
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
           {currentHouse && (
-            <div className="win98-panel" style={{ marginBottom: '12px', padding: '8px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>
-                {currentHouse?.type ? HOUSE_NAMES[currentHouse.type as keyof typeof HOUSE_NAMES] : 'Unknown Building'}
+            <div className="win98-group-box">
+              <div className="win98-text-bold" style={{ marginBottom: '6px' }}>
+                Building Information
               </div>
-              <div style={{ fontSize: '11px', marginBottom: '4px' }}>
-                Position: ({currentHouse.position.x}, {currentHouse.position.z})
+              <div className="win98-field-row">
+                <div className="win98-field-label">Type:</div>
+                <div className="win98-text">{currentHouse?.type ? HOUSE_NAMES[currentHouse.type as keyof typeof HOUSE_NAMES] : 'Unknown Building'}</div>
               </div>
-              <div style={{ fontSize: '11px' }}>
-                {Object.values(npcs).find(npc => npc.houseId === currentHouse.id) ? `Assigned NPC: ${Object.values(npcs).find(npc => npc.houseId === currentHouse.id)?.id}` : 'No NPC assigned'}
+              <div className="win98-field-row">
+                <div className="win98-field-label">Position:</div>
+                <div className="win98-text">({currentHouse.position.x}, {currentHouse.position.z})</div>
+              </div>
+              <div className="win98-field-row">
+                <div className="win98-field-label">Resident:</div>
+                <div className="win98-text">
+                  {Object.values(npcs).find(npc => npc.houseId === currentHouse.id) 
+                    ? `${Object.values(npcs).find(npc => npc.houseId === currentHouse.id)?.id.slice(0, 12)}...` 
+                    : 'No NPC assigned'}
+                </div>
               </div>
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
+          <div className="win98-status-bar" style={{ marginTop: '8px', justifyContent: 'space-between', display: 'flex' }}>
             {currentNPC && (
               <button
                 onClick={() => setShowInventory(true)}
                 className="win98-button"
-                style={{ minWidth: '75px' }}
+                style={{ minWidth: '80px', fontSize: '11px', padding: '4px 8px' }}
               >
-                Inventário
+                📦 Inventory
               </button>
             )}
             <button
               onClick={handleClose}
               className="win98-button"
-              style={{ minWidth: '75px' }}
+              style={{ minWidth: '80px', fontSize: '11px', padding: '4px 8px' }}
             >
-              OK
+              ✓ OK
             </button>
           </div>
         </div>
