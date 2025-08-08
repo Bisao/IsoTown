@@ -272,20 +272,12 @@ export default function GameWorld2D() {
     generateChunkIfNeeded(0, -1);
     generateChunkIfNeeded(0, 1);
 
-    // Gerar mapa procedural conectado
+    // Gerar mapa procedural com vilas pequenas
     setTimeout(() => {
       const { generateProceduralMap } = useVillageStore.getState();
       
-      // Gerar área central grande conectada
-      generateProceduralMap({ x: 0, z: 0 }, 25);
-      
-      // Gerar áreas secundárias conectadas
-      setTimeout(() => {
-        generateProceduralMap({ x: 50, z: 0 }, 15);
-        generateProceduralMap({ x: -50, z: 0 }, 15);
-        generateProceduralMap({ x: 0, z: 50 }, 15);
-        generateProceduralMap({ x: 0, z: -50 }, 15);
-      }, 3000);
+      // Gerar área central com vilas pequenas
+      generateProceduralMap({ x: 0, z: 0 }, 30);
       
     }, 1000);
   }, [generateChunkIfNeeded]);

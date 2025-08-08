@@ -93,9 +93,9 @@ export const useVillageStore = create<VillageStore>()(
 
       const { centerPosition, size } = village;
       
-      // Gerar ruas principais (cruz no centro)
-      // Rua horizontal
-      for (let x = centerPosition.x - size; x <= centerPosition.x + size; x++) {
+      // Gerar apenas algumas ruas simples para vila pequena
+      // Rua principal horizontal pequena
+      for (let x = centerPosition.x - 2; x <= centerPosition.x + 2; x++) {
         const roadId = nanoid();
         const road: Road = {
           id: roadId,
@@ -105,8 +105,8 @@ export const useVillageStore = create<VillageStore>()(
         addRoadToVillage(villageId, road);
       }
       
-      // Rua vertical
-      for (let z = centerPosition.z - size; z <= centerPosition.z + size; z++) {
+      // Rua principal vertical pequena
+      for (let z = centerPosition.z - 2; z <= centerPosition.z + 2; z++) {
         if (z === centerPosition.z) continue; // Evitar sobrepor com a horizontal
         const roadId = nanoid();
         const road: Road = {
@@ -126,36 +126,6 @@ export const useVillageStore = create<VillageStore>()(
       };
       addRoadToVillage(villageId, centerRoad);
 
-      // Gerar ruas secundárias em grade
-      for (let x = centerPosition.x - size + 2; x <= centerPosition.x + size - 2; x += 3) {
-        for (let z = centerPosition.z - size + 2; z <= centerPosition.z + size - 2; z += 3) {
-          if (x === centerPosition.x || z === centerPosition.z) continue; // Evitar ruas principais
-          
-          // Rua horizontal menor
-          for (let dx = -1; dx <= 1; dx++) {
-            const roadId = nanoid();
-            const road: Road = {
-              id: roadId,
-              position: { x: x + dx, z },
-              type: 'horizontal'
-            };
-            addRoadToVillage(villageId, road);
-          }
-          
-          // Rua vertical menor
-          for (let dz = -1; dz <= 1; dz++) {
-            if (dz === 0) continue; // Evitar sobrepor
-            const roadId = nanoid();
-            const road: Road = {
-              id: roadId,
-              position: { x, z: z + dz },
-              type: 'vertical'
-            };
-            addRoadToVillage(villageId, road);
-          }
-        }
-      }
-
       // Gerar casas automaticamente ao redor das ruas
       setTimeout(() => {
         get().generateVillageHouses(villageId);
@@ -173,7 +143,7 @@ export const useVillageStore = create<VillageStore>()(
         const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER];
         
         // Gerar casas em posições estratégicas ao redor das ruas
-        const housePositions = [];
+        const candidatePositions = [];
         
         for (let x = village.centerPosition.x - village.size; x <= village.centerPosition.x + village.size; x++) {
           for (let z = village.centerPosition.z - village.size; z <= village.centerPosition.z + village.size; z++) {
@@ -194,106 +164,62 @@ export const useVillageStore = create<VillageStore>()(
             ].some(pos => get().getRoadAt(pos));
             
             if (adjacentToRoad) {
-              // Chance de 40% de gerar uma casa (aumentada para mais densidade)
-              if (Math.random() < 0.4) {
-                housePositions.push(position);
-              }
+              candidatePositions.push(position);
             }
           }
         }
         
+        // Determinar número de casas para esta vila (3-7)
+        const minHouses = 3;
+        const maxHouses = 7;
+        const targetHouses = Math.floor(Math.random() * (maxHouses - minHouses + 1)) + minHouses;
+        
+        // Selecionar posições aleatórias até atingir o número desejado
+        const selectedPositions = [];
+        const shuffledPositions = [...candidatePositions].sort(() => Math.random() - 0.5);
+        
+        for (let i = 0; i < Math.min(targetHouses, shuffledPositions.length); i++) {
+          selectedPositions.push(shuffledPositions[i]);
+        }
+        
         // Adicionar casas
-        housePositions.forEach(position => {
+        selectedPositions.forEach(position => {
           const randomType = houseTypes[Math.floor(Math.random() * houseTypes.length)];
           const rotation = Math.floor(Math.random() * 4) * 90;
           addHouse(randomType, position, rotation);
         });
         
-        console.log(`Vilarejo ${village.name} criado com ${housePositions.length} casas`);
+        console.log(`Vilarejo ${village.name} criado com ${selectedPositions.length} casas`);
       }).catch(error => {
         console.error('Erro ao importar useHouseStore:', error);
       });
     },
 
-    // Nova função para gerar mapa procedural conectado
+    // Nova função para gerar mapa procedural com vilas pequenas
     generateProceduralMap: (centerPosition: Position, mapSize: number) => {
       const mapId = nanoid();
       
-      // Criar rede de ruas principais em grade
-      const roadSpacing = 8; // Espaçamento entre ruas principais
-      const roads: Road[] = [];
+      // Gerar vilas pequenas espalhadas pelo mapa
+      const villageSpacing = 15; // Espaçamento entre vilas
+      const villageSize = 3; // Raio pequeno para cada vila
       
-      // Gerar ruas horizontais principais
-      for (let z = centerPosition.z - mapSize; z <= centerPosition.z + mapSize; z += roadSpacing) {
-        for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x++) {
-          const roadId = nanoid();
-          roads.push({
-            id: roadId,
-            position: { x, z },
-            type: 'horizontal'
-          });
+      for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x += villageSpacing) {
+        for (let z = centerPosition.z - mapSize; z <= centerPosition.z + mapSize; z += villageSpacing) {
+          // Adicionar variação na posição para evitar grade perfeita
+          const offsetX = Math.floor((Math.random() - 0.5) * 6);
+          const offsetZ = Math.floor((Math.random() - 0.5) * 6);
+          
+          const villageCenter = { 
+            x: x + offsetX, 
+            z: z + offsetZ 
+          };
+          
+          // Criar vila pequena
+          get().createVillage(villageCenter, villageSize, 'Vila');
         }
       }
       
-      // Gerar ruas verticais principais
-      for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x += roadSpacing) {
-        for (let z = centerPosition.z - mapSize; z <= centerPosition.z + mapSize; z++) {
-          if (roads.some(road => road.position.x === x && road.position.z === z)) {
-            // Já existe rua horizontal - criar cruzamento
-            const existingRoad = roads.find(road => road.position.x === x && road.position.z === z);
-            if (existingRoad) {
-              existingRoad.type = 'cross';
-            }
-          } else {
-            const roadId = nanoid();
-            roads.push({
-              id: roadId,
-              position: { x, z },
-              type: 'vertical'
-            });
-          }
-        }
-      }
-      
-      // Gerar ruas secundárias para conectar quarteirões
-      const secondarySpacing = 4;
-      for (let z = centerPosition.z - mapSize; z <= centerPosition.z + mapSize; z += secondarySpacing) {
-        for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x += secondarySpacing) {
-          // Verificar se não conflita com ruas principais
-          if (!roads.some(road => road.position.x === x && road.position.z === z)) {
-            // Criar pequenas ruas conectoras
-            for (let dx = -1; dx <= 1; dx++) {
-              const roadId = nanoid();
-              if (x + dx >= centerPosition.x - mapSize && x + dx <= centerPosition.x + mapSize) {
-                roads.push({
-                  id: roadId,
-                  position: { x: x + dx, z },
-                  type: 'horizontal'
-                });
-              }
-            }
-          }
-        }
-      }
-      
-      // Adicionar todas as ruas ao store
-      set((state) => {
-        const newRoads = roads.reduce((acc, road) => {
-          acc[road.id] = road;
-          return acc;
-        }, {} as Record<string, Road>);
-        
-        return {
-          roads: { ...state.roads, ...newRoads }
-        };
-      });
-      
-      // Gerar casas conectadas às ruas após um delay
-      setTimeout(() => {
-        get().generateHousesConnectedToRoads(centerPosition, mapSize);
-      }, 500);
-      
-      console.log(`Mapa procedural gerado com ${roads.length} segmentos de rua`);
+      console.log(`Mapa procedural gerado com vilas pequenas`);
       return mapId;
     },
 
