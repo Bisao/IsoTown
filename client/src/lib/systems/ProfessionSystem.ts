@@ -1,7 +1,13 @@
 import { NPC, NPCProfession, NPCState, Position } from '../types';
 import { useTreeStore } from '../stores/useTreeStore';
+import { useStoneStore } from '../stores/useStoneStore';
 import { useHouseStore } from '../stores/useHouseStore';
 import { LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION } from '../constants';
+
+// Miner constants
+const MINER_WORK_RANGE = 5; // How far miner will search for stones
+const MINER_MINE_INTERVAL = 1200; // ms between mining hits (slightly slower than chopping)
+const MINING_ANIMATION_DURATION = 900; // ms
 
 // Interface para definir comportamentos de profissão
 export interface ProfessionBehavior {
@@ -12,7 +18,7 @@ export interface ProfessionBehavior {
 }
 
 export interface WorkTask {
-  type: 'cut_tree' | 'harvest' | 'mine';
+  type: 'cut_tree' | 'harvest' | 'mine_stone';
   targetId: string;
   targetPosition: Position;
   progress: number;
@@ -24,7 +30,7 @@ export interface WorkResult {
   success: boolean;
   completed: boolean;
   animation?: {
-    type: 'chopping' | 'walking' | 'idle';
+    type: 'chopping' | 'mining' | 'walking' | 'idle';
     startTime: number;
     duration: number;
   };
@@ -207,22 +213,96 @@ export class FarmerSystem extends BaseProfessionSystem implements ProfessionBeha
 export class MinerSystem extends BaseProfessionSystem implements ProfessionBehavior {
   
   findWork(npc: NPC): WorkTask | null {
-    // TODO: Implementar lógica de mineração
-    // Por enquanto, não há trabalho específico de minerador
+    const stoneStore = useStoneStore.getState();
+    const stones = Object.values(stoneStore.stones);
+    
+    // Filtrar pedras disponíveis (não quebrando)
+    const availableStones = stones.filter(stone => !stone.isBreaking && stone.health > 0);
+    
+    // Encontrar pedra mais próxima
+    const nearestStone = this.findNearestResource(
+      npc.position,
+      availableStones,
+      MINER_WORK_RANGE
+    );
+
+    if (nearestStone) {
+      const distance = this.getDistanceToPosition(npc.position, nearestStone.position);
+      
+      if (distance === 1) {
+        // Adjacente à pedra - começar trabalho
+        return {
+          type: 'mine_stone',
+          targetId: nearestStone.id,
+          targetPosition: nearestStone.position,
+          progress: 0,
+          maxProgress: nearestStone.health,
+          priority: 8
+        };
+      } else {
+        // Precisa se mover para a pedra
+        return {
+          type: 'mine_stone',
+          targetId: nearestStone.id,
+          targetPosition: nearestStone.position,
+          progress: 0,
+          maxProgress: nearestStone.health,
+          priority: 6
+        };
+      }
+    }
+
+    // Se não há pedras próximas, não há trabalho
     return null;
   }
 
   doWork(npc: NPC, task: WorkTask): WorkResult {
-    // TODO: Implementar lógica de trabalho do minerador
-    return {
-      success: true,
-      completed: true,
-      newState: NPCState.IDLE,
-      progressMade: 1
-    };
+    const stoneStore = useStoneStore.getState();
+    
+    if (task.type === 'mine_stone' && task.targetId) {
+      const stone = stoneStore.stones[task.targetId];
+      if (!stone || stone.isBreaking) {
+        return { success: false, completed: true, progressMade: 0 };
+      }
+
+      const distance = this.getDistanceToPosition(npc.position, stone.position);
+      
+      if (distance === 1) {
+        // Adjacente - minerar
+        const damage = 1;
+        const stoneDestroyed = stoneStore.damageStone(stone.id, damage);
+        
+        return {
+          success: true,
+          completed: stoneDestroyed,
+          animation: {
+            type: 'mining',
+            startTime: Date.now(),
+            duration: MINING_ANIMATION_DURATION
+          },
+          newState: NPCState.WORKING,
+          progressMade: damage
+        };
+      } else {
+        // Mover em direção à pedra
+        return {
+          success: true,
+          completed: false,
+          newState: NPCState.MOVING,
+          progressMade: 0
+        };
+      }
+    }
+
+    return { success: false, completed: false, progressMade: 0 };
   }
 
   isWorkDone(npc: NPC, task: WorkTask): boolean {
+    if (task.type === 'mine_stone' && task.targetId) {
+      const stoneStore = useStoneStore.getState();
+      const stone = stoneStore.stones[task.targetId];
+      return !stone || stone.isBreaking || stone.health <= 0;
+    }
     return task.progress >= task.maxProgress;
   }
 

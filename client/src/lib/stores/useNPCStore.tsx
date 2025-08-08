@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { NPC, Position, NPCControlMode, NPCProfession, NPCState, NPCAnimation } from '../types';
 import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPING_ANIMATION_DURATION, GAME_ITEMS, STARTING_INVENTORIES, INVENTORY_MAX_SLOTS, MAX_CARRY_WEIGHT } from '../constants';
+
+// Miner constants
+const MINER_WORK_RANGE = 5; // How far miner will search for stones
+const MINER_MINE_INTERVAL = 1200; // ms between mining hits
+const MINING_ANIMATION_DURATION = 900; // ms
 import { nanoid } from 'nanoid';
 import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid';
 import { getRandomDirection, findPath } from '../utils/pathfinding';
@@ -21,6 +26,7 @@ interface NPCStore {
   assignNPCToHouse: (npcId: string, houseId: string) => void;
   unassignNPCFromHouse: (npcId: string) => void;
   updateLumberjackBehavior: (npc: any) => void;
+  updateMinerBehavior: (npc: any) => void;
   setNPCControlMode: (id: string, mode: NPCControlMode) => void;
   setNPCState: (id: string, state: NPCState, task?: any) => void;
   setNPCAnimation: (id: string, animation: NPCAnimation | undefined) => void;
@@ -41,9 +47,14 @@ interface NPCStore {
   getInventoryItem: (npcId: string, itemId: string) => number;
   getInventoryCount: (npcId: string) => number;
   initializeInventory: (npcId: string, profession: NPCProfession) => void;
-  transferItem: (fromNpcId: string, toNpcId: string, itemId: string, quantity: number) => boolean;
+  transferItem: (fromNpcId: string, toNpcId: string, itemId: string, quantity: number) => { success: boolean; message?: string; };
   clearInventory: (npcId: string) => void;
   getInventoryItems: (npcId: string) => Array<{id: string, quantity: number, item: any}>;
+  getTotalWeight: (npcId: string) => number;
+  getMaxCarryWeight: (npcId: string) => number;
+  canCarryItem: (npcId: string, itemId: string, quantity: number) => boolean;
+  startManualStoneMining: (npcId: string) => { success: boolean; message: string; adjacentPositions?: Position[] };
+  startMiningStone: (npcId: string, stoneId: string) => void;
 }
 
 export const useNPCStore = create<NPCStore>()(
@@ -80,6 +91,11 @@ export const useNPCStore = create<NPCStore>()(
       const { [id]: removed, ...rest } = state.npcs;
       return { npcs: rest };
     }),
+
+    selectNPC: (id) => {
+      console.log('NPC selecionado:', id);
+      // This function can be expanded later for NPC selection behavior
+    },
 
     moveNPC: (id, direction) => {
       const npcs = get().npcs;
@@ -552,7 +568,15 @@ export const useNPCStore = create<NPCStore>()(
         case NPCProfession.FARMER:
           return { success: false, message: 'Sistema de farming ainda não implementado!' };
         case NPCProfession.MINER:
-          return { success: false, message: 'Sistema de mineração ainda não implementado!' };
+          // Ao iniciar a mineração manual, aplicamos um cooldown
+          const minerResult = get().startManualStoneMining(id);
+          if (minerResult.adjacentPositions) {
+            // Define o cooldown para o minerador (ex: 1.2 segundos após tentar minerar)
+            get().setNPCCooldown(id, 1200); 
+            return { success: true, message: 'Procurando pedras adjacentes para minerar...', adjacentPositions: minerResult.adjacentPositions };
+          } else {
+            return { success: false, message: 'Não foi possível iniciar a mineração.' };
+          }
         default:
           return { success: false, message: 'NPC não tem profissão definida!' };
       }
@@ -907,19 +931,6 @@ export const useNPCStore = create<NPCStore>()(
       return Object.keys(npc.inventory).length;
     },
 
-    getInventoryItems: (npcId: string) => {
-      const npc = get().npcs[npcId];
-      if (!npc?.inventory) return [];
-      
-      return Object.entries(npc.inventory)
-        .filter(([_, quantity]) => quantity > 0)
-        .map(([itemId, quantity]) => ({
-          id: itemId,
-          quantity,
-          item: GAME_ITEMS[itemId as keyof typeof GAME_ITEMS]
-        }))
-        .filter(entry => entry.item); // Filtrar itens que não existem mais
-    },
 
     transferItem: (fromNpcId: string, toNpcId: string, itemId: string, quantity: number) => {
       const fromNpc = get().npcs[fromNpcId];
@@ -966,6 +977,290 @@ export const useNPCStore = create<NPCStore>()(
       }));
       
       console.log('Inventário limpo para NPC', npcId);
+    },
+
+    getInventoryItems: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc || !npc.inventory) return [];
+
+      return Object.entries(npc.inventory)
+        .filter(([_, quantity]) => quantity > 0)
+        .map(([itemId, quantity]) => ({
+          id: itemId,
+          quantity,
+          item: GAME_ITEMS[itemId as keyof typeof GAME_ITEMS]
+        }));
+    },
+
+    getTotalWeight: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc || !npc.inventory) return 0;
+
+      return Object.entries(npc.inventory)
+        .reduce((total, [itemId, quantity]) => {
+          const item = GAME_ITEMS[itemId as keyof typeof GAME_ITEMS];
+          return total + (item ? item.weight * quantity : 0);
+        }, 0);
+    },
+
+    getMaxCarryWeight: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc || !npc.inventory) return MAX_CARRY_WEIGHT;
+
+      // Check if NPC has backpack (increases carry weight)
+      const hasBackpack = (npc.inventory.BACKPACK || 0) > 0;
+      return MAX_CARRY_WEIGHT + (hasBackpack ? 20 : 0);
+    },
+
+    canCarryItem: (npcId: string, itemId: string, quantity: number) => {
+      const item = GAME_ITEMS[itemId as keyof typeof GAME_ITEMS];
+      if (!item) return false;
+
+      const currentWeight = get().getTotalWeight(npcId);
+      const maxWeight = get().getMaxCarryWeight(npcId);
+      const itemWeight = item.weight * quantity;
+
+      return currentWeight + itemWeight <= maxWeight;
+    },
+
+    // Função específica para mineração manual de pedras
+    startManualStoneMining: (npcId) => {
+      const { npcs } = get();
+      const npc = npcs[npcId];
+
+      if (!npc || npc.profession !== NPCProfession.MINER) {
+        return { success: false, message: 'Apenas mineradores podem minerar pedras!' };
+      }
+
+      // Esta função agora é integrada com o sistema de stoneStore via GameWorld2D
+      // Retornar as posições adjacentes para validação externa
+      const adjacentPositions = [
+        { x: npc.position.x + 1, z: npc.position.z },
+        { x: npc.position.x - 1, z: npc.position.z },
+        { x: npc.position.x, z: npc.position.z + 1 },
+        { x: npc.position.x, z: npc.position.z - 1 }
+      ];
+
+      console.log('Tentativa de mineração manual, posições adjacentes:', adjacentPositions);
+
+      return { 
+        success: true, 
+        message: 'Procurando pedras adjacentes...', 
+        adjacentPositions 
+      };
+    },
+
+    // Iniciar trabalho de mineração com pedra específica
+    startMiningStone: (npcId, stoneId) => {
+      set((state) => ({
+        npcs: {
+          ...state.npcs,
+          [npcId]: {
+            ...state.npcs[npcId],
+            currentStoneId: stoneId,
+            state: NPCState.WORKING // Ensure state is WORKING
+          }
+        }
+      }));
+      console.log('Minerador começou a minerar pedra:', stoneId);
+    },
+
+    updateMinerBehavior: (npc: any) => {
+      if (npc.profession !== NPCProfession.MINER || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
+        return;
+      }
+
+      const currentTime = Date.now();
+
+      console.log('Atualizando comportamento do minerador:', npc.id, 'estado:', npc.state);
+      console.log('Minerador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
+
+      switch (npc.state) {
+        case NPCState.IDLE: {
+          // Encontrar pedra mais próxima usando dados mock para teste
+          // Isto será substituído por dados reais de pedra
+          const mockStones = [
+            { id: 'stone1', position: { x: 5, z: 5 }, health: 5, maxHealth: 5 },
+            { id: 'stone2', position: { x: 3, z: 7 }, health: 5, maxHealth: 5 },
+            { id: 'stone3', position: { x: 8, z: 2 }, health: 5, maxHealth: 5 }
+          ];
+
+          let nearestStone = null;
+          let nearestDistance = Infinity;
+
+          for (const stone of mockStones) {
+            const distance = Math.abs(stone.position.x - npc.position.x) + 
+                           Math.abs(stone.position.z - npc.position.z);
+
+            if (distance <= MINER_WORK_RANGE && distance < nearestDistance) {
+              nearestStone = stone;
+              nearestDistance = distance;
+            }
+          }
+
+          console.log('Pedras disponíveis:', mockStones.length, 'mais próxima:', nearestStone ? nearestStone.id : null, 'distância:', nearestDistance === Infinity ? null : nearestDistance);
+
+          if (nearestStone) {
+            // Check if adjacent to stone (distance = 1)
+            const distance = Math.abs(nearestStone.position.x - npc.position.x) + 
+                           Math.abs(nearestStone.position.z - npc.position.z);
+
+            if (distance === 1) {
+              // Adjacent to stone - start working
+              console.log('Minerador adjacente à pedra', nearestStone.id, 'começando trabalho');
+              set((state) => ({
+                npcs: {
+                  ...state.npcs,
+                  [npc.id]: {
+                    ...state.npcs[npc.id],
+                    state: NPCState.WORKING,
+                    currentTask: {
+                      type: 'mine_stone',
+                      targetId: nearestStone.id,
+                      targetPosition: nearestStone.position,
+                      progress: 0,
+                      maxProgress: nearestStone.health
+                    },
+                    lastMovement: currentTime
+                  }
+                }
+              }));
+            } else {
+              // Move towards stone one step at a time
+              console.log('Movendo minerador em direção à pedra', nearestStone.id);
+
+              const dx = nearestStone.position.x - npc.position.x;
+              const dz = nearestStone.position.z - npc.position.z;
+
+              let direction = { x: 0, z: 0 };
+
+              // Choose direction - prioritize getting closer
+              if (Math.abs(dx) > Math.abs(dz)) {
+                direction.x = dx > 0 ? 1 : -1;
+              } else {
+                direction.z = dz > 0 ? 1 : -1;
+              }
+
+              const newPosition = {
+                x: npc.position.x + direction.x,
+                z: npc.position.z + direction.z
+              };
+
+              if (isValidGridPosition(newPosition)) {
+                set((state) => ({
+                  npcs: {
+                    ...state.npcs,
+                    [npc.id]: {
+                      ...state.npcs[npc.id],
+                      state: NPCState.MOVING,
+                      position: newPosition,
+                      isMoving: true,
+                      lastMovement: currentTime,
+                      targetPosition: nearestStone.position
+                    }
+                  }
+                }));
+
+                // Stop movement after delay and return to idle to recalculate
+                setTimeout(() => {
+                  const currentState = get();
+                  if (currentState.npcs[npc.id]) {
+                    set((state) => ({
+                      npcs: {
+                        ...state.npcs,
+                        [npc.id]: { 
+                          ...state.npcs[npc.id], 
+                          isMoving: false,
+                          state: NPCState.IDLE
+                        }
+                      }
+                    }));
+                  }
+                }, MOVEMENT_SPEED);
+              } else {
+                console.log('Posição inválida para movimento:', newPosition);
+                set((state) => ({
+                  npcs: {
+                    ...state.npcs,
+                    [npc.id]: {
+                      ...state.npcs[npc.id],
+                      lastMovement: currentTime
+                    }
+                  }
+                }));
+              }
+            }
+          } else {
+            console.log('Nenhuma pedra encontrada no alcance');
+          }
+          break;
+        }
+
+        case NPCState.WORKING: {
+          if (!npc.currentTask || npc.currentTask.type !== 'mine_stone') {
+            // Invalid task - return to idle
+            set((state) => ({
+              npcs: {
+                ...state.npcs,
+                [npc.id]: {
+                  ...state.npcs[npc.id],
+                  state: NPCState.IDLE,
+                  currentTask: undefined
+                }
+              }
+            }));
+            return;
+          }
+
+          console.log('Minerador trabalhando - progresso:', npc.currentTask.progress, 'de', npc.currentTask.maxProgress);
+
+          // Check if enough time has passed since last mine
+          if (currentTime - npc.lastMovement >= MINER_MINE_INTERVAL) {
+            const newProgress = npc.currentTask.progress + 1;
+            const stoneDestroyed = newProgress >= npc.currentTask.maxProgress;
+
+            console.log('CLANG! Minerando pedra', npc.currentTask.targetId, '- progresso:', newProgress, 'destruída:', stoneDestroyed);
+
+            // Add mining animation and update progress
+            set((state) => ({
+              npcs: {
+                ...state.npcs,
+                [npc.id]: {
+                  ...state.npcs[npc.id],
+                  animation: {
+                    type: 'mining',
+                    startTime: currentTime,
+                    duration: MINING_ANIMATION_DURATION
+                  },
+                  lastMovement: currentTime,
+                  currentTask: stoneDestroyed ? undefined : {
+                    type: npc.currentTask.type,
+                    targetId: npc.currentTask.targetId,
+                    targetPosition: npc.currentTask.targetPosition,
+                    progress: newProgress,
+                    maxProgress: npc.currentTask.maxProgress
+                  },
+                  state: stoneDestroyed ? NPCState.IDLE : NPCState.WORKING
+                }
+              }
+            }));
+
+            if (stoneDestroyed) {
+              console.log('Pedra destruída! Minerador volta ao idle');
+              // Adicionar itens de mineração ao inventário
+              get().addItemToInventory(npc.id, 'STONE', 3);
+              console.log('Item adicionado:', 3, 'x', 'Pedra', 'para NPC', npc.id);
+            }
+          }
+          break;
+        }
+
+        case NPCState.MOVING: {
+          // Let the normal movement system handle this
+          // The miner will return to IDLE after movement completes
+          break;
+        }
+      }
     }
   }))
 );

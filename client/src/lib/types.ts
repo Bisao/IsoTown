@@ -30,7 +30,7 @@ export enum NPCState {
 }
 
 export interface NPCTask {
-  type: 'cut_tree' | 'harvest' | 'mine';
+  type: 'cut_tree' | 'harvest' | 'mine_stone';
   targetId: string;
   targetPosition: Position;
   progress: number;
@@ -38,7 +38,7 @@ export interface NPCTask {
 }
 
 export interface NPCAnimation {
-  type: 'chopping' | 'walking' | 'idle';
+  type: 'chopping' | 'mining' | 'walking' | 'idle';
   startTime: number;
   duration: number;
 }
