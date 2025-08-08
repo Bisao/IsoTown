@@ -69,14 +69,14 @@ export default function GameWorld2D() {
       if (a.health !== b.health) {
         return a.health - b.health;
       }
-      
+
       // Prioridade 2: Mais próximo do centro
       const distanceA = Math.abs(a.position.x) + Math.abs(a.position.z);
       const distanceB = Math.abs(b.position.x) + Math.abs(b.position.z);
       if (distanceA !== distanceB) {
         return distanceA - distanceB;
       }
-      
+
       // Prioridade 3: Posição X menor (mais à esquerda)
       return a.position.x - b.position.x;
     })[0];
@@ -129,7 +129,7 @@ export default function GameWorld2D() {
             } else {
               addTextEffect(targetTree.position, 'Inventário cheio!', '#FF0000', 1200);
             }
-            
+
             const { removeTree } = useTreeStore.getState();
             removeTree(npc.currentTreeId);
             setNPCState(npcId, NPCState.IDLE, null);
@@ -170,7 +170,7 @@ export default function GameWorld2D() {
           } else {
             addTextEffect(priorityTree.position, 'Inventário cheio!', '#FF0000', 1200);
           }
-          
+
           const { removeTree } = useTreeStore.getState();
           removeTree(priorityTree.id);
           setNPCState(npcId, NPCState.IDLE, null);
@@ -234,7 +234,7 @@ export default function GameWorld2D() {
   // Função para gerar recursos em um chunk se ainda não foi gerado
   const generateChunkIfNeeded = useCallback((chunkX: number, chunkZ: number) => {
     const chunkKey = `${chunkX},${chunkZ}`;
-    
+
     if (!generatedChunksRef.current.has(chunkKey)) {
       // Gerar árvores e pedras neste chunk
       useTreeStore.getState().generateTreesInChunk(chunkX, chunkZ, CHUNK_SIZE);
@@ -275,10 +275,10 @@ export default function GameWorld2D() {
     // Gerar mapa procedural com vilas pequenas
     setTimeout(() => {
       const { generateProceduralMap } = useVillageStore.getState();
-      
+
       // Gerar área central com vilas pequenas
       generateProceduralMap({ x: 0, z: 0 }, 30);
-      
+
     }, 1000);
   }, [generateChunkIfNeeded]);
 
@@ -338,7 +338,7 @@ export default function GameWorld2D() {
       const treeDestroyed = damageTree(treeAtPosition.id, 1);
 
       // Add chopping animation
-      useNPCStore.getState().setNPCAnimation(npcId, {
+      useNPCStore.getState().setNPCAnimation(npc.id, {
         type: 'chopping',
         startTime: Date.now(),
         duration: CHOPPING_ANIMATION_DURATION
@@ -466,7 +466,7 @@ export default function GameWorld2D() {
             } else {
               addTextEffect(tree.position, 'Inventário cheio!', '#FF0000', 1200);
             }
-            
+
             const { removeTree } = useTreeStore.getState();
             removeTree(tree.id);
             useNPCStore.getState().setNPCState(npc.id, NPCState.IDLE);
@@ -538,7 +538,7 @@ export default function GameWorld2D() {
     const visibleRange = Math.ceil(80 / zoomRef.current); // Aumentar área de renderização
     const centerX = Math.floor(-panRef.current.x / (CELL_SIZE * zoomRef.current));
     const centerZ = Math.floor(-panRef.current.y / (CELL_SIZE * zoomRef.current));
-    
+
     const startX = Math.max(-GRID_SIZE/2, centerX - visibleRange);
     const endX = Math.min(GRID_SIZE/2, centerX + visibleRange);
     const startZ = Math.max(-GRID_SIZE/2, centerZ - visibleRange);
@@ -547,7 +547,7 @@ export default function GameWorld2D() {
     for (let x = startX; x <= endX; x++) {
       for (let z = startZ; z <= endZ; z++) {
         const screen = gridToScreen(x, z, canvasWidth, canvasHeight);
-        
+
         // Expandir margem de clipping para evitar cortes visuais
         if (screen.x >= -200 && screen.x <= canvasWidth + 200 && 
             screen.y >= -200 && screen.y <= canvasHeight + 200) {
@@ -599,7 +599,7 @@ export default function GameWorld2D() {
         ctx.lineTo(screen.x - halfWidth, screen.y); // esquerda
         ctx.closePath();
         ctx.fill();
-        
+
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
         ctx.stroke();
@@ -639,7 +639,7 @@ export default function GameWorld2D() {
         ctx.lineTo(screen.x - halfWidth, screen.y);
         ctx.closePath();
         ctx.fill();
-        
+
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
         ctx.stroke();
@@ -680,7 +680,7 @@ export default function GameWorld2D() {
         ctx.lineTo(screen.x - halfWidth, screen.y);
         ctx.closePath();
         ctx.fill();
-        
+
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 3;
         ctx.stroke();
@@ -755,12 +755,12 @@ export default function GameWorld2D() {
 
     // Cor das ruas - marrom para diferenciar da grama
     ctx.fillStyle = '#8B4513';
-    
+
     // Para visualização isométrica, as ruas devem ocupar toda a forma do losango
     // Desenhar losango completo para a rua
     const halfSize = size * 0.5;
     const quarterSize = size * 0.25;
-    
+
     ctx.beginPath();
     ctx.moveTo(screen.x, screen.y - quarterSize); // topo
     ctx.lineTo(screen.x + halfSize, screen.y); // direita
@@ -791,7 +791,7 @@ export default function GameWorld2D() {
     ctx.strokeStyle = '#654321';
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 2]);
-    
+
     switch (road.type) {
       case 'horizontal':
         ctx.beginPath();
@@ -814,7 +814,7 @@ export default function GameWorld2D() {
         ctx.stroke();
         break;
     }
-    
+
     ctx.setLineDash([]);
     ctx.restore();
   }, [gridToScreen]);
@@ -844,6 +844,43 @@ export default function GameWorld2D() {
       }
     }
 
+    // Handle mining animation
+    if (npc.animation && npc.animation.type === 'mining') {
+      const elapsed = Date.now() - npc.animation.startTime;
+      const progress = elapsed / npc.animation.duration;
+
+      if (progress < 1) {
+        // Simple swing animation for mining
+        const swingAngle = Math.sin(progress * Math.PI * 3) * Math.PI / 6; // Swing between -30 and 30 degrees
+        const toolOffset = radius * 1.3; // Distance of the tool from the NPC
+
+        ctx.translate(screen.x, npcY);
+        ctx.rotate(swingAngle);
+
+        // Draw tool (pickaxe emoji)
+        ctx.font = `${Math.max(16, radius * 1.2)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const toolEmoji = '⛏️';
+
+        // Position tool emoji
+        const toolX = 0; // Relative to NPC's translated position
+        const toolY = -toolOffset; // Above the NPC
+
+        // Add subtle shadow for better visibility
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillText(toolEmoji, toolX + 1, toolY + 1);
+
+        // Draw the actual emoji
+        ctx.fillStyle = '#000000';
+        ctx.fillText(toolEmoji, toolX, toolY);
+
+        ctx.restore(); // Restore context after rotation
+        ctx.save(); // Save context again for NPC body drawing
+        ctx.translate(screen.x, npcY); // Re-translate for the body
+      }
+    }
+
     // Color based on profession
     let npcColor = '#FF6B6B'; // Default farmer color
     if (npc.profession === 'LUMBERJACK') {
@@ -867,7 +904,7 @@ export default function GameWorld2D() {
     ctx.font = `${Math.max(16, radius * 1.2)}px Arial`; // Increased size
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    
+
     let toolEmoji = '';
     if (npc.profession === 'LUMBERJACK') {
       toolEmoji = '🪓'; // Axe emoji
@@ -876,16 +913,16 @@ export default function GameWorld2D() {
     } else if (npc.profession === 'FARMER') {
       toolEmoji = '🚜'; // Tractor emoji for farmer
     }
-    
-    if (toolEmoji) {
+
+    if (toolEmoji && !npc.animation) { // Only draw tool if not animating (animation handles tool drawing)
       // Position tool emoji to the left side of the NPC
       const toolX = screen.x - radius * 1.2; // Moved to left side
       const toolY = npcY;
-      
+
       // Add subtle shadow for better visibility
       ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
       ctx.fillText(toolEmoji, toolX + 1, toolY + 1);
-      
+
       // Draw the actual emoji
       ctx.fillStyle = '#000000';
       ctx.fillText(toolEmoji, toolX, toolY);
@@ -969,23 +1006,23 @@ export default function GameWorld2D() {
     if (stone.hitStartTime) {
       const elapsed = Date.now() - stone.hitStartTime;
       const hitDuration = 200; // 200ms hit animation
-      
+
       if (elapsed < hitDuration) {
         const progress = elapsed / hitDuration;
-        
+
         // Shake effect - tremor (apenas horizontal/vertical, sem rotação)
         const shakeIntensity = (1 - progress) * 3;
         const shakeX = Math.sin(progress * Math.PI * 8) * shakeIntensity;
         const shakeY = Math.sin(progress * Math.PI * 6) * shakeIntensity * 0.5; // Tremor menor na vertical
-        
+
         // Scale pulse effect (suave)
         const scaleEffect = 1 + Math.sin(progress * Math.PI * 4) * 0.03 * (1 - progress);
-        
+
         // Aplicar apenas shake e scale, sem rotação
         ctx.translate(screen.x + shakeX, screen.y + shakeY);
         ctx.scale(scaleEffect, scaleEffect);
         ctx.translate(-screen.x, -screen.y);
-        
+
         // White flash effect
         const flashIntensity = Math.sin(progress * Math.PI * 4) * 0.4 * (1 - progress);
         if (flashIntensity > 0) {
@@ -1008,7 +1045,7 @@ export default function GameWorld2D() {
       for (let i = 0; i < crackLines; i++) {
         const angle = (Math.PI * 2 * i) / crackLines + (Math.PI / 4); // Offset fixo
         const length = size * 0.25 * breakProgress;
-        
+
         ctx.strokeStyle = `rgba(51, 51, 51, ${1 - breakProgress * 0.5})`;
         ctx.lineWidth = Math.max(1, 3 - breakProgress * 2);
         ctx.beginPath();
@@ -1030,7 +1067,7 @@ export default function GameWorld2D() {
 
     // Color based on health and type
     let stoneColor = '#808080'; // Default gray
-    
+
     if (stone.type === 'small') {
       stoneColor = '#A0A0A0'; // Light gray
     } else if (stone.type === 'large') {
@@ -1053,7 +1090,7 @@ export default function GameWorld2D() {
                     size * 0.4; // medium
 
     ctx.fillStyle = stoneColor;
-    
+
     if (stone.type === 'small') {
       // Small stone - simple circle
       ctx.beginPath();
@@ -1073,7 +1110,7 @@ export default function GameWorld2D() {
         const radius = stoneSize * variation;
         const x = screen.x + Math.cos(angle) * radius;
         const y = screen.y + Math.sin(angle) * radius;
-        
+
         if (i === 0) {
           ctx.moveTo(x, y);
         } else {
@@ -1090,7 +1127,7 @@ export default function GameWorld2D() {
         const angle = (Math.PI * 2 * i) / sides;
         const x = screen.x + Math.cos(angle) * stoneSize;
         const y = screen.y + Math.sin(angle) * stoneSize;
-        
+
         if (i === 0) {
           ctx.moveTo(x, y);
         } else {
@@ -1170,25 +1207,25 @@ export default function GameWorld2D() {
     if (tree.hitStartTime) {
       const elapsed = Date.now() - tree.hitStartTime;
       const hitDuration = 300; // 300ms hit animation
-      
+
       if (elapsed < hitDuration) {
         const progress = elapsed / hitDuration;
-        
+
         // Shake effect - tremor horizontal
         const shakeIntensity = (1 - progress) * 8; // Diminui com o tempo
         const shakeX = Math.sin(progress * Math.PI * 12) * shakeIntensity;
-        
+
         // Scale pulse effect - pulso de escala
         const scaleEffect = 1 + Math.sin(progress * Math.PI * 8) * 0.1 * (1 - progress);
-        
+
         // Apply shake translation
         ctx.translate(shakeX, 0);
-        
+
         // Apply scale effect
         ctx.translate(screen.x, screen.y);
         ctx.scale(scaleEffect, scaleEffect);
         ctx.translate(-screen.x, -screen.y);
-        
+
         // Red flash effect - flash vermelho
         const flashIntensity = Math.sin(progress * Math.PI * 6) * 0.3 * (1 - progress);
         if (flashIntensity > 0) {
@@ -1219,10 +1256,10 @@ export default function GameWorld2D() {
 
       // Rotate tree as it falls with easing
       const fallAngle = easedProgress * Math.PI / 2 * fallDirection;
-      
+
       // Calculate fall pivot point (base of tree)
       const pivotY = screen.y + size * 0.3 * treeScale; // Base da árvore
-      
+
       ctx.translate(screen.x, pivotY);
       ctx.rotate(fallAngle);
       ctx.translate(-screen.x, -pivotY);
@@ -1238,7 +1275,7 @@ export default function GameWorld2D() {
       if (elapsed > fallDuration) {
         const fadeProgress = (elapsed - fallDuration) / 2800; // 2.8s fade
         ctx.globalAlpha = Math.max(0, 1 - fadeProgress);
-        
+
         // Slight shrink as it fades
         const shrinkFactor = 1 - fadeProgress * 0.2;
         ctx.translate(screen.x, screen.y);
@@ -1484,7 +1521,7 @@ export default function GameWorld2D() {
 
     if (houseClicked) {
       useGameStore.getState().selectHouse(houseClicked.id);
-      
+
       // Encontrar NPC que mora nesta casa e abrir painel de configuração
       const npcInHouse = Object.values(npcs).find(npc => npc.houseId === houseClicked.id);
       if (npcInHouse) {
