@@ -17,6 +17,10 @@ This is a 2D isometric simulation game built with HTML5 Canvas where players can
 - **Manual NPC Actions System**: Implemented comprehensive manual control system for NPCs in controlled mode, allowing players to trigger work actions like tree cutting using keyboard controls (Space/E keys) or UI buttons
 - **Enhanced NPC Interface**: Added NPCActionButtons component with real-time progress tracking, work status display, and intuitive controls for manual NPC management
 - **Integrated Tree Cutting**: Connected manual actions with existing tree system, enabling controlled NPCs to cut adjacent trees with proper progress tracking and completion detection
+- **Complete Miner Profession System**: Implemented full mining profession with stone collection, autonomous behavior mirroring lumberjack functionality but for stone resources
+- **Tool Emoji Display**: Added visual tool emojis in NPCs' hands based on profession (🪓 for lumberjacks, ⛏️ for miners, 🚜 for farmers)
+- **Comprehensive Windows 98 UI**: Applied complete Windows 98 theming to all modals including NPCConfigModal and NPCInventoryModal with proper styling, buttons, and visual elements
+- **Resource-Based Inventory Management**: Implemented advanced inventory system with weight-based limitations, resource transfer between NPCs and houses, and automatic home storage at 80% capacity
 
 # User Preferences
 

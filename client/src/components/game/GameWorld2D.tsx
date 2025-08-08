@@ -848,6 +848,8 @@ export default function GameWorld2D() {
     let npcColor = '#FF6B6B'; // Default farmer color
     if (npc.profession === 'LUMBERJACK') {
       npcColor = '#8B4513'; // Brown for lumberjack
+    } else if (npc.profession === 'MINER') {
+      npcColor = '#696969'; // Dark gray for miner
     }
 
     // Corpo do NPC
@@ -861,13 +863,32 @@ export default function GameWorld2D() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Profession indicator (small icon)
+    // Tool emoji in hand based on profession
+    ctx.font = `${Math.max(12, radius * 0.8)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    let toolEmoji = '';
     if (npc.profession === 'LUMBERJACK') {
-      // Draw small axe icon
-      ctx.fillStyle = '#654321';
-      ctx.fillRect(screen.x + radius * 0.5, npcY - radius * 0.8, 4, 12);
-      ctx.fillStyle = '#C0C0C0';
-      ctx.fillRect(screen.x + radius * 0.5 - 2, npcY - radius * 0.8, 8, 4);
+      toolEmoji = '🪓'; // Axe emoji
+    } else if (npc.profession === 'MINER') {
+      toolEmoji = '⛏️'; // Pickaxe emoji
+    } else if (npc.profession === 'FARMER') {
+      toolEmoji = '🚜'; // Tractor emoji for farmer
+    }
+    
+    if (toolEmoji) {
+      // Position tool emoji next to NPC (in their "hand")
+      const toolX = screen.x + radius * 0.8;
+      const toolY = npcY - radius * 0.2;
+      
+      // Add subtle shadow for better visibility
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.fillText(toolEmoji, toolX + 1, toolY + 1);
+      
+      // Draw the actual emoji
+      ctx.fillStyle = '#000000';
+      ctx.fillText(toolEmoji, toolX, toolY);
     }
 
     // Working indicator

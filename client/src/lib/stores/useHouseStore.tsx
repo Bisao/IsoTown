@@ -58,6 +58,8 @@ export const useHouseStore = create<HouseStore>()(
                   profession = NPCProfession.LUMBERJACK;
                 } else if (type === 'FARMER') {
                   profession = NPCProfession.FARMER;
+                } else if (type === 'MINER') {
+                  profession = NPCProfession.MINER;
                 }
                 
                 const npcId = useNPCStore.getState().addNPC(position, profession);
