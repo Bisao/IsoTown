@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { HouseType } from '../constants';
 import { NPCControlMode } from '../types';
+import { useNPCStore } from './useNPCStore';
 
 interface GameStore {
   // UI State
@@ -35,7 +36,7 @@ interface GameStore {
   resetRotation: () => void;
 }
 
-export const useGameStore = create<GameStore>((set) => ({
+export const useGameStore = create<GameStore>((set, get) => ({
   // UI State
   showHouseModal: false,
   showNPCModal: false,
@@ -105,11 +106,28 @@ export const useGameStore = create<GameStore>((set) => ({
     currentRotation: 0, // Reset rotation when stopping placement
   }),
 
-  selectNPC: (id) => set({
-    selectedNPC: id,
-    selectedHouse: null,
-    showNPCModal: !!id
-  }),
+  selectNPC: (id: string | null) => {
+    const { selectedNPC } = get();
+
+    // If there was a previously selected NPC in controlled mode, return it to autonomous
+    if (selectedNPC && selectedNPC !== id) {
+      const { npcs, setNPCControlMode } = useNPCStore.getState();
+      const previousNPC = npcs[selectedNPC];
+
+      if (previousNPC && previousNPC.controlMode === NPCControlMode.CONTROLLED) {
+        console.log('Retornando NPC anterior ao modo autônomo:', selectedNPC);
+        setNPCControlMode(selectedNPC, NPCControlMode.AUTONOMOUS);
+      }
+    }
+
+    // If clicking the same NPC, deselect it
+    if (selectedNPC === id) {
+      set({ selectedNPC: null });
+      return;
+    }
+
+    set({ selectedNPC: id, selectedHouse: null, showNPCModal: !!id });
+  },
 
   selectHouse: (id) => set({
     selectedHouse: id,
