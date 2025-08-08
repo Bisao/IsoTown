@@ -213,50 +213,7 @@ export default function GameUI() {
       {/* Mobile Virtual Joystick */}
       {isMobile && <VirtualJoystick />}
 
-      {/* Controls for controlled NPC */}
-            {selectedNPC && currentNPC && currentNPC.controlMode === NPCControlMode.CONTROLLED && (
-              <div className="win98-panel" style={{ padding: '8px', marginTop: '8px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: '#000080' }}>
-                  🎮 Manual Controls
-                </div>
-                <div style={{ fontSize: '11px', marginBottom: '8px' }}>
-                  Use WASD or Arrow Keys to move
-                </div>
-
-                {/* Action buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-                  <button
-                    onClick={handleManualCutTree}
-                    className="win98-button"
-                    style={{ 
-                      padding: '6px 12px',
-                      fontSize: '11px',
-                      backgroundColor: '#c0c0c0',
-                      border: '2px outset #c0c0c0'
-                    }}
-                  >
-                    🪓 Cut Tree (Space)
-                  </button>
-                  
-                  <button
-                    onClick={() => setShowNPCModal(true)}
-                    className="win98-button"
-                    style={{ 
-                      padding: '6px 12px',
-                      fontSize: '11px',
-                      backgroundColor: '#c0c0c0',
-                      border: '2px outset #c0c0c0'
-                    }}
-                  >
-                    ⚙️ NPC Config
-                  </button>
-                  
-                  <div style={{ fontSize: '10px', color: '#666', textAlign: 'center' }}>
-                    Move onto a tree tile and click or press Space
-                  </div>
-                </div>
-              </div>
-            )}
+      
 
       {/* Quick access button for NPC configuration when NPC is selected */}
       {selectedNPC && currentNPC && (
