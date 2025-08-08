@@ -6,6 +6,7 @@ import { useTreeStore } from '../../lib/stores/useTreeStore';
 import { useStoneStore } from '../../lib/stores/useStoneStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
+import { useVillageStore } from '../../lib/stores/useVillageStore';
 import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN } from '../../lib/constants';
 import { NPCControlMode, NPCProfession } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
@@ -24,12 +25,15 @@ export default function GameWorld2D() {
   const trees = useTreeStore(state => state.trees);
   const stones = useStoneStore(state => state.stones);
   const textEffects = useEffectsStore(state => state.effects);
+  const villages = useVillageStore(state => state.villages);
+  const roads = useVillageStore(state => state.roads);
   const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree, setNPCState, addItemToInventory } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { generateRandomTrees, getTreeAt, updateTree, removeTree } = useTreeStore();
   const { generateRandomStones, getStoneAt } = useStoneStore();
   const { updateEffects, addTextEffect } = useEffectsStore();
+  const { createVillage, getRoadAt } = useVillageStore();
 
   // Adicionar hooks de teclado para ações
   useKeyboardActions();
@@ -233,12 +237,12 @@ export default function GameWorld2D() {
     
     if (!generatedChunksRef.current.has(chunkKey)) {
       // Gerar árvores e pedras neste chunk
-      generateTreesInChunk(chunkX, chunkZ, CHUNK_SIZE);
-      generateStonesInChunk(chunkX, chunkZ, CHUNK_SIZE);
+      useTreeStore.getState().generateTreesInChunk(chunkX, chunkZ, CHUNK_SIZE);
+      useStoneStore.getState().generateStonesInChunk(chunkX, chunkZ, CHUNK_SIZE);
       generatedChunksRef.current.add(chunkKey);
       console.log(`Chunk gerado: ${chunkKey}`);
     }
-  }, [generateTreesInChunk, generateStonesInChunk]);
+  }, []);
 
   // Gerar chunks baseado na posição da câmera
   useEffect(() => {
@@ -260,14 +264,23 @@ export default function GameWorld2D() {
     }
   }, [panRef.current.x, panRef.current.y, zoomRef.current, generateChunkIfNeeded]);
 
-  // Gerar chunk inicial ao redor do spawn (0,0)
+  // Gerar chunk inicial ao redor do spawn (0,0) e criar vilarejos
   useEffect(() => {
     generateChunkIfNeeded(0, 0);
     generateChunkIfNeeded(-1, 0);
     generateChunkIfNeeded(1, 0);
     generateChunkIfNeeded(0, -1);
     generateChunkIfNeeded(0, 1);
-  }, [generateChunkIfNeeded]);
+
+    // Criar alguns vilarejos espalhados pelo mapa
+    setTimeout(() => {
+      createVillage({ x: 0, z: 0 }, 8, 'Vila Central');
+      createVillage({ x: 25, z: 15 }, 6, 'Vila Leste');
+      createVillage({ x: -20, z: -10 }, 5, 'Vila Oeste');
+      createVillage({ x: 10, z: -25 }, 7, 'Vila Norte');
+      createVillage({ x: -15, z: 20 }, 6, 'Vila Sul');
+    }, 2000);
+  }, [generateChunkIfNeeded, createVillage]);
 
   // Game loop for NPC behavior and effects
   useEffect(() => {
@@ -728,6 +741,65 @@ export default function GameWorld2D() {
         ctx.fill();
         ctx.stroke();
       }
+    }
+
+    ctx.restore();
+  }, [gridToScreen]);
+
+  // Desenhar rua (memoizado)
+  const drawRoad = useCallback((ctx: CanvasRenderingContext2D, road: any, canvasWidth: number, canvasHeight: number) => {
+    const screen = gridToScreen(road.position.x, road.position.z, canvasWidth, canvasHeight);
+    const size = CELL_SIZE * zoomRef.current;
+
+    ctx.save();
+
+    // Cor das ruas - marrom para diferenciar da grama
+    ctx.fillStyle = '#8B4513';
+    
+    // Desenhar forma da rua baseada no tipo
+    switch (road.type) {
+      case 'horizontal':
+        ctx.fillRect(screen.x - size/2, screen.y - size/4, size, size/2);
+        break;
+      case 'vertical':
+        ctx.fillRect(screen.x - size/4, screen.y - size/2, size/2, size);
+        break;
+      case 'cross':
+        // Cruzamento - rua completa
+        ctx.fillRect(screen.x - size/2, screen.y - size/4, size, size/2); // horizontal
+        ctx.fillRect(screen.x - size/4, screen.y - size/2, size/2, size); // vertical
+        break;
+      case 'corner_ne':
+        ctx.fillRect(screen.x, screen.y - size/4, size/2, size/2); // direita
+        ctx.fillRect(screen.x - size/4, screen.y - size/2, size/2, size/2); // cima
+        break;
+      case 'corner_nw':
+        ctx.fillRect(screen.x - size/2, screen.y - size/4, size/2, size/2); // esquerda
+        ctx.fillRect(screen.x - size/4, screen.y - size/2, size/2, size/2); // cima
+        break;
+      case 'corner_se':
+        ctx.fillRect(screen.x, screen.y - size/4, size/2, size/2); // direita
+        ctx.fillRect(screen.x - size/4, screen.y, size/2, size/2); // baixo
+        break;
+      case 'corner_sw':
+        ctx.fillRect(screen.x - size/2, screen.y - size/4, size/2, size/2); // esquerda
+        ctx.fillRect(screen.x - size/4, screen.y, size/2, size/2); // baixo
+        break;
+    }
+
+    // Borda mais escura para definir melhor a rua
+    ctx.strokeStyle = '#654321';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Textura de pedra/terra batida (pontos pequenos)
+    ctx.fillStyle = '#A0522D';
+    for (let i = 0; i < 3; i++) {
+      const offsetX = (Math.random() - 0.5) * size * 0.6;
+      const offsetY = (Math.random() - 0.5) * size * 0.6;
+      ctx.beginPath();
+      ctx.arc(screen.x + offsetX, screen.y + offsetY, 1, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.restore();
@@ -1310,6 +1382,13 @@ export default function GameWorld2D() {
     // Desenhar elementos
     drawGrid(ctx, canvas.width, canvas.height);
 
+    // Desenhar ruas primeiro (sobre o grid mas sob outros elementos)
+    Object.values(roads).forEach(road => {
+      if (isObjectVisible(road.position, canvas.width, canvas.height)) {
+        drawRoad(ctx, road, canvas.width, canvas.height);
+      }
+    });
+
     // Desenhar pedras primeiro (fundo) - apenas as visíveis
     Object.values(stones).forEach(stone => {
       if (isObjectVisible(stone.position, canvas.width, canvas.height)) {
@@ -1340,7 +1419,7 @@ export default function GameWorld2D() {
     drawTextEffects(ctx, canvas.width, canvas.height);
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, trees, stones, drawGrid, drawHouse, drawNPC, drawTree, drawStone, drawTextEffects]);
+  }, [houses, npcs, trees, stones, roads, drawGrid, drawHouse, drawNPC, drawTree, drawStone, drawRoad, drawTextEffects]);
 
   // Manipular cliques no canvas
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1353,7 +1432,7 @@ export default function GameWorld2D() {
 
     if (isPlacingHouse && selectedHouseType) {
       const gridPos = screenToGrid(x, y, canvas.width, canvas.height);
-      if (isValidGridPosition(gridPos) && !getHouseAt(gridPos) && !getTreeAt(gridPos) && !getStoneAt(gridPos)) {
+      if (isValidGridPosition(gridPos) && !getHouseAt(gridPos) && !getTreeAt(gridPos) && !getStoneAt(gridPos) && !getRoadAt(gridPos)) {
         addHouse(selectedHouseType, gridPos, currentRotation);
         stopPlacingHouse();
       }
