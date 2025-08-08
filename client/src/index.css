@@ -618,13 +618,13 @@ canvas {
 .rpg-orb-container.health {
   position: absolute;
   top: -45px;
-  left: 120px;
+  left: 160px;
 }
 
 .rpg-orb-container.mana {
   position: absolute;
   top: -45px;
-  right: 120px;
+  right: 160px;
 }
 
 .rpg-orb {
