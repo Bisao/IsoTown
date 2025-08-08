@@ -177,29 +177,81 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     const startX = chunkX * chunkSize;
     const startZ = chunkZ * chunkSize;
     
-    for (let x = startX; x < startX + chunkSize; x++) {
-      for (let z = startZ; z < startZ + chunkSize; z++) {
-        const position = { x, z };
-
-        if (isValidGridPosition(position)) {
-          // Criar seed única para esta posição
-          const tileSeed = (x + 50000) * 100000 + (z + 50000); // Offset para evitar negativos
+    // Gerar clusters de árvores ao invés de distribuição uniforme
+    const clusterSeed = (chunkX * 1000 + chunkZ);
+    const numClusters = Math.floor(((clusterSeed * 7) % 100) / 25) + 1; // 1-4 clusters por chunk
+    
+    for (let cluster = 0; cluster < numClusters; cluster++) {
+      const clusterHash = (clusterSeed + cluster * 1000) % 233280;
+      
+      // Posição central do cluster
+      const centerX = startX + Math.floor((clusterHash % 1000) / 1000.0 * chunkSize);
+      const centerZ = startZ + Math.floor(((clusterHash / 1000) % 1000) / 1000.0 * chunkSize);
+      
+      // Tamanho do cluster (raio)
+      const clusterRadius = 3 + (clusterHash % 5); // Raio de 3-7 tiles
+      const clusterDensity = 0.6 + ((clusterHash % 40) / 100.0); // Densidade 60-100%
+      
+      // Gerar árvores no cluster
+      for (let dx = -clusterRadius; dx <= clusterRadius; dx++) {
+        for (let dz = -clusterRadius; dz <= clusterRadius; dz++) {
+          const x = centerX + dx;
+          const z = centerZ + dz;
+          const position = { x, z };
           
-          // Usar função hash simples para pseudo-randomização determinística
-          const hash = (tileSeed * 9301 + 49297) % 233280;
-          const random = hash / 233280.0;
-
-          if (random < TREE_DENSITY) {
-            // Determinar tipo de árvore baseado na posição
-            const typeRandom = ((tileSeed * 7919) % 100) / 100.0;
-            let treeType: 'pine' | 'oak' | 'birch' = 'pine';
+          // Verificar se está dentro dos limites do chunk
+          if (x >= startX && x < startX + chunkSize && 
+              z >= startZ && z < startZ + chunkSize && 
+              isValidGridPosition(position)) {
             
-            if (typeRandom < 0.4) treeType = 'oak';
-            else if (typeRandom < 0.7) treeType = 'birch';
-            else treeType = 'pine';
+            // Distância do centro do cluster
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            const distanceFactor = Math.max(0, 1 - (distance / clusterRadius));
+            
+            // Probabilidade baseada na distância do centro
+            const tileSeed = (x + 50000) * 100000 + (z + 50000);
+            const hash = (tileSeed * 9301 + 49297) % 233280;
+            const random = hash / 233280.0;
+            
+            const treeProbability = clusterDensity * distanceFactor;
+            
+            if (random < treeProbability) {
+              // Determinar tipo de árvore baseado na posição
+              const typeRandom = ((tileSeed * 7919) % 100) / 100.0;
+              let treeType: 'pine' | 'oak' | 'birch' = 'pine';
+              
+              if (typeRandom < 0.4) treeType = 'oak';
+              else if (typeRandom < 0.7) treeType = 'birch';
+              else treeType = 'pine';
 
-            get().addTree(position, treeType);
+              get().addTree(position, treeType);
+            }
           }
+        }
+      }
+    }
+    
+    // Adicionar algumas árvores esparsas fora dos clusters
+    for (let i = 0; i < chunkSize * chunkSize * 0.05; i++) {
+      const sparseHash = (clusterSeed + i * 7777) % 233280;
+      const x = startX + Math.floor((sparseHash % 1000) / 1000.0 * chunkSize);
+      const z = startZ + Math.floor(((sparseHash / 1000) % 1000) / 1000.0 * chunkSize);
+      const position = { x, z };
+      
+      if (isValidGridPosition(position)) {
+        const tileSeed = (x + 50000) * 100000 + (z + 50000);
+        const hash = (tileSeed * 9301 + 49297) % 233280;
+        const random = hash / 233280.0;
+        
+        if (random < 0.1) { // 10% de chance para árvores esparsas
+          const typeRandom = ((tileSeed * 7919) % 100) / 100.0;
+          let treeType: 'pine' | 'oak' | 'birch' = 'pine';
+          
+          if (typeRandom < 0.4) treeType = 'oak';
+          else if (typeRandom < 0.7) treeType = 'birch';
+          else treeType = 'pine';
+
+          get().addTree(position, treeType);
         }
       }
     }
