@@ -411,96 +411,6 @@ export default function GameWorld2D() {
     }, 100); // Pequeno delay para garantir que os chunks iniciais sejam gerados
   }, [generateChunkIfNeeded]);
 
-  // Game loop for NPC behavior and effects
-  useEffect(() => {
-    const gameLoop = setInterval(() => {
-      // Update NPC movement
-      updateNPCMovement();
-
-      // Update cooldowns
-      useNPCStore.getState().updateCooldowns();
-
-      // Update lumberjack and miner behavior for each NPC
-      Object.values(npcs).forEach((npc) => {
-        if (npc.profession === 'LUMBERJACK' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
-          console.log('Atualizando comportamento do lenhador:', npc.id, 'estado:', npc.state);
-          try {
-            updateLumberjackBehaviorWithTrees(npc, trees);
-          } catch (error) {
-            console.error('Erro ao atualizar comportamento do lenhador:', error);
-          }
-        } else if (npc.profession === 'MINER' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
-          console.log('Atualizando comportamento do minerador:', npc.id, 'estado:', npc.state);
-          try {
-            updateMinerBehaviorWithStones(npc, stones);
-          } catch (error) {
-            console.error('Erro ao atualizar comportamento do minerador:', error);
-          }
-        }
-      });
-
-      // Update tree falling animations
-      const { updateFallingTrees } = useTreeStore.getState();
-      updateFallingTrees();
-
-      // Update stone breaking animations
-      const { updateBreakingStones } = useStoneStore.getState();
-      updateBreakingStones();
-
-      // Update text effects
-      updateEffects();
-    }, 100); // Run every 100ms for smooth updates
-
-    return () => clearInterval(gameLoop);
-  }, [npcs, trees, stones, updateNPCMovement, updateEffects, updateLumberjackBehaviorWithTrees, updateMinerBehaviorWithStones]);
-
-  // Manual tree cutting for controlled NPCs
-  const handleManualTreeCutting = useCallback((npcId: string) => {
-    const npc = npcs[npcId];
-    if (!npc || npc.controlMode !== NPCControlMode.CONTROLLED) {
-      console.log('NPC não encontrado ou não está em modo controlado');
-      return;
-    }
-
-    // Check if there's a tree at the NPC's exact position
-    const treeAtPosition = getTreeAt(npc.position);
-
-    if (treeAtPosition && !treeAtPosition.isFalling) {
-      console.log('Cortando árvore manualmente:', treeAtPosition.id, 'na mesma posição do NPC');
-
-      // Damage the tree
-      const { damageTree } = useTreeStore.getState();
-      const treeDestroyed = damageTree(treeAtPosition.id, 1);
-
-      // Add chopping animation
-      useNPCStore.getState().setNPCAnimation(npc.id, {
-        type: 'chopping',
-        startTime: Date.now(),
-        duration: CHOPPING_ANIMATION_DURATION
-      });
-
-      // Add visual effect at tree position
-      const { addTextEffect } = useEffectsStore.getState();
-      addTextEffect(treeAtPosition.position, 'TOC!', 1000);
-
-      // If tree was destroyed, remove it
-      if (treeDestroyed) {
-        const { removeTree } = useTreeStore.getState();
-        removeTree(treeAtPosition.id);
-      }
-
-      console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
-      return true;
-    } else {
-      console.log('NPC deve estar no mesmo tile da árvore para cortá-la');
-
-      // Add visual feedback
-      const { addTextEffect } = useEffectsStore.getState();
-      addTextEffect(npc.position, 'Precisa estar na árvore!', 1000);
-      return false;
-    }
-  }, [npcs, getTreeAt]);
-
   // Enhanced lumberjack behavior with tree access
   const updateLumberjackBehaviorWithTrees = useCallback((npc: any, availableTrees: Record<string, any>) => {
     if (npc.profession !== 'LUMBERJACK' || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
@@ -752,6 +662,96 @@ export default function GameWorld2D() {
       }
     }
   }, []);
+
+  // Game loop for NPC behavior and effects
+  useEffect(() => {
+    const gameLoop = setInterval(() => {
+      // Update NPC movement
+      updateNPCMovement();
+
+      // Update cooldowns
+      useNPCStore.getState().updateCooldowns();
+
+      // Update lumberjack and miner behavior for each NPC
+      Object.values(npcs).forEach((npc) => {
+        if (npc.profession === 'LUMBERJACK' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
+          console.log('Atualizando comportamento do lenhador:', npc.id, 'estado:', npc.state);
+          try {
+            updateLumberjackBehaviorWithTrees(npc, trees);
+          } catch (error) {
+            console.error('Erro ao atualizar comportamento do lenhador:', error);
+          }
+        } else if (npc.profession === 'MINER' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
+          console.log('Atualizando comportamento do minerador:', npc.id, 'estado:', npc.state);
+          try {
+            updateMinerBehaviorWithStones(npc, stones);
+          } catch (error) {
+            console.error('Erro ao atualizar comportamento do minerador:', error);
+          }
+        }
+      });
+
+      // Update tree falling animations
+      const { updateFallingTrees } = useTreeStore.getState();
+      updateFallingTrees();
+
+      // Update stone breaking animations
+      const { updateBreakingStones } = useStoneStore.getState();
+      updateBreakingStones();
+
+      // Update text effects
+      updateEffects();
+    }, 100); // Run every 100ms for smooth updates
+
+    return () => clearInterval(gameLoop);
+  }, [npcs, trees, stones, updateNPCMovement, updateEffects, updateLumberjackBehaviorWithTrees, updateMinerBehaviorWithStones]);
+
+  // Manual tree cutting for controlled NPCs
+  const handleManualTreeCutting = useCallback((npcId: string) => {
+    const npc = npcs[npcId];
+    if (!npc || npc.controlMode !== NPCControlMode.CONTROLLED) {
+      console.log('NPC não encontrado ou não está em modo controlado');
+      return;
+    }
+
+    // Check if there's a tree at the NPC's exact position
+    const treeAtPosition = getTreeAt(npc.position);
+
+    if (treeAtPosition && !treeAtPosition.isFalling) {
+      console.log('Cortando árvore manualmente:', treeAtPosition.id, 'na mesma posição do NPC');
+
+      // Damage the tree
+      const { damageTree } = useTreeStore.getState();
+      const treeDestroyed = damageTree(treeAtPosition.id, 1);
+
+      // Add chopping animation
+      useNPCStore.getState().setNPCAnimation(npc.id, {
+        type: 'chopping',
+        startTime: Date.now(),
+        duration: CHOPPING_ANIMATION_DURATION
+      });
+
+      // Add visual effect at tree position
+      const { addTextEffect } = useEffectsStore.getState();
+      addTextEffect(treeAtPosition.position, 'TOC!', 1000);
+
+      // If tree was destroyed, remove it
+      if (treeDestroyed) {
+        const { removeTree } = useTreeStore.getState();
+        removeTree(treeAtPosition.id);
+      }
+
+      console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
+      return true;
+    } else {
+      console.log('NPC deve estar no mesmo tile da árvore para cortá-la');
+
+      // Add visual feedback
+      const { addTextEffect } = useEffectsStore.getState();
+      addTextEffect(npc.position, 'Precisa estar na árvore!', 1000);
+      return false;
+    }
+  }, [npcs, getTreeAt]);
 
   
 
