@@ -264,7 +264,7 @@ export default function GameWorld2D() {
     }
   }, [panRef.current.x, panRef.current.y, zoomRef.current, generateChunkIfNeeded]);
 
-  // Gerar chunk inicial ao redor do spawn (0,0) e criar vilarejos
+  // Gerar chunk inicial ao redor do spawn (0,0) e criar mapa procedural
   useEffect(() => {
     generateChunkIfNeeded(0, 0);
     generateChunkIfNeeded(-1, 0);
@@ -272,15 +272,23 @@ export default function GameWorld2D() {
     generateChunkIfNeeded(0, -1);
     generateChunkIfNeeded(0, 1);
 
-    // Criar alguns vilarejos espalhados pelo mapa
+    // Gerar mapa procedural conectado
     setTimeout(() => {
-      createVillage({ x: 0, z: 0 }, 8, 'Vila Central');
-      createVillage({ x: 25, z: 15 }, 6, 'Vila Leste');
-      createVillage({ x: -20, z: -10 }, 5, 'Vila Oeste');
-      createVillage({ x: 10, z: -25 }, 7, 'Vila Norte');
-      createVillage({ x: -15, z: 20 }, 6, 'Vila Sul');
-    }, 2000);
-  }, [generateChunkIfNeeded, createVillage]);
+      const { generateProceduralMap } = useVillageStore.getState();
+      
+      // Gerar área central grande conectada
+      generateProceduralMap({ x: 0, z: 0 }, 25);
+      
+      // Gerar áreas secundárias conectadas
+      setTimeout(() => {
+        generateProceduralMap({ x: 50, z: 0 }, 15);
+        generateProceduralMap({ x: -50, z: 0 }, 15);
+        generateProceduralMap({ x: 0, z: 50 }, 15);
+        generateProceduralMap({ x: 0, z: -50 }, 15);
+      }, 3000);
+      
+    }, 1000);
+  }, [generateChunkIfNeeded]);
 
   // Game loop for NPC behavior and effects
   useEffect(() => {

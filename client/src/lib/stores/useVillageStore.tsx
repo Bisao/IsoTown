@@ -29,6 +29,8 @@ interface VillageStore {
   addRoadToVillage: (villageId: string, road: Road) => void;
   getRoadAt: (position: Position) => Road | undefined;
   generateVillageLayout: (villageId: string) => void;
+  generateProceduralMap: (centerPosition: Position, mapSize: number) => string;
+  generateHousesConnectedToRoads: (centerPosition: Position, mapSize: number) => void;
 }
 
 export const useVillageStore = create<VillageStore>()(
@@ -165,45 +167,185 @@ export const useVillageStore = create<VillageStore>()(
       const village = villages[villageId];
       if (!village) return;
 
-      const { useHouseStore } = require('./useHouseStore');
-      const { addHouse } = useHouseStore.getState();
-      const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER];
+      // Importar dinamicamente o store
+      import('./useHouseStore').then(({ useHouseStore }) => {
+        const { addHouse, getHouseAt } = useHouseStore.getState();
+        const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER];
+        
+        // Gerar casas em posições estratégicas ao redor das ruas
+        const housePositions = [];
+        
+        for (let x = village.centerPosition.x - village.size; x <= village.centerPosition.x + village.size; x++) {
+          for (let z = village.centerPosition.z - village.size; z <= village.centerPosition.z + village.size; z++) {
+            const position = { x, z };
+            
+            // Verificar se não é uma rua
+            if (get().getRoadAt(position)) continue;
+            
+            // Verificar se já existe uma casa
+            if (getHouseAt(position)) continue;
+            
+            // Verificar se está próximo de uma rua (adjacente)
+            const adjacentToRoad = [
+              { x: x + 1, z },
+              { x: x - 1, z },
+              { x, z: z + 1 },
+              { x, z: z - 1 }
+            ].some(pos => get().getRoadAt(pos));
+            
+            if (adjacentToRoad) {
+              // Chance de 40% de gerar uma casa (aumentada para mais densidade)
+              if (Math.random() < 0.4) {
+                housePositions.push(position);
+              }
+            }
+          }
+        }
+        
+        // Adicionar casas
+        housePositions.forEach(position => {
+          const randomType = houseTypes[Math.floor(Math.random() * houseTypes.length)];
+          const rotation = Math.floor(Math.random() * 4) * 90;
+          addHouse(randomType, position, rotation);
+        });
+        
+        console.log(`Vilarejo ${village.name} criado com ${housePositions.length} casas`);
+      }).catch(error => {
+        console.error('Erro ao importar useHouseStore:', error);
+      });
+    },
+
+    // Nova função para gerar mapa procedural conectado
+    generateProceduralMap: (centerPosition: Position, mapSize: number) => {
+      const mapId = nanoid();
       
-      // Gerar casas em posições estratégicas ao redor das ruas
-      const housePositions = [];
+      // Criar rede de ruas principais em grade
+      const roadSpacing = 8; // Espaçamento entre ruas principais
+      const roads: Road[] = [];
       
-      for (let x = village.centerPosition.x - village.size; x <= village.centerPosition.x + village.size; x++) {
-        for (let z = village.centerPosition.z - village.size; z <= village.centerPosition.z + village.size; z++) {
-          const position = { x, z };
-          
-          // Verificar se não é uma rua
-          if (get().getRoadAt(position)) continue;
-          
-          // Verificar se está próximo de uma rua (adjacente)
-          const adjacentToRoad = [
-            { x: x + 1, z },
-            { x: x - 1, z },
-            { x, z: z + 1 },
-            { x, z: z - 1 }
-          ].some(pos => get().getRoadAt(pos));
-          
-          if (adjacentToRoad) {
-            // Chance de 30% de gerar uma casa
-            if (Math.random() < 0.3) {
-              housePositions.push(position);
+      // Gerar ruas horizontais principais
+      for (let z = centerPosition.z - mapSize; z <= centerPosition.z + mapSize; z += roadSpacing) {
+        for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x++) {
+          const roadId = nanoid();
+          roads.push({
+            id: roadId,
+            position: { x, z },
+            type: 'horizontal'
+          });
+        }
+      }
+      
+      // Gerar ruas verticais principais
+      for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x += roadSpacing) {
+        for (let z = centerPosition.z - mapSize; z <= centerPosition.z + mapSize; z++) {
+          if (roads.some(road => road.position.x === x && road.position.z === z)) {
+            // Já existe rua horizontal - criar cruzamento
+            const existingRoad = roads.find(road => road.position.x === x && road.position.z === z);
+            if (existingRoad) {
+              existingRoad.type = 'cross';
+            }
+          } else {
+            const roadId = nanoid();
+            roads.push({
+              id: roadId,
+              position: { x, z },
+              type: 'vertical'
+            });
+          }
+        }
+      }
+      
+      // Gerar ruas secundárias para conectar quarteirões
+      const secondarySpacing = 4;
+      for (let z = centerPosition.z - mapSize; z <= centerPosition.z + mapSize; z += secondarySpacing) {
+        for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x += secondarySpacing) {
+          // Verificar se não conflita com ruas principais
+          if (!roads.some(road => road.position.x === x && road.position.z === z)) {
+            // Criar pequenas ruas conectoras
+            for (let dx = -1; dx <= 1; dx++) {
+              const roadId = nanoid();
+              if (x + dx >= centerPosition.x - mapSize && x + dx <= centerPosition.x + mapSize) {
+                roads.push({
+                  id: roadId,
+                  position: { x: x + dx, z },
+                  type: 'horizontal'
+                });
+              }
             }
           }
         }
       }
       
-      // Adicionar casas
-      housePositions.forEach(position => {
-        const randomType = houseTypes[Math.floor(Math.random() * houseTypes.length)];
-        const rotation = Math.floor(Math.random() * 4) * 90;
-        addHouse(randomType, position, rotation);
+      // Adicionar todas as ruas ao store
+      set((state) => {
+        const newRoads = roads.reduce((acc, road) => {
+          acc[road.id] = road;
+          return acc;
+        }, {} as Record<string, Road>);
+        
+        return {
+          roads: { ...state.roads, ...newRoads }
+        };
       });
       
-      console.log(`Vilarejo ${village.name} criado com ${housePositions.length} casas`);
+      // Gerar casas conectadas às ruas após um delay
+      setTimeout(() => {
+        get().generateHousesConnectedToRoads(centerPosition, mapSize);
+      }, 500);
+      
+      console.log(`Mapa procedural gerado com ${roads.length} segmentos de rua`);
+      return mapId;
+    },
+
+    generateHousesConnectedToRoads: (centerPosition: Position, mapSize: number) => {
+      import('./useHouseStore').then(({ useHouseStore }) => {
+        const { addHouse, getHouseAt } = useHouseStore.getState();
+        const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER];
+        
+        let housesGenerated = 0;
+        
+        // Gerar casas em lotes adjacentes às ruas
+        for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x++) {
+          for (let z = centerPosition.z - mapSize; z <= centerPosition.z + mapSize; z++) {
+            const position = { x, z };
+            
+            // Pular se já existe rua ou casa
+            if (get().getRoadAt(position) || getHouseAt(position)) continue;
+            
+            // Verificar conectividade com ruas (adjacente ou diagonal)
+            const nearbyRoads = [
+              { x: x + 1, z },     // direita
+              { x: x - 1, z },     // esquerda  
+              { x, z: z + 1 },     // baixo
+              { x, z: z - 1 },     // cima
+              { x: x + 1, z: z + 1 }, // diagonal inferior direita
+              { x: x - 1, z: z + 1 }, // diagonal inferior esquerda
+              { x: x + 1, z: z - 1 }, // diagonal superior direita
+              { x: x - 1, z: z - 1 }  // diagonal superior esquerda
+            ];
+            
+            const connectedToRoad = nearbyRoads.some(pos => get().getRoadAt(pos));
+            
+            if (connectedToRoad) {
+              // Densidade baseada na distância do centro
+              const distanceFromCenter = Math.abs(x - centerPosition.x) + Math.abs(z - centerPosition.z);
+              const maxDistance = mapSize * 2;
+              const density = Math.max(0.2, 0.8 - (distanceFromCenter / maxDistance) * 0.6);
+              
+              if (Math.random() < density) {
+                const randomType = houseTypes[Math.floor(Math.random() * houseTypes.length)];
+                const rotation = Math.floor(Math.random() * 4) * 90;
+                addHouse(randomType, position, rotation);
+                housesGenerated++;
+              }
+            }
+          }
+        }
+        
+        console.log(`Geradas ${housesGenerated} casas conectadas às ruas`);
+      }).catch(error => {
+        console.error('Erro ao gerar casas:', error);
+      });
     }
   }))
 );
