@@ -1480,6 +1480,7 @@ export default function GameWorld2D() {
     // Working indicator
     if (npc.state === 'WORKING' && npc.currentTask && npc.currentTask.maxProgress > 0) {
       // Draw progress bar above NPC
+      const radius = size * 0.3; // Definir radius para uso na barra de progresso
       const barWidth = radius * 1.5;
       const barHeight = 3;
       const progress = Math.min(npc.currentTask.progress / npc.currentTask.maxProgress, 1);
@@ -1500,6 +1501,7 @@ export default function GameWorld2D() {
 
     // Cooldown indicator for controlled NPCs
     if (npc.controlMode === NPCControlMode.CONTROLLED && useNPCStore.getState().isNPCOnCooldown(npc.id)) {
+      const radius = size * 0.3; // Definir radius para uso no cooldown
       const cooldownEnd = useNPCStore.getState().npcCooldowns[npc.id];
       const remainingTime = cooldownEnd - Date.now();
       const cooldownProgress = Math.max(0, remainingTime / CONTROLLED_CHOP_COOLDOWN);
