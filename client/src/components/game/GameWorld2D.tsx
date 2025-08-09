@@ -374,8 +374,31 @@ export default function GameWorld2D() {
           };
           img.onerror = () => {
             console.error(`Erro ao carregar sprite: ${path}`);
-            // Não adicionar sprite faltando ao objeto sprites
-            resolve(); // Continue mesmo se falhar
+
+            // Para sprites de rua, tentar carregar de attached_assets
+            if (type.includes('road')) {
+              const fallbackImg = new Image();
+              fallbackImg.onload = () => {
+                sprites[type] = fallbackImg;
+                console.log(`Sprite ${type} carregada do fallback!`);
+                resolve();
+              };
+              fallbackImg.onerror = () => {
+                console.warn(`Fallback também falhou para ${type}`);
+                resolve();
+              };
+
+              // Mapear para os arquivos que você enviou
+              const fallbackPaths: Record<string, string> = {
+                'road_horizontal': '/attached_assets/road(1)_1754722484766.png',
+                'road_vertical': '/attached_assets/road(2)_1754722519931.png', 
+                'road_cross': '/attached_assets/road(3)_1754722519932.png'
+              };
+
+              fallbackImg.src = fallbackPaths[type] || path;
+            } else {
+              resolve();
+            }
           };
           img.src = path;
         });
@@ -944,7 +967,7 @@ export default function GameWorld2D() {
         // Verificar se está na área visível
         if (screen.x >= -100 && screen.x <= canvasWidth + 100 && 
             screen.y >= -100 && screen.y <= canvasHeight + 100) {
-          
+
           const tileSize = CELL_SIZE * zoomRef.current;
 
           if (grassSprite) {
@@ -1183,10 +1206,10 @@ export default function GameWorld2D() {
     if (roadSprite && spritesLoadedRef.current) {
       // Usar sprite de rua realista com renderização isométrica
       const spriteSize = size * 1.4; // Aumentar para cobrir melhor o tile isométrico
-      
+
       // Ajustar posição para isométrico
       const offsetY = size * 0.1; // Pequeno offset para alinhar com o grid isométrico
-      
+
       ctx.drawImage(
         roadSprite,
         screen.x - spriteSize / 2,
@@ -1336,7 +1359,7 @@ export default function GameWorld2D() {
 
       if (progress < 1) {
         ctx.save();
-        
+
         // Configurar fonte para ferramenta
         ctx.font = `${Math.max(18, radius * 1.4)}px Arial`;
         ctx.textAlign = 'center';
