@@ -65,6 +65,7 @@ export interface NPC {
   currentTask?: NPCTask;
   animation?: NPCAnimation;
   currentTreeId?: string;
+  currentStoneId?: string;
   
   // Sistema avançado
   statistics?: {

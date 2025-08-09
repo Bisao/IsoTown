@@ -179,7 +179,7 @@ export default function GameWorld2D() {
               }
               removeTree(npc.currentTreeId);
             } else {
-              updateNPCTask(npc.id, { ...npc.currentTask, progress: newHealth });
+              useNPCStore.getState().updateNPCTask(npc.id, { ...npc.currentTask, progress: newHealth });
             }
             return;
           }
@@ -285,7 +285,7 @@ export default function GameWorld2D() {
 
               removeStone(npc.currentStoneId);
             } else {
-              updateNPCTask(npc.id, { ...npc.currentTask, progress: newHealth });
+              useNPCStore.getState().updateNPCTask(npc.id, { ...npc.currentTask, progress: newHealth });
             }
             return;
           }
@@ -463,7 +463,7 @@ export default function GameWorld2D() {
       case NPCState.IDLE: {
         // Check if inventory is full
         const inventory = npc.inventory || {};
-        const totalItems = Object.values(inventory).reduce((sum, count) => sum + count, 0);
+        const totalItems = Object.values(inventory).reduce((sum: number, count: number) => sum + count, 0);
         const maxInventorySize = 10; // Assuming a max inventory size
 
         if (totalItems >= maxInventorySize) {
@@ -494,7 +494,7 @@ export default function GameWorld2D() {
           if (nearestDistance === 1) {
             // Adjacent to tree - start working
             console.log('Lenhador adjacente à árvore', nearestTree.id, 'começando trabalho');
-            setNPCState(npc.id, 'WORKING', {
+            setNPCState(npc.id, NPCState.WORKING, {
               type: 'cut_tree',
               targetId: nearestTree.id,
               targetPosition: nearestTree.position,
@@ -676,7 +676,7 @@ export default function GameWorld2D() {
           if (nearestDistance === 1) {
             // Adjacent to stone - start working
             console.log('Minerador adjacente à pedra', nearestStone.id, 'começando trabalho');
-            setNPCState(npc.id, 'WORKING', {
+            setNPCState(npc.id, NPCState.WORKING, {
               type: 'mine_stone',
               targetId: nearestStone.id,
               targetPosition: nearestStone.position,
@@ -1236,14 +1236,6 @@ export default function GameWorld2D() {
       }
     }
 
-    // Color based on profession
-    let npcColor = '#FF6B6B'; // Default farmer color
-    if (npc.profession === 'LUMBERJACK') {
-      npcColor = '#8B4513'; // Brown for lumberjack
-    } else if (npc.profession === 'MINER') {
-      npcColor = '#696969'; // Dark gray for miner
-    }
-
     // Corpo do NPC
     ctx.fillStyle = isSelected ? '#FF4444' : npcColor;
     ctx.beginPath();
@@ -1513,7 +1505,7 @@ export default function GameWorld2D() {
       ctx.beginPath();
       const sides = 8;
       // Usar hash do ID para gerar forma consistente
-      const seed = stone.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const seed = stone.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
       for (let i = 0; i < sides; i++) {
         const angle = (Math.PI * 2 * i) / sides;
         // Variação determinística baseada no seed + índice
@@ -1592,7 +1584,7 @@ export default function GameWorld2D() {
     let isHighlighted = false;
     if (controlledLumberjack && !tree.isFalling && tree.health > 0) {
       const priorityTree = getPriorityTreeForNPC(controlledLumberjack);
-      isHighlighted = priorityTree && priorityTree.id === tree.id;
+      isHighlighted = priorityTree?.id === tree.id || false;
     }
 
     // Árvores em tamanho proporcional ao NPC

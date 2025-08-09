@@ -55,6 +55,12 @@ interface NPCStore {
   canCarryItem: (npcId: string, itemId: string, quantity: number) => boolean;
   startManualStoneMining: (npcId: string) => { success: boolean; message: string; adjacentPositions?: Position[] };
   startMiningStone: (npcId: string, stoneId: string) => void;
+  
+  // Resource management functions
+  addResourceToNPC: (npcId: string, resource: string, amount: number) => boolean;
+  removeResourceFromNPC: (npcId: string, resource: string, amount: number) => void;
+  shouldReturnHome: (npcId: string) => boolean;
+  transferResourcesToHouse: (npcId: string, houseId: string) => boolean;
 }
 
 export const useNPCStore = create<NPCStore>()(
