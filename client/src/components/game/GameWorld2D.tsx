@@ -1201,54 +1201,38 @@ export default function GameWorld2D() {
 
     ctx.save();
 
-    // Handle chopping animation
+    // Color based on profession
+    let npcColor = '#FF6B6B'; // Default farmer color
+    if (npc.profession === 'LUMBERJACK') {
+      npcColor = '#8B4513'; // Brown for lumberjack
+    } else if (npc.profession === 'MINER') {
+      npcColor = '#696969'; // Dark gray for miner
+    }
+
+    // Handle chopping animation - apenas aplicar escala suave
     if (npc.animation && npc.animation.type === 'chopping') {
       const elapsed = Date.now() - npc.animation.startTime;
       const progress = elapsed / npc.animation.duration;
 
       if (progress < 1) {
         // Simple scale animation for chopping
-        const scale = 1 + Math.sin(progress * Math.PI * 4) * 0.1; // Quick pulse
+        const scale = 1 + Math.sin(progress * Math.PI * 4) * 0.08; // Reduzido para não ser muito agressivo
         ctx.translate(screen.x, npcY);
         ctx.scale(scale, scale);
         ctx.translate(-screen.x, -npcY);
       }
     }
 
-    // Handle mining animation
+    // Handle mining animation - apenas aplicar movimento sutil
     if (npc.animation && npc.animation.type === 'mining') {
       const elapsed = Date.now() - npc.animation.startTime;
       const progress = elapsed / npc.animation.duration;
 
       if (progress < 1) {
-        // Simple swing animation for mining
-        const swingAngle = Math.sin(progress * Math.PI * 3) * Math.PI / 6; // Swing between -30 and 30 degrees
-        const toolOffset = radius * 1.3; // Distance of the tool from the NPC
-
-        ctx.translate(screen.x, npcY);
-        ctx.rotate(swingAngle);
-
-        // Draw tool (pickaxe emoji)
-        ctx.font = `${Math.max(16, radius * 1.2)}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const toolEmoji = '⛏️';
-
-        // Position tool emoji
-        const toolX = 0; // Relative to NPC's translated position
-        const toolY = -toolOffset; // Above the NPC
-
-        // Add subtle shadow for better visibility
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.fillText(toolEmoji, toolX + 1, toolY + 1);
-
-        // Draw the actual emoji
-        ctx.fillStyle = '#000000';
-        ctx.fillText(toolEmoji, toolX, toolY);
-
-        ctx.restore(); // Restore context after rotation
-        ctx.save(); // Save context again for NPC body drawing
-        ctx.translate(screen.x, npcY); // Re-translate for the body
+        // Movimento sutil para mineração sem rotação complexa
+        const offsetX = Math.sin(progress * Math.PI * 6) * 2;
+        const offsetY = Math.sin(progress * Math.PI * 8) * 1;
+        ctx.translate(offsetX, offsetY);
       }
     }
 
@@ -1271,33 +1255,90 @@ export default function GameWorld2D() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Tool emoji in hand based on profession
-    ctx.font = `${Math.max(16, radius * 1.2)}px Arial`; // Increased size
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.restore(); // Restaurar contexto após animações
 
-    let toolEmoji = '';
-    if (npc.profession === 'LUMBERJACK') {
-      toolEmoji = '🪓'; // Axe emoji
-    } else if (npc.profession === 'MINER') {
-      toolEmoji = '⛏️'; // Pickaxe emoji
-    } else if (npc.profession === 'FARMER') {
-      // Avoid spawning farmers as per user request
-      // toolEmoji = '🚜'; // Tractor emoji for farmer
+    // Desenhar ferramenta em animação separadamente
+    if (npc.animation && (npc.animation.type === 'chopping' || npc.animation.type === 'mining')) {
+      const elapsed = Date.now() - npc.animation.startTime;
+      const progress = elapsed / npc.animation.duration;
+
+      if (progress < 1) {
+        ctx.save();
+        
+        // Configurar fonte para ferramenta
+        ctx.font = `${Math.max(18, radius * 1.4)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        let toolEmoji = '';
+        let toolAnimation = { x: 0, y: 0, rotation: 0 };
+
+        if (npc.animation.type === 'chopping') {
+          toolEmoji = '🪓';
+          // Animação de balanço para machado
+          const swingProgress = Math.sin(progress * Math.PI * 3) * 0.8;
+          toolAnimation = {
+            x: screen.x + swingProgress * radius * 0.8,
+            y: npcY - radius * 1.2 + Math.abs(swingProgress) * radius * 0.3,
+            rotation: swingProgress * Math.PI / 8
+          };
+        } else if (npc.animation.type === 'mining') {
+          toolEmoji = '⛏️';
+          // Animação de picareta
+          const swingProgress = Math.sin(progress * Math.PI * 4) * 0.6;
+          toolAnimation = {
+            x: screen.x + swingProgress * radius * 0.6,
+            y: npcY - radius * 1.1 + Math.abs(swingProgress) * radius * 0.4,
+            rotation: swingProgress * Math.PI / 10
+          };
+        }
+
+        // Desenhar ferramenta animada
+        if (toolEmoji) {
+          ctx.translate(toolAnimation.x, toolAnimation.y);
+          ctx.rotate(toolAnimation.rotation);
+
+          // Sombra da ferramenta
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          ctx.fillText(toolEmoji, 2, 2);
+
+          // Ferramenta
+          ctx.fillStyle = '#000000';
+          ctx.fillText(toolEmoji, 0, 0);
+        }
+
+        ctx.restore();
+      }
     }
 
-    if (toolEmoji && !npc.animation) { // Only draw tool if not animating (animation handles tool drawing)
-      // Position tool emoji to the left side of the NPC
-      const toolX = screen.x - radius * 1.2; // Moved to left side
-      const toolY = npcY;
+    // Tool emoji estático quando não está animando
+    if (!npc.animation) {
+      ctx.save();
+      ctx.font = `${Math.max(16, radius * 1.2)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
 
-      // Add subtle shadow for better visibility
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-      ctx.fillText(toolEmoji, toolX + 1, toolY + 1);
+      let toolEmoji = '';
+      if (npc.profession === 'LUMBERJACK') {
+        toolEmoji = '🪓'; // Axe emoji
+      } else if (npc.profession === 'MINER') {
+        toolEmoji = '⛏️'; // Pickaxe emoji
+      }
 
-      // Draw the actual emoji
-      ctx.fillStyle = '#000000';
-      ctx.fillText(toolEmoji, toolX, toolY);
+      if (toolEmoji) {
+        // Position tool emoji to the left side of the NPC
+        const toolX = screen.x - radius * 1.2;
+        const toolY = npcY;
+
+        // Add subtle shadow for better visibility
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillText(toolEmoji, toolX + 1, toolY + 1);
+
+        // Draw the actual emoji
+        ctx.fillStyle = '#000000';
+        ctx.fillText(toolEmoji, toolX, toolY);
+      }
+      ctx.restore();
     }
 
     // Working indicator

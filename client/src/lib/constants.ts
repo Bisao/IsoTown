@@ -39,15 +39,15 @@ export const TREE_DENSITY = 0.02; // 2% chance of tree per tile (reduzido para m
 export const TREE_MAX_HEALTH = 3; // Number of hits to cut down a tree
 
 // Profession constants
-export const CHOPPING_ANIMATION_DURATION = 800; // ms
+export const CHOPPING_ANIMATION_DURATION = 1200; // ms (aumentado de 800 para 1200)
 export const TREE_FALL_DURATION = 1000; // ms
 export const TREE_DESPAWN_DELAY = 3000; // ms after falling
 export const TOC_TEXT_DURATION = 1000; // ms for TOC text effect
 
 // Lumberjack behavior
 export const LUMBERJACK_WORK_RANGE = 5; // How far lumberjack will search for trees
-export const LUMBERJACK_CHOP_INTERVAL = 1000; // ms between chops
-export const CONTROLLED_CHOP_COOLDOWN = 800; // 800ms cooldown for controlled NPCs
+export const LUMBERJACK_CHOP_INTERVAL = 3500; // ms between chops (aumentado de 2000 para 3500)
+export const CONTROLLED_CHOP_COOLDOWN = 1500; // ms cooldown for controlled NPCs (aumentado de 800 para 1500)
 
 // Stone constants
 export const STONE_COLOR = '#808080';
@@ -56,8 +56,8 @@ export const STONE_MAX_HEALTH = 5; // Number of hits to break a stone
 
 // Miner behavior
 export const MINER_WORK_RANGE = 5; // How far miner will search for stones
-export const MINER_MINE_INTERVAL = 1200; // ms between mining hits
-export const MINING_ANIMATION_DURATION = 800; // ms
+export const MINER_MINE_INTERVAL = 2800; // ms between mining hits (aumentado de 1200 para 2800)
+export const MINING_ANIMATION_DURATION = 1500; // ms (aumentado de 800 para 1500)
 export const STONE_BREAK_DURATION = 800; // ms
 export const STONE_DESPAWN_DELAY = 2000; // ms after breaking
 
@@ -132,7 +132,7 @@ export const GAME_ITEMS = {
     description: 'Combustível essencial',
     color: '#2F2F2F'
   },
-  
+
   // Tools
   AXE: {
     id: 'AXE',
@@ -170,7 +170,7 @@ export const GAME_ITEMS = {
     description: 'Arma para defesa',
     color: '#C0C0C0'
   },
-  
+
   // Food
   BREAD: {
     id: 'BREAD',
@@ -199,7 +199,7 @@ export const GAME_ITEMS = {
     description: 'Alimento proteico',
     color: '#8B0000'
   },
-  
+
   // Equipment
   BACKPACK: {
     id: 'BACKPACK',

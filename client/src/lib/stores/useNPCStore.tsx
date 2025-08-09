@@ -40,7 +40,7 @@ interface NPCStore {
   isNPCOnCooldown: (id: string) => boolean;
   setNPCCooldown: (id: string, duration: number) => void;
   updateCooldowns: () => void;
-  
+
   // Inventory functions
   addItemToInventory: (npcId: string, itemId: string, quantity: number) => { success: boolean; message?: string };
   removeItemFromInventory: (npcId: string, itemId: string, quantity: number) => boolean;
@@ -361,7 +361,7 @@ export const useNPCStore = create<NPCStore>()(
                       progress: 0,
                       maxProgress: nearestTree.health
                     },
-                    lastMovement: currentTime
+                    lastActionTime: currentTime // Use lastActionTime for interval checks
                   }
                 }
               }));
@@ -458,7 +458,7 @@ export const useNPCStore = create<NPCStore>()(
           console.log('Lenhador trabalhando - progresso:', npc.currentTask.progress, 'de', npc.currentTask.maxProgress);
 
           // Check if enough time has passed since last chop
-          if (currentTime - npc.lastMovement >= LUMBERJACK_CHOP_INTERVAL) {
+          if (currentTime - (npc.lastActionTime || 0) >= LUMBERJACK_CHOP_INTERVAL) {
             const newProgress = npc.currentTask.progress + 1;
             const treeDestroyed = newProgress >= npc.currentTask.maxProgress;
 
@@ -475,7 +475,7 @@ export const useNPCStore = create<NPCStore>()(
                     startTime: currentTime,
                     duration: CHOPPING_ANIMATION_DURATION
                   },
-                  lastMovement: currentTime,
+                  lastActionTime: currentTime, // Update lastActionTime for interval checks
                   currentTask: treeDestroyed ? undefined : {
                     type: npc.currentTask.type,
                     targetId: npc.currentTask.targetId,
@@ -650,6 +650,42 @@ export const useNPCStore = create<NPCStore>()(
       return { success: result.success, message: result.message };
     },
 
+    // Continuar trabalho de corte de árvore (comportamento controlado)
+    continueCuttingTree: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc || npc.state !== NPCState.WORKING || !npc.currentTask || npc.currentTask.type !== 'cut_tree') return;
+
+      const currentTime = Date.now();
+      const timeSinceLastAction = currentTime - (npc.lastActionTime || 0);
+
+      if (timeSinceLastAction >= LUMBERJACK_CHOP_INTERVAL) {
+        const newProgress = npc.currentTask.progress + 1;
+        const treeDestroyed = newProgress >= npc.currentTask.maxProgress;
+
+        console.log('TOC! Cortando árvore manualmente - progresso:', newProgress, 'completo:', treeDestroyed);
+
+        set((state) => ({
+          npcs: {
+            ...state.npcs,
+            [npcId]: {
+              ...state.npcs[npcId],
+              animation: { type: 'chopping', startTime: currentTime, duration: CHOPPING_ANIMATION_DURATION },
+              lastActionTime: currentTime,
+              currentTask: treeDestroyed ? undefined : {
+                ...npc.currentTask,
+                progress: newProgress
+              },
+              state: treeDestroyed ? NPCState.IDLE : NPCState.WORKING
+            }
+          }
+        }));
+
+        if (treeDestroyed && npc.currentTask.targetId) {
+          console.log('Árvore cortada com sucesso:', npc.currentTask.targetId);
+        }
+      }
+    },
+
     // Atualizar trabalho de NPCs controlados (chamado no loop principal)
     updateControlledNPCWork: () => {
       const npcs = get().npcs;
@@ -664,8 +700,8 @@ export const useNPCStore = create<NPCStore>()(
           // Continuar trabalho baseado na profissão
           switch (npc.profession) {
             case NPCProfession.LUMBERJACK:
-              // Verificar se é hora de fazer o próximo corte
-              if (currentTime - npc.lastMovement >= LUMBERJACK_CHOP_INTERVAL) {
+              // Check if it's time to make the next chop
+              if (currentTime - (npc.lastActionTime || 0) >= LUMBERJACK_CHOP_INTERVAL) {
                 const newProgress = npc.currentTask.progress + 1;
                 const workCompleted = newProgress >= npc.currentTask.maxProgress;
 
@@ -677,7 +713,7 @@ export const useNPCStore = create<NPCStore>()(
                     startTime: currentTime,
                     duration: CHOPPING_ANIMATION_DURATION
                   },
-                  lastMovement: currentTime,
+                  lastActionTime: currentTime,
                   currentTask: workCompleted ? undefined : {
                     type: npc.currentTask.type,
                     targetId: npc.currentTask.targetId,
@@ -688,9 +724,9 @@ export const useNPCStore = create<NPCStore>()(
                   state: workCompleted ? NPCState.IDLE : NPCState.WORKING
                 };
 
-                // Se o trabalho foi completado, destruir a árvore
+                // If work was completed, destroy the tree
                 if (workCompleted && npc.currentTask.targetId) {
-                  // A árvore será destruída automaticamente pelo sistema existente
+                  // The tree will be destroyed automatically by the existing system
                   console.log('Árvore cortada com sucesso pelo NPC controlado!');
                 }
               }
@@ -701,7 +737,7 @@ export const useNPCStore = create<NPCStore>()(
         }
       });
 
-      // Aplicar todas as atualizações
+      // Apply all updates
       if (Object.keys(updates).length > 0) {
         set((state) => {
           const newNpcs = { ...state.npcs };
@@ -742,11 +778,11 @@ export const useNPCStore = create<NPCStore>()(
     },
 
     // ===== INVENTORY SYSTEM =====
-    
+
     initializeInventory: (npcId: string, profession: NPCProfession) => {
       // Simple resource-based starting inventory
       let startingInventory = { wood: 0, stone: 0, food: 0 };
-      
+
       switch (profession) {
         case NPCProfession.LUMBERJACK:
           startingInventory = { wood: 5, stone: 0, food: 2 };
@@ -758,7 +794,7 @@ export const useNPCStore = create<NPCStore>()(
           startingInventory = { wood: 1, stone: 1, food: 5 };
           break;
       }
-      
+
       set((state) => ({
         npcs: {
           ...state.npcs,
@@ -769,7 +805,7 @@ export const useNPCStore = create<NPCStore>()(
           }
         }
       }));
-      
+
       console.log('Inventário inicializado para NPC', npcId, 'profissão:', profession, 'itens:', startingInventory);
     },
 
@@ -783,7 +819,7 @@ export const useNPCStore = create<NPCStore>()(
 
       const currentWeight = npc.currentCarriedWeight || 0;
       const resourceWeight = amount * (resource === 'wood' ? 1 : resource === 'stone' ? 2 : 0.5);
-      
+
       if (currentWeight + resourceWeight > npc.maxCarryCapacity) {
         console.log('Capacidade excedida para NPC', npcId, 'peso atual:', currentWeight, 'peso adicional:', resourceWeight, 'capacidade:', npc.maxCarryCapacity);
         return false; // Capacity exceeded
@@ -802,7 +838,7 @@ export const useNPCStore = create<NPCStore>()(
           }
         }
       }));
-      
+
       console.log('Adicionado', amount, resource, 'ao inventário do NPC', npcId);
       return true;
     },
@@ -838,7 +874,7 @@ export const useNPCStore = create<NPCStore>()(
       import('./useHouseStore').then(({ useHouseStore }) => {
         const houseStore = useHouseStore.getState();
         let totalTransferred = 0;
-        
+
         // Transfer each resource type
         Object.entries(npc.inventory).forEach(([resource, amount]) => {
           if (amount > 0) {
@@ -866,11 +902,11 @@ export const useNPCStore = create<NPCStore>()(
     shouldReturnHome: (npcId: string) => {
       const npc = get().npcs[npcId];
       if (!npc) return false;
-      
+
       // Verificar tanto peso quanto quantidade de slots
       const totalWeight = npc.currentCarriedWeight >= npc.maxCarryCapacity * 0.8;
       const totalItems = Object.values(npc.inventory).reduce((sum, count) => sum + count, 0) >= 15; // Máximo 15 itens
-      
+
       return totalWeight || totalItems;
     },
 
@@ -884,7 +920,7 @@ export const useNPCStore = create<NPCStore>()(
     shouldRest: (npcId: string) => {
       const npc = get().npcs[npcId];
       if (!npc) return false;
-      
+
       // NPCs devem descansar à noite (18h às 8h)
       const currentHour = new Date().getHours();
       return currentHour >= 18 || currentHour < 8;
@@ -904,19 +940,19 @@ export const useNPCStore = create<NPCStore>()(
     getInventoryItem: (npcId: string, itemId: string) => {
       const npc = get().npcs[npcId];
       if (!npc) return 0;
-      
+
       // Map old item IDs to new resource system
       if (itemId === 'wood' || itemId === 'WOOD') return npc.inventory.wood;
       if (itemId === 'stone' || itemId === 'STONE') return npc.inventory.stone;
       if (itemId === 'food' || itemId === 'FOOD') return npc.inventory.food;
-      
+
       return 0;
     },
 
     getInventoryCount: (npcId: string) => {
       const npc = get().npcs[npcId];
       if (!npc) return 0;
-      
+
       return npc.inventory.wood + npc.inventory.stone + npc.inventory.food;
     },
 
@@ -946,7 +982,7 @@ export const useNPCStore = create<NPCStore>()(
       if (npc.inventory.wood > 0) items.push({ id: 'wood', quantity: npc.inventory.wood, name: 'Madeira' });
       if (npc.inventory.stone > 0) items.push({ id: 'stone', quantity: npc.inventory.stone, name: 'Pedra' });
       if (npc.inventory.food > 0) items.push({ id: 'food', quantity: npc.inventory.food, name: 'Comida' });
-      
+
       return items;
     },
 
@@ -963,7 +999,7 @@ export const useNPCStore = create<NPCStore>()(
     canCarryItem: (npcId: string, itemId: string, quantity: number) => {
       const npc = get().npcs[npcId];
       if (!npc) return false;
-      
+
       const weight = quantity * (itemId === 'wood' ? 1 : itemId === 'stone' ? 2 : 0.5);
       return npc.currentCarriedWeight + weight <= npc.maxCarryCapacity;
     },
@@ -1066,7 +1102,7 @@ export const useNPCStore = create<NPCStore>()(
                       progress: 0,
                       maxProgress: nearestStone.health
                     },
-                    lastMovement: currentTime
+                    lastActionTime: currentTime // Use lastActionTime for interval checks
                   }
                 }
               }));
@@ -1160,7 +1196,7 @@ export const useNPCStore = create<NPCStore>()(
           console.log('Minerador trabalhando - progresso:', npc.currentTask.progress, 'de', npc.currentTask.maxProgress);
 
           // Check if enough time has passed since last mine
-          if (currentTime - npc.lastMovement >= MINER_MINE_INTERVAL) {
+          if (currentTime - (npc.lastActionTime || 0) >= MINER_MINE_INTERVAL) {
             const newProgress = npc.currentTask.progress + 1;
             const stoneDestroyed = newProgress >= npc.currentTask.maxProgress;
 
@@ -1177,7 +1213,7 @@ export const useNPCStore = create<NPCStore>()(
                     startTime: currentTime,
                     duration: MINING_ANIMATION_DURATION
                   },
-                  lastMovement: currentTime,
+                  lastActionTime: currentTime, // Update lastActionTime for interval checks
                   currentTask: stoneDestroyed ? undefined : {
                     type: npc.currentTask.type,
                     targetId: npc.currentTask.targetId,
@@ -1196,7 +1232,7 @@ export const useNPCStore = create<NPCStore>()(
               const stoneAdded = get().addResourceToNPC(npc.id, 'stone', 2);
               if (stoneAdded) {
                 console.log('2 pedras adicionadas ao inventário do minerador', npc.id);
-                
+
                 // Check if NPC should return home
                 if (get().shouldReturnHome(npc.id)) {
                   console.log('Minerador deve voltar para casa - capacidade quase cheia');
@@ -1292,7 +1328,7 @@ export const useNPCStore = create<NPCStore>()(
                   if (currentState.npcs[npc.id]) {
                     const distanceAfterMove = Math.abs(house.position.x - newPosition.x) + 
                                             Math.abs(house.position.z - newPosition.z);
-                    
+
                     if (distanceAfterMove === 0) {
                       // Reached home - transfer resources
                       currentState.transferResourcesToHouse(npc.id, npc.houseId!);
