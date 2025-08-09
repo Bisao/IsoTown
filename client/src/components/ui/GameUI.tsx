@@ -231,7 +231,6 @@ export default function GameUI() {
       {/* Modal de Seleção de Casa */}
       <HouseSelectionModal 
         open={showHouseModal}
-        onClose={() => setShowHouseModal(false)}
       />
     </>
   );

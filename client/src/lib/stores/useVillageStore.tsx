@@ -205,8 +205,10 @@ export const useVillageStore = create<VillageStore>()(
       const village = villages[villageId];
       if (!village) return;
 
-      // Importar dinamicamente o store
+      // Importar dinamicamente o store com logs de debug
+      console.log(`Iniciando geração de casas para vila ${villageId}`);
       import('./useHouseStore').then(({ useHouseStore }) => {
+        console.log('useHouseStore importado com sucesso');
         const { addHouse, getHouseAt } = useHouseStore.getState();
         const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER];
         
@@ -304,7 +306,9 @@ export const useVillageStore = create<VillageStore>()(
     },
 
     generateHousesConnectedToRoads: (centerPosition: Position, mapSize: number) => {
+      console.log(`Iniciando geração de casas conectadas às ruas em ${centerPosition.x}, ${centerPosition.z}`);
       import('./useHouseStore').then(({ useHouseStore }) => {
+        console.log('useHouseStore importado para geração de casas conectadas');
         const { addHouse, getHouseAt } = useHouseStore.getState();
         const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER];
         
