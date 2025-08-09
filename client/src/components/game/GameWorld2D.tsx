@@ -924,12 +924,8 @@ export default function GameWorld2D() {
            screen.y >= -margin && screen.y <= canvasHeight + margin;
   }, [gridToScreen]);
 
-  // Desenhar grid (memoizado) - otimizado para renderizar apenas área visível
+  // Desenhar tiles com textura de grama e grade opcional
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
-    ctx.strokeStyle = '#CCCCCC';
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.5;
-
     // Calcular área visível baseada no zoom e pan - expandir área para garantir cobertura completa
     const visibleRange = Math.ceil(80 / zoomRef.current); // Aumentar área de renderização
     const centerX = Math.floor(-panRef.current.x / (CELL_SIZE * zoomRef.current));
@@ -951,19 +947,41 @@ export default function GameWorld2D() {
           const screenDown = gridToScreen(x, z + 1, canvasWidth, canvasHeight);
           const screenDiag = gridToScreen(x + 1, z + 1, canvasWidth, canvasHeight);
 
-          // Desenhar losango
-          ctx.beginPath();
-          ctx.moveTo(screen.x, screen.y);
-          ctx.lineTo(screenRight.x, screenRight.y);
-          ctx.lineTo(screenDiag.x, screenDiag.y);
-          ctx.lineTo(screenDown.x, screenDown.y);
-          ctx.closePath();
-          ctx.stroke();
+          // Criar path do losango
+          const tilePath = new Path2D();
+          tilePath.moveTo(screen.x, screen.y);
+          tilePath.lineTo(screenRight.x, screenRight.y);
+          tilePath.lineTo(screenDiag.x, screenDiag.y);
+          tilePath.lineTo(screenDown.x, screenDown.y);
+          tilePath.closePath();
+
+          // Preencher com textura de grama se disponível
+          if (grassPatternRef.current) {
+            ctx.save();
+            ctx.clip(tilePath);
+            ctx.fillStyle = grassPatternRef.current;
+            
+            // Calcular área de preenchimento baseada no losango
+            const minX = Math.min(screen.x, screenRight.x, screenDown.x, screenDiag.x);
+            const maxX = Math.max(screen.x, screenRight.x, screenDown.x, screenDiag.x);
+            const minY = Math.min(screen.y, screenRight.y, screenDown.y, screenDiag.y);
+            const maxY = Math.max(screen.y, screenRight.y, screenDown.y, screenDiag.y);
+            
+            ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+            ctx.restore();
+          } else {
+            // Fallback: preencher com cor verde
+            ctx.fillStyle = '#90EE90';
+            ctx.fill(tilePath);
+          }
+
+          // Desenhar borda do tile (opcional - linha sutil)
+          ctx.strokeStyle = 'rgba(204, 204, 204, 0.3)';
+          ctx.lineWidth = 1;
+          ctx.stroke(tilePath);
         }
       }
     }
-
-    ctx.globalAlpha = 1;
   }, [gridToScreen]);
 
   // Desenhar casa (memoizado) - casas ocupam 100% do tile isométrico
@@ -1876,15 +1894,9 @@ export default function GameWorld2D() {
     // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Aplicar textura de grama ou fundo verde como fallback
-    if (grassPatternRef.current) {
-      ctx.fillStyle = grassPatternRef.current;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else {
-      // Fundo simples verde como fallback
-      ctx.fillStyle = '#90EE90';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+    // Fundo escuro para contraste
+    ctx.fillStyle = '#2D5016';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Desenhar elementos
     drawGrid(ctx, canvas.width, canvas.height);
