@@ -19,6 +19,7 @@ export default function GameWorld2D() {
   const panRef = useRef({ x: 0, y: 0 });
   const spritesRef = useRef<Record<string, HTMLImageElement>>({});
   const spritesLoadedRef = useRef(false);
+  const grassPatternRef = useRef<CanvasPattern | null>(null);
   const cameraTargetRef = useRef<{ x: number, y: number } | null>(null);
 
   const houses = useHouseStore(state => state.houses);
@@ -349,7 +350,7 @@ export default function GameWorld2D() {
     return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
   }, [npcs, trees, stones, updateTree, updateStone, setNPCState, addTextEffect, getPriorityTreeForNPC, getPriorityStoneForNPC]);
 
-  // Carregar sprites das casas
+  // Carregar sprites das casas e textura de grama
   useEffect(() => {
     const loadSprites = async () => {
       const sprites: Record<string, HTMLImageElement> = {};
@@ -375,7 +376,29 @@ export default function GameWorld2D() {
         });
       });
 
-      await Promise.all(loadPromises);
+      // Carregar textura de grama
+      const grassPromise = new Promise<void>((resolve) => {
+        const grassImg = new Image();
+        grassImg.onload = () => {
+          // Criar padrão repetitivo da grama
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            canvas.width = grassImg.width;
+            canvas.height = grassImg.height;
+            ctx.drawImage(grassImg, 0, 0);
+            grassPatternRef.current = ctx.createPattern(canvas, 'repeat');
+          }
+          resolve();
+        };
+        grassImg.onerror = () => {
+          console.warn('Falha ao carregar textura de grama');
+          resolve();
+        };
+        grassImg.src = '/textures/grass.png';
+      });
+
+      await Promise.all([...loadPromises, grassPromise]);
       spritesRef.current = sprites;
       spritesLoadedRef.current = true;
       console.log('Sprites carregadas:', Object.keys(sprites));
@@ -1853,9 +1876,15 @@ export default function GameWorld2D() {
     // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fundo simples verde
-    ctx.fillStyle = '#90EE90';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Aplicar textura de grama ou fundo verde como fallback
+    if (grassPatternRef.current) {
+      ctx.fillStyle = grassPatternRef.current;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else {
+      // Fundo simples verde como fallback
+      ctx.fillStyle = '#90EE90';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     // Desenhar elementos
     drawGrid(ctx, canvas.width, canvas.height);
