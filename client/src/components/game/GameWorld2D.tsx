@@ -30,6 +30,16 @@ export default function GameWorld2D() {
     length: number;
     opacity: number;
   }>>([]);
+  
+  // Sistema de respingos de chuva
+  const rainSplashesRef = useRef<Array<{
+    x: number;
+    y: number;
+    startTime: number;
+    duration: number;
+    size: number;
+  }>>([]);
+  
   const isRainingRef = useRef(true); // Ativar chuva por padrão
 
   const houses = useHouseStore(state => state.houses);
@@ -982,10 +992,25 @@ export default function GameWorld2D() {
   const updateRainParticles = useCallback((canvasWidth: number, canvasHeight: number) => {
     if (!isRainingRef.current) return;
 
+    const currentTime = Date.now();
+
     rainParticlesRef.current.forEach(particle => {
       // Mover partícula para baixo e ligeiramente para a direita (efeito de vento)
+      const oldY = particle.y;
       particle.y += particle.speed;
       particle.x += particle.speed * 0.3;
+
+      // Verificar se a gota tocou o chão (parte inferior da tela)
+      if (oldY < canvasHeight && particle.y >= canvasHeight) {
+        // Criar respingo no ponto de impacto
+        rainSplashesRef.current.push({
+          x: particle.x,
+          y: canvasHeight,
+          startTime: currentTime,
+          duration: 400 + Math.random() * 200, // Duração entre 400-600ms
+          size: Math.random() * 8 + 4 // Tamanho entre 4-12
+        });
+      }
 
       // Reset particle quando sair da tela
       if (particle.y > canvasHeight + 50) {
@@ -997,6 +1022,12 @@ export default function GameWorld2D() {
         particle.x = -100;
       }
     });
+
+    // Remover respingos expirados
+    rainSplashesRef.current = rainSplashesRef.current.filter(splash => {
+      const elapsed = currentTime - splash.startTime;
+      return elapsed < splash.duration;
+    });
   }, []);
 
   // Desenhar chuva
@@ -1005,6 +1036,7 @@ export default function GameWorld2D() {
 
     ctx.save();
     
+    // Desenhar gotas de chuva
     rainParticlesRef.current.forEach(particle => {
       ctx.globalAlpha = particle.opacity;
       ctx.strokeStyle = '#87CEEB'; // Cor azul claro da chuva
@@ -1015,6 +1047,59 @@ export default function GameWorld2D() {
       ctx.moveTo(particle.x, particle.y);
       ctx.lineTo(particle.x + particle.length * 0.3, particle.y + particle.length);
       ctx.stroke();
+    });
+
+    // Desenhar respingos de chuva
+    const currentTime = Date.now();
+    rainSplashesRef.current.forEach(splash => {
+      const elapsed = currentTime - splash.startTime;
+      const progress = elapsed / splash.duration;
+      
+      if (progress < 1) {
+        // Efeito de expansão e fade do respingo
+        const expandProgress = Math.min(progress * 3, 1); // Expande rapidamente nos primeiros 33%
+        const fadeProgress = Math.max(0, (progress - 0.3) / 0.7); // Fade nos últimos 70%
+        
+        const currentSize = splash.size * expandProgress;
+        const alpha = (1 - fadeProgress) * 0.6; // Máximo 60% de opacidade
+        
+        ctx.globalAlpha = alpha;
+        
+        // Desenhar círculo de respingo principal
+        ctx.fillStyle = '#B0E0E6'; // Azul claro mais opaco
+        ctx.beginPath();
+        ctx.arc(splash.x, splash.y, currentSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Desenhar gotas menores ao redor (efeito de salpicos)
+        if (expandProgress > 0.5) {
+          ctx.fillStyle = '#87CEEB';
+          const droplets = 6;
+          const dropletDistance = currentSize * 1.5;
+          
+          for (let i = 0; i < droplets; i++) {
+            const angle = (Math.PI * 2 * i) / droplets + (splash.startTime * 0.001); // Pequena rotação baseada no tempo
+            const distance = dropletDistance * (0.7 + Math.random() * 0.3);
+            const dropletSize = currentSize * (0.2 + Math.random() * 0.3);
+            
+            const dropletX = splash.x + Math.cos(angle) * distance;
+            const dropletY = splash.y + Math.sin(angle) * distance * 0.5; // Achatado verticalmente
+            
+            ctx.globalAlpha = alpha * 0.7;
+            ctx.beginPath();
+            ctx.arc(dropletX, dropletY, dropletSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        
+        // Anel exterior do respingo
+        ctx.globalAlpha = alpha * 0.3;
+        ctx.strokeStyle = '#87CEEB';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(splash.x, splash.y, currentSize * 1.2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     });
 
     ctx.restore();
