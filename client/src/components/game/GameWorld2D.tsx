@@ -1853,16 +1853,8 @@ export default function GameWorld2D() {
     // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fundo com cor do céu baseada na hora do dia
-    const skyColor = getSkyColor();
-    const ambientLight = getAmbientLight();
-    
-    // Gradient do céu
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, skyColor);
-    gradient.addColorStop(1, '#90EE90'); // Verde do chão
-    
-    ctx.fillStyle = gradient;
+    // Fundo simples verde
+    ctx.fillStyle = '#90EE90';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Desenhar elementos
