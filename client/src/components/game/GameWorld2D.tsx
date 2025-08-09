@@ -361,7 +361,11 @@ export default function GameWorld2D() {
         [HouseType.MINER]: '/sprites/houses/medium_house.png', // Usar medium_house como placeholder para miner
         'road_horizontal': '/sprites/roads/road_horizontal.png',
         'road_vertical': '/sprites/roads/road_vertical.png',
-        'road_cross': '/sprites/roads/road_cross.png'
+        'road_cross': '/sprites/roads/road_cross.png',
+        'npc_frame_W': '/attached_assets/frame_W_1754723339782.png',
+        'npc_frame_A': '/attached_assets/frame_A_1754723339781.png',
+        'npc_frame_S': '/attached_assets/frame_S_1754723339782.png',
+        'npc_frame_D': '/attached_assets/frame_D_1754723339781.png'
       };
 
       const loadPromises = Object.entries(spriteMap).map(([type, path]) => {
@@ -1296,21 +1300,26 @@ export default function GameWorld2D() {
   // Desenhar NPC (memoizado)
   const drawNPC = useCallback((ctx: CanvasRenderingContext2D, npc: any, canvasWidth: number, canvasHeight: number) => {
     const screen = gridToScreen(npc.position.x, npc.position.z, canvasWidth, canvasHeight);
-    const radius = CELL_SIZE * 0.4 * zoomRef.current;
+    const size = CELL_SIZE * zoomRef.current;
     const isSelected = selectedNPC === npc.id;
 
     // Ajustar posição Y para que o NPC pareça estar no chão
-    const npcY = screen.y + radius * 0.3; // Move o NPC ligeiramente para baixo
+    const npcY = screen.y;
 
     ctx.save();
 
-    // Color based on profession
-    let npcColor = '#FF6B6B'; // Default farmer color
-    if (npc.profession === 'LUMBERJACK') {
-      npcColor = '#8B4513'; // Brown for lumberjack
-    } else if (npc.profession === 'MINER') {
-      npcColor = '#696969'; // Dark gray for miner
+    // Determinar sprite baseada na direção ou estado
+    let spriteKey = 'npc_frame_S'; // Default facing down
+    
+    // Se o NPC tem direção de movimento, usar sprite apropriada
+    if (npc.lastMoveDirection) {
+      if (npc.lastMoveDirection.x > 0) spriteKey = 'npc_frame_D'; // Moving right
+      else if (npc.lastMoveDirection.x < 0) spriteKey = 'npc_frame_A'; // Moving left
+      else if (npc.lastMoveDirection.z < 0) spriteKey = 'npc_frame_W'; // Moving up
+      else if (npc.lastMoveDirection.z > 0) spriteKey = 'npc_frame_S'; // Moving down
     }
+
+    const npcSprite = spritesRef.current[spriteKey];
 
     // Handle chopping animation - apenas aplicar escala suave
     if (npc.animation && npc.animation.type === 'chopping') {
@@ -1319,7 +1328,7 @@ export default function GameWorld2D() {
 
       if (progress < 1) {
         // Simple scale animation for chopping
-        const scale = 1 + Math.sin(progress * Math.PI * 4) * 0.08; // Reduzido para não ser muito agressivo
+        const scale = 1 + Math.sin(progress * Math.PI * 4) * 0.08;
         ctx.translate(screen.x, npcY);
         ctx.scale(scale, scale);
         ctx.translate(-screen.x, -npcY);
@@ -1332,23 +1341,54 @@ export default function GameWorld2D() {
       const progress = elapsed / npc.animation.duration;
 
       if (progress < 1) {
-        // Movimento sutil para mineração sem rotação complexa
         const offsetX = Math.sin(progress * Math.PI * 6) * 2;
         const offsetY = Math.sin(progress * Math.PI * 8) * 1;
         ctx.translate(offsetX, offsetY);
       }
     }
 
-    // Corpo do NPC
-    ctx.fillStyle = isSelected ? '#FF4444' : npcColor;
-    ctx.beginPath();
-    ctx.arc(screen.x, npcY, radius, 0, Math.PI * 2);
-    ctx.fill();
+    if (npcSprite && spritesLoadedRef.current) {
+      // Usar sprite do NPC
+      const spriteSize = size * 0.8;
+      
+      // Destacar NPC selecionado com borda
+      if (isSelected) {
+        ctx.strokeStyle = '#FF0000';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(
+          screen.x - spriteSize / 2 - 2,
+          npcY - spriteSize / 2 - 2,
+          spriteSize + 4,
+          spriteSize + 4
+        );
+      }
+      
+      ctx.drawImage(
+        npcSprite,
+        screen.x - spriteSize / 2,
+        npcY - spriteSize / 2,
+        spriteSize,
+        spriteSize
+      );
+    } else {
+      // Fallback: círculo colorido baseado na profissão
+      let npcColor = '#FF6B6B'; // Default farmer color
+      if (npc.profession === 'LUMBERJACK') {
+        npcColor = '#8B4513'; // Brown for lumberjack
+      } else if (npc.profession === 'MINER') {
+        npcColor = '#696969'; // Dark gray for miner
+      }
 
-    // Borda
-    ctx.strokeStyle = isSelected ? '#FF0000' : '#000000';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+      const radius = size * 0.3;
+      ctx.fillStyle = isSelected ? '#FF4444' : npcColor;
+      ctx.beginPath();
+      ctx.arc(screen.x, npcY, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = isSelected ? '#FF0000' : '#000000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
 
     ctx.restore(); // Restaurar contexto após animações
 
@@ -1482,23 +1522,7 @@ export default function GameWorld2D() {
       ctx.stroke();
     }
 
-    // Olhos
-    if (radius > 8) {
-      const eyeSize = radius / 4;
-      const eyeOffset = radius / 3;
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(screen.x - eyeOffset, npcY - eyeOffset, eyeSize, 0, Math.PI * 2);
-      ctx.arc(screen.x + eyeOffset, npcY - eyeOffset, eyeSize, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#000000';
-      ctx.beginPath();
-      ctx.arc(screen.x - eyeOffset, npcY - eyeOffset, eyeSize/2, 0, Math.PI * 2);
-      ctx.arc(screen.x + eyeOffset, npcY - eyeOffset, eyeSize/2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    
 
     ctx.restore();
   }, [gridToScreen, selectedNPC]);

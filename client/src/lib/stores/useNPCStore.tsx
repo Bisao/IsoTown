@@ -12,6 +12,13 @@ import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid
 import { getRandomDirection, findPath } from '../utils/pathfinding';
 import { NPCActionSystem } from '../systems/NPCActionSystem';
 
+// Mock stores for dependencies (replace with actual imports when available)
+// These are placeholders to allow the code to compile and run without immediate circular dependency issues.
+// In a real scenario, these would be imported properly or dependencies managed.
+const useHouseStore = { getState: () => ({ getHouseAt: () => null }) };
+const useTreeStore = { getState: () => ({ getTreeAt: () => null }) };
+const useStoneStore = { getState: () => ({ getStoneAt: () => null }) };
+
 interface NPCStore {
   npcs: Record<string, NPC>;
   npcCooldowns: Record<string, number>; // Cooldowns por NPC
@@ -55,7 +62,7 @@ interface NPCStore {
   canCarryItem: (npcId: string, itemId: string, quantity: number) => boolean;
   startManualStoneMining: (npcId: string) => { success: boolean; message: string; adjacentPositions?: Position[] };
   startMiningStone: (npcId: string, stoneId: string) => void;
-  
+
   // Resource management functions
   addResourceToNPC: (npcId: string, resource: string, amount: number) => boolean;
   removeResourceFromNPC: (npcId: string, resource: string, amount: number) => void;
@@ -109,56 +116,58 @@ export const useNPCStore = create<NPCStore>()(
       // This function can be expanded later for NPC selection behavior
     },
 
-    moveNPC: (id, direction) => {
-      const npcs = get().npcs;
-      const npc = npcs[id];
-      if (!npc) {
-        console.log('NPC não encontrado:', id);
-        return;
-      }
-
-      if (npc.isMoving) {
-        console.log('NPC já está se movendo:', id);
-        return;
-      }
+    moveNPC: (npcId: string, direction: { x: number; z: number }) => {
+      const npc = get().npcs[npcId];
+      if (!npc || npc.isMoving) return;
 
       const newPosition = {
         x: npc.position.x + direction.x,
         z: npc.position.z + direction.z
       };
 
-      console.log('Tentando mover NPC:', id, 'de', npc.position, 'para', newPosition);
+      console.log('Tentando mover NPC:', npcId, 'de', npc.position, 'para', newPosition);
 
-      if (isValidGridPosition(newPosition)) {
-        console.log('Posição válida, movendo NPC');
-        set((state) => ({
-          npcs: {
-            ...state.npcs,
-            [id]: { 
-              ...state.npcs[id], 
-              position: newPosition,
-              isMoving: true,
-              lastMovement: Date.now()
-            }
-          }
-        }));
-
-        // Parar movimento após delay
-        setTimeout(() => {
-          const currentState = get();
-          if (currentState.npcs[id]) {
-            console.log('Parando movimento do NPC:', id);
-            set((state) => ({
-              npcs: {
-                ...state.npcs,
-                [id]: { ...state.npcs[id], isMoving: false }
-              }
-            }));
-          }
-        }, MOVEMENT_SPEED);
-      } else {
+      // Verificar se a nova posição é válida no grid
+      if (!isValidGridPosition(newPosition)) {
         console.log('Posição inválida:', newPosition);
+        return;
       }
+
+      // Verificar se há alguma casa na nova posição
+      const { getHouseAt } = useHouseStore.getState();
+      if (getHouseAt(newPosition)) {
+        console.log('Posição ocupada por casa:', newPosition);
+        return;
+      }
+
+      // Verificar se há alguma árvore na nova posição
+      const { getTreeAt } = useTreeStore.getState();
+      if (getTreeAt(newPosition)) {
+        console.log('Posição ocupada por árvore:', newPosition);
+        return;
+      }
+
+      // Verificar se há alguma pedra na nova posição
+      const { getStoneAt } = useStoneStore.getState();
+      if (getStoneAt(newPosition)) {
+        console.log('Posição ocupada por pedra:', newPosition);
+        return;
+      }
+
+      console.log('Posição válida, movendo NPC');
+
+      set((state) => ({
+        npcs: {
+          ...state.npcs,
+          [npcId]: {
+            ...npc,
+            position: newPosition,
+            isMoving: true,
+            moveStartTime: Date.now(),
+            lastMoveDirection: direction // Armazenar última direção de movimento
+          }
+        }
+      }));
     },
 
     setNPCTarget: (id: string, target: Position) => set((state) => ({
@@ -201,6 +210,17 @@ export const useNPCStore = create<NPCStore>()(
       const updates: Record<string, Partial<NPC>> = {};
 
       Object.values(npcs).forEach((npc) => {
+        if (npc.isMoving && npc.moveStartTime) {
+          const currentTime = Date.now();
+          if (currentTime - npc.moveStartTime >= MOVEMENT_SPEED) {
+            // Movimento concluído
+            updates[npc.id] = {
+              isMoving: false,
+              lastMovement: currentTime // Atualiza lastMovement para considerar o fim do movimento
+            };
+          }
+        }
+
         if (npc.controlMode === NPCControlMode.AUTONOMOUS && !npc.isMoving) {
           // Movimento aleatório a cada 2 segundos
           const currentTime = Date.now();
@@ -216,23 +236,11 @@ export const useNPCStore = create<NPCStore>()(
                 updates[npc.id] = {
                   position: newPosition,
                   isMoving: true,
-                  lastMovement: currentTime
+                  moveStartTime: currentTime, // Define o tempo de início do movimento
+                  lastMoveDirection: direction // Armazena a direção do movimento
                 };
-
-                // Parar movimento após delay
-                setTimeout(() => {
-                  const currentState = get();
-                  if (currentState.npcs[npc.id]) {
-                    set((state) => ({
-                      npcs: {
-                        ...state.npcs,
-                        [npc.id]: { ...state.npcs[npc.id], isMoving: false }
-                      }
-                    }));
-                  }
-                }, MOVEMENT_SPEED);
               } else {
-                // Se não pode mover, reset timer
+                // Se não pode mover, reset timer para tentar novamente
                 updates[npc.id] = {
                   lastMovement: currentTime
                 };
@@ -271,7 +279,8 @@ export const useNPCStore = create<NPCStore>()(
               updates[npc.id] = {
                 position: newPosition,
                 isMoving: true,
-                lastMovement: Date.now()
+                moveStartTime: Date.now(),
+                lastMoveDirection: direction // Armazena a direção do movimento
               };
 
               // Remover alvo se alcançado
@@ -312,7 +321,7 @@ export const useNPCStore = create<NPCStore>()(
           const getTreeStore = () => {
             try {
               // Access the store directly from window if available, or use a simpler approach
-              const { useTreeStore } = require('../../stores/useTreeStore');
+              const { useTreeStore } = require('../../stores/useTreeStore'); // Adjust path as needed
               return useTreeStore.getState();
             } catch {
               // If require fails, we need an alternative approach
@@ -335,7 +344,7 @@ export const useNPCStore = create<NPCStore>()(
           let nearestDistance = Infinity;
 
           for (const tree of mockTrees) {
-            const distance = Math.abs(tree.position.x - npc.position.x) + 
+            const distance = Math.abs(tree.position.x - npc.position.x) +
                            Math.abs(tree.position.z - npc.position.z);
 
             if (distance <= LUMBERJACK_WORK_RANGE && distance < nearestDistance) {
@@ -348,7 +357,7 @@ export const useNPCStore = create<NPCStore>()(
 
           if (nearestTree) {
             // Check if adjacent to tree (distance = 1)
-            const distance = Math.abs(nearestTree.position.x - npc.position.x) + 
+            const distance = Math.abs(nearestTree.position.x - npc.position.x) +
                            Math.abs(nearestTree.position.z - npc.position.z);
 
             if (distance === 1) {
@@ -403,7 +412,8 @@ export const useNPCStore = create<NPCStore>()(
                       state: NPCState.MOVING,
                       position: newPosition,
                       isMoving: true,
-                      lastMovement: currentTime,
+                      moveStartTime: currentTime, // Define o tempo de início do movimento
+                      lastMoveDirection: direction, // Armazena a direção do movimento
                       targetPosition: nearestTree.position // Set target for pathfinding
                     }
                   }
@@ -416,8 +426,8 @@ export const useNPCStore = create<NPCStore>()(
                     set((state) => ({
                       npcs: {
                         ...state.npcs,
-                        [npc.id]: { 
-                          ...state.npcs[npc.id], 
+                        [npc.id]: {
+                          ...state.npcs[npc.id],
                           isMoving: false,
                           state: NPCState.IDLE  // Return to idle to recalculate path
                         }
@@ -572,7 +582,7 @@ export const useNPCStore = create<NPCStore>()(
           const result = get().startManualTreeCutting(id);
           if (result.adjacentPositions) {
             // Define o cooldown para o lenhador (ex: 1 segundo após tentar cortar)
-            get().setNPCCooldown(id, 1000); 
+            get().setNPCCooldown(id, 1000);
             return { success: true, message: 'Procurando árvores adjacentes para cortar...', adjacentPositions: result.adjacentPositions };
           } else {
             return { success: false, message: 'Não foi possível iniciar o corte.' };
@@ -584,7 +594,7 @@ export const useNPCStore = create<NPCStore>()(
           const minerResult = get().startManualStoneMining(id);
           if (minerResult.adjacentPositions) {
             // Define o cooldown para o minerador (ex: 1.2 segundos após tentar minerar)
-            get().setNPCCooldown(id, 1200); 
+            get().setNPCCooldown(id, 1200);
             return { success: true, message: 'Procurando pedras adjacentes para minerar...', adjacentPositions: minerResult.adjacentPositions };
           } else {
             return { success: false, message: 'Não foi possível iniciar a mineração.' };
@@ -614,10 +624,10 @@ export const useNPCStore = create<NPCStore>()(
 
       console.log('Tentativa de corte manual, posições adjacentes:', adjacentPositions);
 
-      return { 
-        success: true, 
-        message: 'Procurando árvores adjacentes...', 
-        adjacentPositions 
+      return {
+        success: true,
+        message: 'Procurando árvores adjacentes...',
+        adjacentPositions
       };
     },
 
@@ -699,8 +709,8 @@ export const useNPCStore = create<NPCStore>()(
       const updates: Record<string, Partial<NPC>> = {};
 
       Object.values(npcs).forEach((npc) => {
-        if (npc.controlMode === NPCControlMode.CONTROLLED && 
-            npc.state === NPCState.WORKING && 
+        if (npc.controlMode === NPCControlMode.CONTROLLED &&
+            npc.state === NPCState.WORKING &&
             npc.currentTask) {
 
           // Continuar trabalho baseado na profissão
@@ -918,7 +928,7 @@ export const useNPCStore = create<NPCStore>()(
 
     // Verificar se é hora de trabalhar (6h às 18h horário do jogo)
     isWorkTime: (npcId: string) => {
-      const { useTimeStore } = require('../stores/useTimeStore');
+      const { useTimeStore } = require('../stores/useTimeStore'); // Adjust path as needed
       const currentHour = useTimeStore.getState().getCurrentGameHour();
       return currentHour >= 6 && currentHour < 18;
     },
@@ -929,7 +939,7 @@ export const useNPCStore = create<NPCStore>()(
       if (!npc) return false;
 
       // NPCs devem descansar à noite (18h às 6h horário do jogo)
-      const { useTimeStore } = require('../stores/useTimeStore');
+      const { useTimeStore } = require('../stores/useTimeStore'); // Adjust path as needed
       const currentHour = useTimeStore.getState().getCurrentGameHour();
       return currentHour >= 18 || currentHour < 6;
     },
@@ -1032,10 +1042,10 @@ export const useNPCStore = create<NPCStore>()(
 
       console.log('Tentativa de mineração manual, posições adjacentes:', adjacentPositions);
 
-      return { 
-        success: true, 
-        message: 'Procurando pedras adjacentes...', 
-        adjacentPositions 
+      return {
+        success: true,
+        message: 'Procurando pedras adjacentes...',
+        adjacentPositions
       };
     },
 
@@ -1078,7 +1088,7 @@ export const useNPCStore = create<NPCStore>()(
           let nearestDistance = Infinity;
 
           for (const stone of mockStones) {
-            const distance = Math.abs(stone.position.x - npc.position.x) + 
+            const distance = Math.abs(stone.position.x - npc.position.x) +
                            Math.abs(stone.position.z - npc.position.z);
 
             if (distance <= MINER_WORK_RANGE && distance < nearestDistance) {
@@ -1091,7 +1101,7 @@ export const useNPCStore = create<NPCStore>()(
 
           if (nearestStone) {
             // Check if adjacent to stone (distance = 1)
-            const distance = Math.abs(nearestStone.position.x - npc.position.x) + 
+            const distance = Math.abs(nearestStone.position.x - npc.position.x) +
                            Math.abs(nearestStone.position.z - npc.position.z);
 
             if (distance === 1) {
@@ -1144,7 +1154,8 @@ export const useNPCStore = create<NPCStore>()(
                       state: NPCState.MOVING,
                       position: newPosition,
                       isMoving: true,
-                      lastMovement: currentTime,
+                      moveStartTime: currentTime, // Define o tempo de início do movimento
+                      lastMoveDirection: direction, // Armazena a direção do movimento
                       targetPosition: nearestStone.position
                     }
                   }
@@ -1157,8 +1168,8 @@ export const useNPCStore = create<NPCStore>()(
                     set((state) => ({
                       npcs: {
                         ...state.npcs,
-                        [npc.id]: { 
-                          ...state.npcs[npc.id], 
+                        [npc.id]: {
+                          ...state.npcs[npc.id],
                           isMoving: false,
                           state: NPCState.IDLE
                         }
@@ -1291,7 +1302,7 @@ export const useNPCStore = create<NPCStore>()(
             const house = useHouseStore.getState().houses[npc.houseId!];
             if (!house) return;
 
-            const distanceToHome = Math.abs(house.position.x - npc.position.x) + 
+            const distanceToHome = Math.abs(house.position.x - npc.position.x) +
                                  Math.abs(house.position.z - npc.position.z);
 
             if (distanceToHome === 0) {
@@ -1326,7 +1337,8 @@ export const useNPCStore = create<NPCStore>()(
                       state: NPCState.MOVING,
                       position: newPosition,
                       isMoving: true,
-                      lastMovement: currentTime
+                      moveStartTime: currentTime, // Define o tempo de início do movimento
+                      lastMoveDirection: direction // Armazena a direção do movimento
                     }
                   }
                 }));
@@ -1334,7 +1346,7 @@ export const useNPCStore = create<NPCStore>()(
                 setTimeout(() => {
                   const currentState = get();
                   if (currentState.npcs[npc.id]) {
-                    const distanceAfterMove = Math.abs(house.position.x - newPosition.x) + 
+                    const distanceAfterMove = Math.abs(house.position.x - newPosition.x) +
                                             Math.abs(house.position.z - newPosition.z);
 
                     if (distanceAfterMove === 0) {
@@ -1345,8 +1357,8 @@ export const useNPCStore = create<NPCStore>()(
                       set((state) => ({
                         npcs: {
                           ...state.npcs,
-                          [npc.id]: { 
-                            ...state.npcs[npc.id], 
+                          [npc.id]: {
+                            ...state.npcs[npc.id],
                             isMoving: false,
                             state: NPCState.RETURNING_HOME
                           }

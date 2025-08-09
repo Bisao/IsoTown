@@ -66,7 +66,8 @@ export interface NPC {
   animation?: NPCAnimation;
   currentTreeId?: string;
   currentStoneId?: string;
-  
+  lastMoveDirection?: { x: number; z: number }; // Última direção de movimento para sprites
+
   // Sistema avançado
   statistics?: {
     workCompleted: number;
