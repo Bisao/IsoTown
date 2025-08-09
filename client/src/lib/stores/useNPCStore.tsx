@@ -867,7 +867,27 @@ export const useNPCStore = create<NPCStore>()(
       const npc = get().npcs[npcId];
       if (!npc) return false;
       
-      return npc.currentCarriedWeight >= npc.maxCarryCapacity * 0.8; // 80% capacity threshold
+      // Verificar tanto peso quanto quantidade de slots
+      const totalWeight = npc.currentCarriedWeight >= npc.maxCarryCapacity * 0.8;
+      const totalItems = Object.values(npc.inventory).reduce((sum, count) => sum + count, 0) >= 15; // Máximo 15 itens
+      
+      return totalWeight || totalItems;
+    },
+
+    // Verificar se é hora de trabalhar (8h às 18h por padrão)
+    isWorkTime: (npcId: string) => {
+      const currentHour = new Date().getHours();
+      return currentHour >= 8 && currentHour < 18;
+    },
+
+    // Verificar se NPC deve descansar
+    shouldRest: (npcId: string) => {
+      const npc = get().npcs[npcId];
+      if (!npc) return false;
+      
+      // NPCs devem descansar à noite (18h às 8h)
+      const currentHour = new Date().getHours();
+      return currentHour >= 18 || currentHour < 8;
     },
 
     addItemToInventory: (npcId: string, itemId: string, quantity: number) => {

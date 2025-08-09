@@ -162,16 +162,24 @@ export default function GameWorld2D() {
             if (completed) {
               // Árvore cortada com sucesso - adicionar madeira ao inventário
               console.log('Árvore cortada com sucesso pelo NPC controlado!');
-              const woodResult = addItemToInventory(npcId, 'WOOD', 2); // Ganhar 2 madeiras por árvore
-              if (woodResult.success) {
-                addTextEffect(targetTree.position, '+2 Madeira', '#8B4513', 1200);
-              } else {
-                addTextEffect(targetTree.position, 'Inventário cheio!', '#FF0000', 1200);
-              }
+              const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
+              const woodAdded = addResourceToNPC(npc.id, 'wood', 2);
 
-              const { removeTree } = useTreeStore.getState();
+              if (woodAdded) {
+                addTextEffect(targetTree.position, '+2 Madeira', '#8B4513', 1200);
+                if (shouldReturnHome(npc.id)) {
+                  console.log('Lenhador deve voltar para casa - capacidade quase cheia');
+                  setNPCState(npc.id, NPCState.RETURNING_HOME);
+                } else {
+                  setNPCState(npc.id, NPCState.IDLE);
+                }
+              } else {
+                addTextEffect(targetTree.position, 'Inventário cheio! Voltando para casa', '#FF0000', 1200);
+                setNPCState(npc.id, NPCState.RETURNING_HOME);
+              }
               removeTree(npc.currentTreeId);
-              setNPCState(npcId, NPCState.IDLE, null);
+            } else {
+              updateNPCTask(npc.id, { ...npc.currentTask, progress: newHealth });
             }
             return;
           }
@@ -183,7 +191,7 @@ export default function GameWorld2D() {
         if (priorityTree) {
           console.log('Árvore encontrada para corte manual:', priorityTree.id);
           // Iniciar corte manual
-          setNPCState(npcId, NPCState.WORKING, { 
+          setNPCState(npc.id, NPCState.WORKING, { 
             type: 'cut_tree',
             targetId: priorityTree.id, 
             targetPosition: priorityTree.position,
@@ -206,16 +214,22 @@ export default function GameWorld2D() {
           if (newHealth <= 0) {
             console.log('Árvore cortada com sucesso pelo NPC controlado!');
             // Adicionar madeira ao inventário
-            const woodResult = addItemToInventory(npcId, 'WOOD', 2);
-            if (woodResult.success) {
+            const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
+            const woodAdded = addResourceToNPC(npc.id, 'wood', 2);
+            if (woodAdded) {
               addTextEffect(priorityTree.position, '+2 Madeira', '#8B4513', 1200);
+              if (shouldReturnHome(npc.id)) {
+                console.log('Lenhador deve voltar para casa - capacidade quase cheia');
+                setNPCState(npc.id, NPCState.RETURNING_HOME);
+              } else {
+                setNPCState(npc.id, NPCState.IDLE);
+              }
             } else {
-              addTextEffect(priorityTree.position, 'Inventário cheio!', '#FF0000', 1200);
+              addTextEffect(priorityTree.position, 'Inventário cheio! Voltando para casa', '#FF0000', 1200);
+              setNPCState(npc.id, NPCState.RETURNING_HOME);
             }
 
-            const { removeTree } = useTreeStore.getState();
             removeTree(priorityTree.id);
-            setNPCState(npcId, NPCState.IDLE, null);
           }
         } else {
           console.log('Nenhuma árvore adjacente encontrada');
@@ -254,16 +268,24 @@ export default function GameWorld2D() {
             if (completed) {
               // Pedra destruída com sucesso - adicionar recurso ao inventário
               console.log('Pedra destruída com sucesso pelo NPC controlado!');
-              const stoneResult = addItemToInventory(npcId, 'STONE', 2); // Ganhar 2 pedras por pedra
-              if (stoneResult.success) {
+              const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
+              const stoneAdded = addResourceToNPC(npc.id, 'stone', 2);
+              if (stoneAdded) {
                 addTextEffect(targetStone.position, '+2 Pedra', '#808080', 1200);
+                if (shouldReturnHome(npc.id)) {
+                  console.log('Minerador deve voltar para casa - capacidade quase cheia');
+                  setNPCState(npc.id, NPCState.RETURNING_HOME);
+                } else {
+                  setNPCState(npc.id, NPCState.IDLE);
+                }
               } else {
-                addTextEffect(targetStone.position, 'Inventário cheio!', '#FF0000', 1200);
+                addTextEffect(targetStone.position, 'Inventário cheio! Voltando para casa', '#FF0000', 1200);
+                setNPCState(npc.id, NPCState.RETURNING_HOME);
               }
 
-              const { removeStone } = useStoneStore.getState();
               removeStone(npc.currentStoneId);
-              setNPCState(npcId, NPCState.IDLE, null);
+            } else {
+              updateNPCTask(npc.id, { ...npc.currentTask, progress: newHealth });
             }
             return;
           }
@@ -275,7 +297,7 @@ export default function GameWorld2D() {
         if (priorityStone) {
           console.log('Pedra encontrada para mineração manual:', priorityStone.id);
           // Iniciar mineração manual
-          setNPCState(npcId, NPCState.WORKING, { 
+          setNPCState(npc.id, NPCState.WORKING, { 
             type: 'mine_stone',
             targetId: priorityStone.id, 
             targetPosition: priorityStone.position,
@@ -298,16 +320,22 @@ export default function GameWorld2D() {
           if (newHealth <= 0) {
             console.log('Pedra destruída com sucesso pelo NPC controlado!');
             // Adicionar recurso ao inventário
-            const stoneResult = addItemToInventory(npcId, 'STONE', 2);
-            if (stoneResult.success) {
+            const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
+            const stoneAdded = addResourceToNPC(npc.id, 'stone', 2);
+            if (stoneAdded) {
               addTextEffect(priorityStone.position, '+2 Pedra', '#808080', 1200);
+              if (shouldReturnHome(npc.id)) {
+                console.log('Minerador deve voltar para casa - capacidade quase cheia');
+                setNPCState(npc.id, NPCState.RETURNING_HOME);
+              } else {
+                setNPCState(npc.id, NPCState.IDLE);
+              }
             } else {
-              addTextEffect(priorityStone.position, 'Inventário cheio!', '#FF0000', 1200);
+              addTextEffect(priorityStone.position, 'Inventário cheio! Voltando para casa', '#FF0000', 1200);
+              setNPCState(npc.id, NPCState.RETURNING_HOME);
             }
 
-            const { removeStone } = useStoneStore.getState();
             removeStone(priorityStone.id);
-            setNPCState(npcId, NPCState.IDLE, null);
           }
         } else {
           console.log('Nenhuma pedra adjacente encontrada');
@@ -522,27 +550,35 @@ export default function GameWorld2D() {
           const newProgress = (npc.currentTask.progress || 0) + 1;
 
           if (treeDestroyed) {
-            console.log('Árvore destruída! Lenhador volta ao idle');
+            console.log('Árvore destruída! Lenhador coletou recursos');
             // Adicionar madeira ao inventário do NPC autônomo
-            const woodResult = addItemToInventory(npc.id, 'WOOD', 2);
-            if (woodResult.success) {
-              addTextEffect(tree.position, '+2 Madeira', '#8B4513', 1200);
-            } else {
-              addTextEffect(tree.position, 'Inventário cheio!', '#FF0000', 1200);
-            }
+            const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
+            const woodAdded = addResourceToNPC(npc.id, 'wood', 2);
 
+            if (woodAdded) {
+              addTextEffect(tree.position, '+2 Madeira', '#8B4513', 1200);
+              // Verificar se deve voltar para casa
+              if (shouldReturnHome(npc.id)) {
+                console.log('Lenhador deve voltar para casa - capacidade quase cheia');
+                setNPCState(npc.id, NPCState.RETURNING_HOME);
+              } else {
+                setNPCState(npc.id, NPCState.IDLE);
+              }
+            } else {
+              addTextEffect(tree.position, 'Inventário cheio! Voltando para casa', '#FF0000', 1200);
+              setNPCState(npc.id, NPCState.RETURNING_HOME);
+            }
             removeTree(tree.id);
-            setNPCState(npc.id, NPCState.IDLE);
           } else {
             // Continue working
             updateNPCTask(npc.id, {
               ...npc.currentTask,
               progress: newProgress
             });
+            setNPCState(npc.id, NPCState.WORKING, { ...npc.currentTask, progress: newProgress, lastActionTime: currentTime});
           }
 
           // Add chopping animation
-          setNPCState(npc.id, NPCState.WORKING, { ...npc.currentTask, progress: newProgress, lastActionTime: currentTime});
           useNPCStore.getState().setNPCAnimation(npc.id, {
             type: 'chopping',
             startTime: currentTime,
@@ -581,7 +617,7 @@ export default function GameWorld2D() {
               x: house.position.x > npc.position.x ? 1 : house.position.x < npc.position.x ? -1 : 0,
               z: house.position.z > npc.position.z ? 1 : house.position.z < npc.position.z ? -1 : 0
             };
-            
+
             // Ensure we don't try to move if already at home
             if (direction.x !== 0 || direction.z !== 0) {
               setNPCState(npc.id, NPCState.MOVING); // Indicate moving state
@@ -698,15 +734,22 @@ export default function GameWorld2D() {
           if (stoneDestroyed) {
             console.log('Pedra destruída! Minerador coletou recursos');
             // Adicionar pedra ao inventário do NPC autônomo
-            const stoneResult = useNPCStore.getState().addResourceToNPC(npc.id, 'stone', 2);
-            if (stoneResult) {
+            const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
+            const stoneAdded = addResourceToNPC(npc.id, 'stone', 2);
+            if (stoneAdded) {
               addTextEffect(stone.position, '+2 Pedra', '#808080', 1200);
+              if (shouldReturnHome(npc.id)) {
+                console.log('Minerador deve voltar para casa - capacidade quase cheia');
+                setNPCState(npc.id, NPCState.RETURNING_HOME);
+              } else {
+                setNPCState(npc.id, NPCState.IDLE);
+              }
             } else {
-              addTextEffect(stone.position, 'Inventário cheio!', '#FF0000', 1200);
+              addTextEffect(stone.position, 'Inventário cheio! Voltando para casa', '#FF0000', 1200);
+              setNPCState(npc.id, NPCState.RETURNING_HOME);
             }
 
             removeStone(stone.id);
-            setNPCState(npc.id, NPCState.IDLE);
           } else {
             // Continue working
             updateNPCTask(npc.id, {
