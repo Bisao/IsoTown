@@ -350,7 +350,7 @@ export default function GameWorld2D() {
     return () => window.removeEventListener('manualWork', handleManualWork as EventListener);
   }, [npcs, trees, stones, updateTree, updateStone, setNPCState, addTextEffect, getPriorityTreeForNPC, getPriorityStoneForNPC]);
 
-  // Carregar sprites das casas e textura de grama
+  // Carregar sprites das casas, texturas e ruas
   useEffect(() => {
     const loadSprites = async () => {
       const sprites: Record<string, HTMLImageElement> = {};
@@ -358,7 +358,10 @@ export default function GameWorld2D() {
       const spriteMap = {
         [HouseType.FARMER]: '/sprites/houses/farmer_house.png',
         [HouseType.LUMBERJACK]: '/sprites/houses/lumberjack_house.png',
-        [HouseType.MINER]: '/sprites/houses/medium_house.png' // Usar medium_house como placeholder para miner
+        [HouseType.MINER]: '/sprites/houses/medium_house.png', // Usar medium_house como placeholder para miner
+        'road_horizontal': '/sprites/roads/road_horizontal.png',
+        'road_vertical': '/sprites/roads/road_vertical.png',
+        'road_cross': '/sprites/roads/road_cross.png'
       };
 
       const loadPromises = Object.entries(spriteMap).map(([type, path]) => {
@@ -1151,76 +1154,113 @@ export default function GameWorld2D() {
     ctx.restore();
   }, [gridToScreen]);
 
-  // Desenhar rua (memoizado)
+  // Desenhar rua com sprites realistas
   const drawRoad = useCallback((ctx: CanvasRenderingContext2D, road: any, canvasWidth: number, canvasHeight: number) => {
     const screen = gridToScreen(road.position.x, road.position.z, canvasWidth, canvasHeight);
     const size = CELL_SIZE * zoomRef.current;
 
     ctx.save();
 
-    // Cor das ruas - marrom para diferenciar da grama
-    ctx.fillStyle = '#8B4513';
+    // Obter sprite apropriada baseada no tipo de rua
+    let roadSprite = null;
+    switch (road.type) {
+      case 'horizontal':
+        roadSprite = spritesRef.current['road_horizontal'];
+        break;
+      case 'vertical':
+        roadSprite = spritesRef.current['road_vertical'];
+        break;
+      case 'cross':
+        roadSprite = spritesRef.current['road_cross'];
+        break;
+      default:
+        roadSprite = spritesRef.current['road_horizontal'];
+        break;
+    }
 
-    // Para visualização isométrica, as ruas devem ocupar toda a forma do losango
-    // Desenhar losango completo para a rua
-    const halfSize = size * 0.5;
-    const quarterSize = size * 0.25;
+    if (roadSprite) {
+      // Usar sprite de rua realista
+      const spriteSize = size * 1.2; // Aumentar um pouco para cobrir melhor o tile
+      ctx.drawImage(
+        roadSprite,
+        screen.x - spriteSize / 2,
+        screen.y - spriteSize / 2,
+        spriteSize,
+        spriteSize
+      );
+    } else {
+      // Fallback: desenhar rua com padrão isométrico melhorado
+      const halfSize = size * 0.5;
+      const quarterSize = size * 0.25;
 
-    ctx.beginPath();
-    ctx.moveTo(screen.x, screen.y - quarterSize); // topo
-    ctx.lineTo(screen.x + halfSize, screen.y); // direita
-    ctx.lineTo(screen.x, screen.y + quarterSize); // baixo
-    ctx.lineTo(screen.x - halfSize, screen.y); // esquerda
-    ctx.closePath();
-    ctx.fill();
-
-    // Borda mais escura para definir melhor a rua
-    ctx.strokeStyle = '#654321';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Textura de pedra/terra batida (pontos pequenos) - usando seed fixo para consistência
-    const seed = (road.position.x * 1000 + road.position.z) * 0.001;
-    ctx.fillStyle = '#A0522D';
-    for (let i = 0; i < 4; i++) {
-      const angle = (i / 4) * Math.PI * 2 + seed;
-      const distance = (Math.sin(seed + i) * 0.5 + 0.5) * quarterSize;
-      const offsetX = Math.cos(angle) * distance;
-      const offsetY = Math.sin(angle) * distance * 0.5; // Reduzir na direção Y para isométrico
+      // Base da rua - cor de asfalto
+      ctx.fillStyle = '#444444';
       ctx.beginPath();
-      ctx.arc(screen.x + offsetX, screen.y + offsetY, 1.5, 0, Math.PI * 2);
+      ctx.moveTo(screen.x, screen.y - quarterSize); // topo
+      ctx.lineTo(screen.x + halfSize, screen.y); // direita
+      ctx.lineTo(screen.x, screen.y + quarterSize); // baixo
+      ctx.lineTo(screen.x - halfSize, screen.y); // esquerda
+      ctx.closePath();
+      ctx.fill();
+
+      // Bordas da rua
+      ctx.strokeStyle = '#222222';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Linhas centrais baseadas no tipo de rua
+      ctx.strokeStyle = '#FFFF00'; // Amarelo para linhas de trânsito
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 4]);
+
+      switch (road.type) {
+        case 'horizontal':
+          ctx.beginPath();
+          ctx.moveTo(screen.x - halfSize * 0.7, screen.y);
+          ctx.lineTo(screen.x + halfSize * 0.7, screen.y);
+          ctx.stroke();
+          break;
+        case 'vertical':
+          ctx.beginPath();
+          ctx.moveTo(screen.x, screen.y - quarterSize * 0.7);
+          ctx.lineTo(screen.x, screen.y + quarterSize * 0.7);
+          ctx.stroke();
+          break;
+        case 'cross':
+          ctx.beginPath();
+          ctx.moveTo(screen.x - halfSize * 0.7, screen.y);
+          ctx.lineTo(screen.x + halfSize * 0.7, screen.y);
+          ctx.moveTo(screen.x, screen.y - quarterSize * 0.7);
+          ctx.lineTo(screen.x, screen.y + quarterSize * 0.7);
+          ctx.stroke();
+          break;
+      }
+
+      // Adicionar textura de asfalto (pontos pequenos)
+      ctx.setLineDash([]);
+      const seed = (road.position.x * 1000 + road.position.z) * 0.001;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 + seed;
+        const distance = (Math.sin(seed + i) * 0.5 + 0.5) * quarterSize * 0.8;
+        const offsetX = Math.cos(angle) * distance;
+        const offsetY = Math.sin(angle) * distance * 0.5;
+        ctx.beginPath();
+        ctx.arc(screen.x + offsetX, screen.y + offsetY, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Sombra sutil para profundidade
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.beginPath();
+      ctx.moveTo(screen.x, screen.y + quarterSize); // baixo
+      ctx.lineTo(screen.x + halfSize, screen.y); // direita
+      ctx.lineTo(screen.x + halfSize, screen.y + quarterSize * 0.1); // direita baixo
+      ctx.lineTo(screen.x, screen.y + quarterSize * 1.1); // baixo sombra
+      ctx.closePath();
       ctx.fill();
     }
 
-    // Adicionar linhas de direção baseadas no tipo
-    ctx.strokeStyle = '#654321';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 2]);
-
-    switch (road.type) {
-      case 'horizontal':
-        ctx.beginPath();
-        ctx.moveTo(screen.x - halfSize * 0.6, screen.y);
-        ctx.lineTo(screen.x + halfSize * 0.6, screen.y);
-        ctx.stroke();
-        break;
-      case 'vertical':
-        ctx.beginPath();
-        ctx.moveTo(screen.x, screen.y - quarterSize * 0.6);
-        ctx.lineTo(screen.x, screen.y + quarterSize * 0.6);
-        ctx.stroke();
-        break;
-      case 'cross':
-        ctx.beginPath();
-        ctx.moveTo(screen.x - halfSize * 0.6, screen.y);
-        ctx.lineTo(screen.x + halfSize * 0.6, screen.y);
-        ctx.moveTo(screen.x, screen.y - quarterSize * 0.6);
-        ctx.lineTo(screen.x, screen.y + quarterSize * 0.6);
-        ctx.stroke();
-        break;
-    }
-
-    ctx.setLineDash([]);
     ctx.restore();
   }, [gridToScreen]);
 
