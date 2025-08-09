@@ -19,7 +19,7 @@ export default function GameWorld2D() {
   const panRef = useRef({ x: 0, y: 0 });
   const spritesRef = useRef<Record<string, HTMLImageElement>>({});
   const spritesLoadedRef = useRef(false);
-  const grassPatternRef = useRef<CanvasPattern | null>(null);
+
   const cameraTargetRef = useRef<{ x: number, y: number } | null>(null);
 
   const houses = useHouseStore(state => state.houses);
@@ -380,15 +380,8 @@ export default function GameWorld2D() {
       const grassPromise = new Promise<void>((resolve) => {
         const grassImg = new Image();
         grassImg.onload = () => {
-          // Criar padrão repetitivo da grama
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            canvas.width = grassImg.width;
-            canvas.height = grassImg.height;
-            ctx.drawImage(grassImg, 0, 0);
-            grassPatternRef.current = ctx.createPattern(canvas, 'repeat');
-          }
+          // Armazenar a imagem diretamente para renderização individual por tile
+          spritesRef.current['grass'] = grassImg;
           resolve();
         };
         grassImg.onerror = () => {
@@ -955,19 +948,21 @@ export default function GameWorld2D() {
           tilePath.lineTo(screenDown.x, screenDown.y);
           tilePath.closePath();
 
-          // Preencher com textura de grama se disponível
-          if (grassPatternRef.current) {
+          // Desenhar sprite de grama se disponível
+          const grassSprite = spritesRef.current['grass'];
+          if (grassSprite) {
             ctx.save();
             ctx.clip(tilePath);
-            ctx.fillStyle = grassPatternRef.current;
             
-            // Calcular área de preenchimento baseada no losango
-            const minX = Math.min(screen.x, screenRight.x, screenDown.x, screenDiag.x);
-            const maxX = Math.max(screen.x, screenRight.x, screenDown.x, screenDiag.x);
-            const minY = Math.min(screen.y, screenRight.y, screenDown.y, screenDiag.y);
-            const maxY = Math.max(screen.y, screenRight.y, screenDown.y, screenDiag.y);
+            // Calcular posição e tamanho para a sprite
+            const tileSize = CELL_SIZE * zoomRef.current;
+            const spriteSize = tileSize * 1.2; // Ligeiramente maior para cobrir bem o tile
             
-            ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+            // Centralizar a sprite no tile
+            const spriteX = screen.x - spriteSize / 2;
+            const spriteY = screen.y - spriteSize / 2;
+            
+            ctx.drawImage(grassSprite, spriteX, spriteY, spriteSize, spriteSize);
             ctx.restore();
           } else {
             // Fallback: preencher com cor verde
