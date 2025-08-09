@@ -145,4 +145,4 @@ O problema das casas não aparecerem nas vilas está relacionado ao sistema de g
 - **Sistema de casas da vila**: Verificado e confirmado funcionando (4 casas geradas)
 - **Erros TypeScript**: Corrigidos problemas de tipos em GameUI.tsx
 - **Logs de debug**: Adicionados para monitorar geração de vilas
-- **Sprite de grama**: Implementada renderização de sprite individual em cada tile do grid isométrico
+- **Blocos 3D isométricos**: Implementados tiles como blocos 3D com faces laterais e textura de grama no topo

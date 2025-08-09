@@ -948,32 +948,98 @@ export default function GameWorld2D() {
           tilePath.lineTo(screenDown.x, screenDown.y);
           tilePath.closePath();
 
-          // Desenhar sprite de grama se disponível
+          // Desenhar bloco isométrico 3D com textura de grama
           const grassSprite = spritesRef.current['grass'];
+          const tileSize = CELL_SIZE * zoomRef.current;
+          const halfTile = tileSize / 2;
+          const quarterTile = tileSize / 4;
+          
+          // Calcular pontos do losango (face superior)
+          const topCenter = { x: screen.x, y: screen.y - quarterTile };
+          const rightCenter = { x: screen.x + halfTile, y: screen.y };
+          const bottomCenter = { x: screen.x, y: screen.y + quarterTile };
+          const leftCenter = { x: screen.x - halfTile, y: screen.y };
+
+          // Desenhar face lateral direita (mais escura)
+          ctx.fillStyle = '#2D5016';
+          ctx.beginPath();
+          ctx.moveTo(rightCenter.x, rightCenter.y);
+          ctx.lineTo(bottomCenter.x, bottomCenter.y);
+          ctx.lineTo(bottomCenter.x, bottomCenter.y + quarterTile);
+          ctx.lineTo(rightCenter.x, rightCenter.y + quarterTile);
+          ctx.closePath();
+          ctx.fill();
+
+          // Desenhar face lateral esquerda (média escuridão)
+          ctx.fillStyle = '#3A6B1E';
+          ctx.beginPath();
+          ctx.moveTo(leftCenter.x, leftCenter.y);
+          ctx.lineTo(bottomCenter.x, bottomCenter.y);
+          ctx.lineTo(bottomCenter.x, bottomCenter.y + quarterTile);
+          ctx.lineTo(leftCenter.x, leftCenter.y + quarterTile);
+          ctx.closePath();
+          ctx.fill();
+
+          // Desenhar face superior com textura de grama
           if (grassSprite) {
             ctx.save();
-            ctx.clip(tilePath);
             
-            // Calcular posição e tamanho para a sprite
-            const tileSize = CELL_SIZE * zoomRef.current;
-            const spriteSize = tileSize * 1.2; // Ligeiramente maior para cobrir bem o tile
+            // Criar caminho para a face superior (losango)
+            const topPath = new Path2D();
+            topPath.moveTo(topCenter.x, topCenter.y);
+            topPath.lineTo(rightCenter.x, rightCenter.y);
+            topPath.lineTo(bottomCenter.x, bottomCenter.y);
+            topPath.lineTo(leftCenter.x, leftCenter.y);
+            topPath.closePath();
             
-            // Centralizar a sprite no tile
-            const spriteX = screen.x - spriteSize / 2;
-            const spriteY = screen.y - spriteSize / 2;
+            // Aplicar clipping e desenhar textura
+            ctx.clip(topPath);
             
-            ctx.drawImage(grassSprite, spriteX, spriteY, spriteSize, spriteSize);
+            // Posicionar a sprite para cobrir a face superior
+            const spriteSize = tileSize * 1.1;
+            ctx.drawImage(
+              grassSprite, 
+              screen.x - spriteSize / 2, 
+              screen.y - spriteSize / 2, 
+              spriteSize, 
+              spriteSize
+            );
+            
             ctx.restore();
           } else {
-            // Fallback: preencher com cor verde
-            ctx.fillStyle = '#90EE90';
-            ctx.fill(tilePath);
+            // Fallback: face superior verde clara
+            ctx.fillStyle = '#4CAF50';
+            ctx.beginPath();
+            ctx.moveTo(topCenter.x, topCenter.y);
+            ctx.lineTo(rightCenter.x, rightCenter.y);
+            ctx.lineTo(bottomCenter.x, bottomCenter.y);
+            ctx.lineTo(leftCenter.x, leftCenter.y);
+            ctx.closePath();
+            ctx.fill();
           }
 
-          // Desenhar borda do tile (opcional - linha sutil)
-          ctx.strokeStyle = 'rgba(204, 204, 204, 0.3)';
+          // Desenhar bordas do bloco para definição
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
           ctx.lineWidth = 1;
-          ctx.stroke(tilePath);
+          
+          // Borda da face superior
+          ctx.beginPath();
+          ctx.moveTo(topCenter.x, topCenter.y);
+          ctx.lineTo(rightCenter.x, rightCenter.y);
+          ctx.lineTo(bottomCenter.x, bottomCenter.y);
+          ctx.lineTo(leftCenter.x, leftCenter.y);
+          ctx.closePath();
+          ctx.stroke();
+          
+          // Bordas laterais
+          ctx.beginPath();
+          ctx.moveTo(rightCenter.x, rightCenter.y);
+          ctx.lineTo(rightCenter.x, rightCenter.y + quarterTile);
+          ctx.moveTo(bottomCenter.x, bottomCenter.y);
+          ctx.lineTo(bottomCenter.x, bottomCenter.y + quarterTile);
+          ctx.moveTo(leftCenter.x, leftCenter.y);
+          ctx.lineTo(leftCenter.x, leftCenter.y + quarterTile);
+          ctx.stroke();
         }
       }
     }
