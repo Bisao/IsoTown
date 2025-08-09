@@ -369,10 +369,12 @@ export default function GameWorld2D() {
           const img = new Image();
           img.onload = () => {
             sprites[type] = img;
+            console.log(`Sprite ${type} carregada com sucesso!`);
             resolve();
           };
           img.onerror = () => {
-            console.warn(`Falha ao carregar sprite: ${path}`);
+            console.error(`Erro ao carregar sprite: ${path}`);
+            // Não adicionar sprite faltando ao objeto sprites
             resolve(); // Continue mesmo se falhar
           };
           img.src = path;
@@ -1178,15 +1180,19 @@ export default function GameWorld2D() {
         break;
     }
 
-    if (roadSprite) {
-      // Usar sprite de rua realista
-      const spriteSize = size * 1.2; // Aumentar um pouco para cobrir melhor o tile
+    if (roadSprite && spritesLoadedRef.current) {
+      // Usar sprite de rua realista com renderização isométrica
+      const spriteSize = size * 1.4; // Aumentar para cobrir melhor o tile isométrico
+      
+      // Ajustar posição para isométrico
+      const offsetY = size * 0.1; // Pequeno offset para alinhar com o grid isométrico
+      
       ctx.drawImage(
         roadSprite,
         screen.x - spriteSize / 2,
-        screen.y - spriteSize / 2,
+        screen.y - spriteSize / 2 + offsetY,
         spriteSize,
-        spriteSize
+        spriteSize / 2 // Altura reduzida para perspectiva isométrica
       );
     } else {
       // Fallback: desenhar rua com padrão isométrico melhorado
