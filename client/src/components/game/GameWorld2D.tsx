@@ -1400,6 +1400,9 @@ export default function GameWorld2D() {
       if (progress < 1) {
         ctx.save();
 
+        // Definir radius para uso na ferramenta animada
+        const radius = size * 0.3;
+        
         // Configurar fonte para ferramenta
         ctx.font = `${Math.max(18, radius * 1.4)}px Arial`;
         ctx.textAlign = 'center';
