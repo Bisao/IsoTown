@@ -46,8 +46,8 @@ export const TOC_TEXT_DURATION = 1000; // ms for TOC text effect
 
 // Lumberjack behavior
 export const LUMBERJACK_WORK_RANGE = 5; // How far lumberjack will search for trees
-export const LUMBERJACK_CHOP_INTERVAL = 3500; // ms between chops (aumentado de 2000 para 3500)
-export const CONTROLLED_CHOP_COOLDOWN = 1500; // ms cooldown for controlled NPCs (aumentado de 800 para 1500)
+export const LUMBERJACK_CHOP_INTERVAL = 4500; // ms between chops (increased for more realistic pacing)
+export const CONTROLLED_CHOP_COOLDOWN = 2000; // ms cooldown for controlled NPCs
 
 // Stone constants
 export const STONE_COLOR = '#808080';
@@ -56,8 +56,8 @@ export const STONE_MAX_HEALTH = 5; // Number of hits to break a stone
 
 // Miner behavior
 export const MINER_WORK_RANGE = 5; // How far miner will search for stones
-export const MINER_MINE_INTERVAL = 2800; // ms between mining hits (aumentado de 1200 para 2800)
-export const MINING_ANIMATION_DURATION = 1500; // ms (aumentado de 800 para 1500)
+export const MINER_MINE_INTERVAL = 3800; // ms between mining hits (increased for more realistic pacing)
+export const MINING_ANIMATION_DURATION = 1800; // ms
 export const STONE_BREAK_DURATION = 800; // ms
 export const STONE_DESPAWN_DELAY = 2000; // ms after breaking
 
@@ -73,6 +73,11 @@ export const RESOURCE_WEIGHTS = {
 // Inventory constants
 export const INVENTORY_MAX_SLOTS = 20;
 export const STACK_MAX_SIZE = 99;
+
+// Day/Night cycle constants
+export const DAY_DURATION_MS = 300000; // 5 minutes real time = 1 game day
+export const HOURS_PER_DAY = 24;
+export const MS_PER_GAME_HOUR = DAY_DURATION_MS / HOURS_PER_DAY; // ~12.5 seconds per game hour
 export const MAX_CARRY_WEIGHT = 100; // Peso máximo que um NPC pode carregar
 export const OVERWEIGHT_PENALTY = 0.5; // Redução de velocidade quando sobrecarregado
 

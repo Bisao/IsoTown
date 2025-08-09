@@ -8,6 +8,7 @@ import { useHouseStore } from '../../lib/stores/useHouseStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useTreeStore } from '../../lib/stores/useTreeStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
+import { useTimeStore } from '../../lib/stores/useTimeStore';
 import { HouseType, HOUSE_NAMES, CHOPPING_ANIMATION_DURATION } from '../../lib/constants';
 import { NPCControlMode, NPCProfession } from '../../lib/types';
 
@@ -31,16 +32,9 @@ export default function GameUI() {
   const { npcs, addNPC, setNPCControlMode, setNPCProfession } = useNPCStore();
   const { getTreeAt, damageTree } = useTreeStore();
   const { addTextEffect } = useEffectsStore();
+  const { formatGameTime, getTimeOfDay, isDay, dayCount } = useTimeStore();
 
   const [currentTime, setCurrentTime] = useState(new Date());
-
-  // Update clock every minute
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Close start menu when clicking outside
   useEffect(() => {
@@ -184,8 +178,21 @@ export default function GameUI() {
           </button>
         ))}
 
-        <div className="win98-taskbar-time">
-          {formatTime(currentTime)}
+        <div className="win98-taskbar-time" style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          fontSize: isMobile ? '9px' : '11px',
+          padding: '2px 8px'
+        }}>
+          <div style={{ fontWeight: 'bold' }}>{formatGameTime()}</div>
+          <div style={{ 
+            fontSize: isMobile ? '8px' : '9px', 
+            color: isDay ? '#0066cc' : '#4a4a4a',
+            textTransform: 'capitalize'
+          }}>
+            Dia {dayCount} - {getTimeOfDay()}
+          </div>
         </div>
       </div>
 

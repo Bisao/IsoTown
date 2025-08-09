@@ -7,6 +7,7 @@ import { useStoneStore } from '../../lib/stores/useStoneStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
 import { useVillageStore } from '../../lib/stores/useVillageStore';
+import { useTimeStore } from '../../lib/stores/useTimeStore';
 import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN } from '../../lib/constants';
 import { NPCControlMode, NPCProfession, NPCState } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
@@ -34,6 +35,7 @@ export default function GameWorld2D() {
   const { generateRandomStones, getStoneAt, updateStone, damageStone, removeStone } = useStoneStore();
   const { updateEffects, addTextEffect } = useEffectsStore();
   const { createVillage, getRoadAt } = useVillageStore();
+  const { getSkyColor, getAmbientLight, getCurrentGameHour } = useTimeStore();
 
   // Adicionar hooks de teclado para ações
   useKeyboardActions();
@@ -1851,8 +1853,16 @@ export default function GameWorld2D() {
     // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fundo
-    ctx.fillStyle = '#90EE90';
+    // Fundo com cor do céu baseada na hora do dia
+    const skyColor = getSkyColor();
+    const ambientLight = getAmbientLight();
+    
+    // Gradient do céu
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, skyColor);
+    gradient.addColorStop(1, '#90EE90'); // Verde do chão
+    
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Desenhar elementos

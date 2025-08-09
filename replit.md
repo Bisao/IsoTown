@@ -21,6 +21,9 @@ This is a 2D isometric simulation game built with HTML5 Canvas where players can
 - **Tool Emoji Display**: Added visual tool emojis in NPCs' hands based on profession (🪓 for lumberjacks, ⛏️ for miners, 🚜 for farmers)
 - **Comprehensive Windows 98 UI**: Applied complete Windows 98 theming to all modals including NPCConfigModal and NPCInventoryModal with proper styling, buttons, and visual elements
 - **Resource-Based Inventory Management**: Implemented advanced inventory system with weight-based limitations, resource transfer between NPCs and houses, and automatic home storage at 80% capacity
+- **Enhanced NPC Cooldowns**: Adjusted NPC action intervals for more realistic pacing - lumberjacks now chop every 4.5 seconds, miners every 3.8 seconds
+- **Complete Day/Night Cycle Integration**: Implemented game time system with 5-minute day cycles, visual sky color transitions, and NPC work schedules (6 AM - 6 PM work hours)
+- **Game Time Display**: Added comprehensive time display in taskbar showing current game time, day count, and time period (dawn, morning, noon, afternoon, dusk, night, midnight)
 
 # User Preferences
 

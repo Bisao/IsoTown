@@ -916,10 +916,11 @@ export const useNPCStore = create<NPCStore>()(
       return totalWeight || totalItems;
     },
 
-    // Verificar se é hora de trabalhar (8h às 18h por padrão)
+    // Verificar se é hora de trabalhar (6h às 18h horário do jogo)
     isWorkTime: (npcId: string) => {
-      const currentHour = new Date().getHours();
-      return currentHour >= 8 && currentHour < 18;
+      const { useTimeStore } = require('../stores/useTimeStore');
+      const currentHour = useTimeStore.getState().getCurrentGameHour();
+      return currentHour >= 6 && currentHour < 18;
     },
 
     // Verificar se NPC deve descansar
@@ -927,9 +928,10 @@ export const useNPCStore = create<NPCStore>()(
       const npc = get().npcs[npcId];
       if (!npc) return false;
 
-      // NPCs devem descansar à noite (18h às 8h)
-      const currentHour = new Date().getHours();
-      return currentHour >= 18 || currentHour < 8;
+      // NPCs devem descansar à noite (18h às 6h horário do jogo)
+      const { useTimeStore } = require('../stores/useTimeStore');
+      const currentHour = useTimeStore.getState().getCurrentGameHour();
+      return currentHour >= 18 || currentHour < 6;
     },
 
     addItemToInventory: (npcId: string, itemId: string, quantity: number) => {
