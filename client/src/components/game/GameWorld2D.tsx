@@ -22,6 +22,16 @@ export default function GameWorld2D() {
 
   const cameraTargetRef = useRef<{ x: number, y: number } | null>(null);
 
+  // Sistema de chuva
+  const rainParticlesRef = useRef<Array<{
+    x: number;
+    y: number;
+    speed: number;
+    length: number;
+    opacity: number;
+  }>>([]);
+  const isRainingRef = useRef(true); // Ativar chuva por padrão
+
   const houses = useHouseStore(state => state.houses);
   const npcs = useNPCStore(state => state.npcs);
   const trees = useTreeStore(state => state.trees);
@@ -949,6 +959,66 @@ export default function GameWorld2D() {
     return screen.x >= -margin && screen.x <= canvasWidth + margin && 
            screen.y >= -margin && screen.y <= canvasHeight + margin;
   }, [gridToScreen]);
+
+  // Inicializar sistema de chuva
+  const initRainParticles = useCallback((canvasWidth: number, canvasHeight: number) => {
+    const particles = [];
+    const particleCount = 150; // Número de gotas de chuva
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * (canvasWidth + 200) - 100, // Espalhar além das bordas
+        y: Math.random() * (canvasHeight + 200) - 100,
+        speed: Math.random() * 3 + 2, // Velocidade entre 2-5
+        length: Math.random() * 15 + 10, // Comprimento da gota entre 10-25
+        opacity: Math.random() * 0.6 + 0.2 // Opacidade entre 0.2-0.8
+      });
+    }
+
+    rainParticlesRef.current = particles;
+  }, []);
+
+  // Atualizar partículas de chuva
+  const updateRainParticles = useCallback((canvasWidth: number, canvasHeight: number) => {
+    if (!isRainingRef.current) return;
+
+    rainParticlesRef.current.forEach(particle => {
+      // Mover partícula para baixo e ligeiramente para a direita (efeito de vento)
+      particle.y += particle.speed;
+      particle.x += particle.speed * 0.3;
+
+      // Reset particle quando sair da tela
+      if (particle.y > canvasHeight + 50) {
+        particle.y = -50;
+        particle.x = Math.random() * (canvasWidth + 200) - 100;
+      }
+
+      if (particle.x > canvasWidth + 100) {
+        particle.x = -100;
+      }
+    });
+  }, []);
+
+  // Desenhar chuva
+  const drawRain = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
+    if (!isRainingRef.current) return;
+
+    ctx.save();
+    
+    rainParticlesRef.current.forEach(particle => {
+      ctx.globalAlpha = particle.opacity;
+      ctx.strokeStyle = '#87CEEB'; // Cor azul claro da chuva
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      
+      ctx.beginPath();
+      ctx.moveTo(particle.x, particle.y);
+      ctx.lineTo(particle.x + particle.length * 0.3, particle.y + particle.length);
+      ctx.stroke();
+    });
+
+    ctx.restore();
+  }, []);
 
   // Desenhar tiles com sprite de grama simples
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
@@ -1981,11 +2051,14 @@ export default function GameWorld2D() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Atualizar partículas de chuva
+    updateRainParticles(canvas.width, canvas.height);
+
     // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fundo azul do mar
-    ctx.fillStyle = '#1E88E5';
+    // Fundo mais escuro quando está chovendo
+    ctx.fillStyle = isRainingRef.current ? '#1565C0' : '#1E88E5';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Desenhar elementos
@@ -2030,8 +2103,11 @@ export default function GameWorld2D() {
     // Draw text effects on top
     drawTextEffects(ctx, canvas.width, canvas.height);
 
+    // Desenhar chuva por último (sobre todos os elementos)
+    drawRain(ctx, canvas.width, canvas.height);
+
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, trees, stones, roads, drawGrid, drawHouse, drawNPC, drawTree, drawStone, drawRoad, drawTextEffects]);
+  }, [houses, npcs, trees, stones, roads, drawGrid, drawHouse, drawNPC, drawTree, drawStone, drawRoad, drawTextEffects, updateRainParticles, drawRain]);
 
   // Manipular cliques no canvas
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -2160,6 +2236,14 @@ export default function GameWorld2D() {
         return;
       }
 
+      // Controle de chuva com tecla T
+      if (event.key === 't' || event.key === 'T') {
+        event.preventDefault();
+        isRainingRef.current = !isRainingRef.current;
+        console.log('Chuva:', isRainingRef.current ? 'Ativada' : 'Desativada');
+        return;
+      }
+
       // Manual tree cutting for controlled NPC
       if (selectedNPC && npcs[selectedNPC] && npcs[selectedNPC].controlMode === NPCControlMode.CONTROLLED) {
         if (event.key === ' ' || event.key === 'Spacebar') { // Space bar for cutting
@@ -2219,12 +2303,21 @@ export default function GameWorld2D() {
     const parent = canvas.parentElement;
     canvas.width = parent.clientWidth;
     canvas.height = parent.clientHeight;
-  }, []);
+    
+    // Reinicializar partículas de chuva com novo tamanho
+    initRainParticles(canvas.width, canvas.height);
+  }, [initRainParticles]);
 
   // Inicializar canvas e iniciar animação
   useEffect(() => {
     handleResize();
     window.addEventListener('resize', handleResize);
+
+    // Inicializar sistema de chuva
+    const canvas = canvasRef.current;
+    if (canvas) {
+      initRainParticles(canvas.width, canvas.height);
+    }
 
     // Iniciar o loop de animação
     if (animationRef.current) {
@@ -2238,7 +2331,7 @@ export default function GameWorld2D() {
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, [animate, handleResize]);
+  }, [animate, handleResize, initRainParticles]);
 
 
 
