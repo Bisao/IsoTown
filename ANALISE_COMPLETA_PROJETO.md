@@ -145,4 +145,6 @@ O problema das casas não aparecerem nas vilas está relacionado ao sistema de g
 - **Sistema de casas da vila**: Verificado e confirmado funcionando (4 casas geradas)
 - **Erros TypeScript**: Corrigidos problemas de tipos em GameUI.tsx
 - **Logs de debug**: Adicionados para monitorar geração de vilas
-- **Blocos 3D isométricos**: Implementados tiles como blocos 3D com faces laterais e textura de grama no topo
+- **Blocos 3D isométricos**: Implementados tiles como blocos 3D com faces laterais e sprite de grama no topo
+- **Grid limitado**: Reduzido GRID_SIZE para 200 para evitar objetos aparecendo fora da área visível
+- **Fundo do mar**: Alterado fundo para azul (#1E88E5) representando o mar

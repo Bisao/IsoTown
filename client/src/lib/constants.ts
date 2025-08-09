@@ -1,6 +1,6 @@
 import { NPCProfession } from './types';
 
-export const GRID_SIZE = 10000;
+export const GRID_SIZE = 200; // Reduzir para evitar objetos fora do grid visível
 export const CELL_SIZE = 32;
 
 export enum HouseType {

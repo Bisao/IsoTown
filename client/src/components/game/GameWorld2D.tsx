@@ -382,6 +382,7 @@ export default function GameWorld2D() {
         grassImg.onload = () => {
           // Armazenar a imagem diretamente para renderização individual por tile
           spritesRef.current['grass'] = grassImg;
+          console.log('Sprite de grama carregada com sucesso!', grassImg.width, 'x', grassImg.height);
           resolve();
         };
         grassImg.onerror = () => {
@@ -995,12 +996,12 @@ export default function GameWorld2D() {
             // Aplicar clipping e desenhar textura
             ctx.clip(topPath);
             
-            // Posicionar a sprite para cobrir a face superior
-            const spriteSize = tileSize * 1.1;
+            // Posicionar a sprite para cobrir a face superior do bloco 3D
+            const spriteSize = tileSize * 1.4; // Aumentar tamanho para cobrir melhor
             ctx.drawImage(
               grassSprite, 
               screen.x - spriteSize / 2, 
-              screen.y - spriteSize / 2, 
+              topCenter.y - spriteSize / 4, // Ajustar posição Y para face superior
               spriteSize, 
               spriteSize
             );
@@ -1955,8 +1956,8 @@ export default function GameWorld2D() {
     // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fundo escuro para contraste
-    ctx.fillStyle = '#2D5016';
+    // Fundo azul do mar
+    ctx.fillStyle = '#1E88E5';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Desenhar elementos
