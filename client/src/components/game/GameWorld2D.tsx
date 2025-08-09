@@ -1449,6 +1449,7 @@ export default function GameWorld2D() {
     // Tool emoji estático quando não está animando
     if (!npc.animation) {
       ctx.save();
+      const radius = size * 0.3; // Definir radius para uso no emoji da ferramenta
       ctx.font = `${Math.max(16, radius * 1.2)}px Arial`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
