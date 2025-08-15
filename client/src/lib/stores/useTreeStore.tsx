@@ -14,7 +14,7 @@ interface TreeStore {
   damageTree: (id: string, damage: number) => boolean; // Returns true if tree was destroyed
   getTreeAt: (position: Position) => Tree | undefined;
   getNearestTree: (position: Position, maxDistance: number) => Tree | undefined;
-  generateRandomTrees: () => void;
+
   generateTreesInChunk: (chunkX: number, chunkZ: number, chunkSize?: number) => void;
   isPositionOccupiedByTree: (position: Position) => boolean;
   startTreeFalling: (id: string) => void;
@@ -168,10 +168,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     return !!get().getTreeAt(position);
   },
 
-  generateRandomTrees: () => {
-    // Não mais usado - substituído pela geração procedural
-    console.log('Sistema de geração procedural ativo');
-  },
+
 
   generateTreesInChunk: (chunkX: number, chunkZ: number, chunkSize: number = 50) => {
     const startX = chunkX * chunkSize;

@@ -2,6 +2,7 @@ import { NPC, NPCProfession, NPCState, Position } from '../types';
 // Note: Este arquivo não pode usar hooks diretamente pois é uma classe utilitária
 // Os stores serão acessados via getState() nos métodos
 import { CHOPPING_ANIMATION_DURATION, LUMBERJACK_CHOP_INTERVAL } from '../constants';
+import { getAdjacentPositions } from '../utils/distance';
 
 // Sistema de ações manuais para NPCs controlados
 export class NPCActionSystem {
@@ -201,14 +202,9 @@ export class NPCActionSystem {
     }
   }
 
-  // Função auxiliar para encontrar árvores adjacentes
+  // Função auxiliar para encontrar árvores adjacentes usando utilitário compartilhado
   private static getAdjacentTrees(position: Position, trees: Record<string, any>): any[] {
-    const adjacentPositions = [
-      { x: position.x + 1, z: position.z },     // direita
-      { x: position.x - 1, z: position.z },     // esquerda
-      { x: position.x, z: position.z + 1 },     // baixo
-      { x: position.x, z: position.z - 1 }      // cima
-    ];
+    const adjacentPositions = getAdjacentPositions(position);
 
     return Object.values(trees).filter(tree => {
       if (tree.isFalling) return false;

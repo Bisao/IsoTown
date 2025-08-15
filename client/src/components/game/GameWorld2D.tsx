@@ -52,7 +52,7 @@ export default function GameWorld2D() {
   const { moveNPC, updateNPCMovement, updateControlledNPCWork, addNPC, startManualTreeCutting, startCuttingTree, setNPCState, addItemToInventory } = useNPCStore();
   const { isPlacingHouse, selectedHouseType, stopPlacingHouse, selectedNPC, setCameraMode, currentRotation, rotateCurrentPlacement } = useGameStore();
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
-  const { generateRandomTrees, getTreeAt, updateTree, removeTree } = useTreeStore();
+  const { getTreeAt, updateTree, removeTree } = useTreeStore();
   const { generateRandomStones, getStoneAt, updateStone, damageStone, removeStone } = useStoneStore();
   const { updateEffects, addTextEffect } = useEffectsStore();
   const { createVillage, getRoadAt } = useVillageStore();
@@ -972,12 +972,20 @@ export default function GameWorld2D() {
     const particleCount = 150; // Número de gotas de chuva
 
     for (let i = 0; i < particleCount; i++) {
+      // Usar geração determinística baseada no índice para consistência
+      const seed = i * 1000 + Date.now();
+      const random1 = (seed * 9301 + 49297) % 233280 / 233280;
+      const random2 = ((seed + 1) * 9301 + 49297) % 233280 / 233280;
+      const random3 = ((seed + 2) * 9301 + 49297) % 233280 / 233280;
+      const random4 = ((seed + 3) * 9301 + 49297) % 233280 / 233280;
+      const random5 = ((seed + 4) * 9301 + 49297) % 233280 / 233280;
+      
       particles.push({
-        x: Math.random() * (canvasWidth + 200) - 100, // Espalhar além das bordas
-        y: Math.random() * (canvasHeight + 200) - 100,
-        speed: Math.random() * 3 + 2, // Velocidade entre 2-5
-        length: Math.random() * 15 + 10, // Comprimento da gota entre 10-25
-        opacity: Math.random() * 0.6 + 0.2 // Opacidade entre 0.2-0.8
+        x: random1 * (canvasWidth + 200) - 100, // Espalhar além das bordas
+        y: random2 * (canvasHeight + 200) - 100,
+        speed: random3 * 3 + 2, // Velocidade entre 2-5
+        length: random4 * 15 + 10, // Comprimento da gota entre 10-25
+        opacity: random5 * 0.6 + 0.2 // Opacidade entre 0.2-0.8
       });
     }
 
@@ -999,19 +1007,26 @@ export default function GameWorld2D() {
       // Verificar se a gota tocou o chão (parte inferior da tela)
       if (oldY < canvasHeight && particle.y >= canvasHeight) {
         // Criar respingo no ponto de impacto
+        // Usar seed baseado na posição para geração determinística
+        const seed = Math.floor(particle.x) * 1000 + Math.floor(particle.y);
+        const random1 = (seed * 9301 + 49297) % 233280 / 233280;
+        const random2 = ((seed + 1) * 9301 + 49297) % 233280 / 233280;
+        
         rainSplashesRef.current.push({
           x: particle.x,
           y: canvasHeight,
           startTime: currentTime,
-          duration: 400 + Math.random() * 200, // Duração entre 400-600ms
-          size: Math.random() * 8 + 4 // Tamanho entre 4-12
+          duration: 400 + random1 * 200, // Duração entre 400-600ms
+          size: random2 * 8 + 4 // Tamanho entre 4-12
         });
       }
 
-      // Reset particle quando sair da tela
+      // Reset particle quando sair da tela usando seed determinístico
       if (particle.y > canvasHeight + 50) {
         particle.y = -50;
-        particle.x = Math.random() * (canvasWidth + 200) - 100;
+        const seed = Date.now() + Math.floor(particle.x);
+        const random = (seed * 9301 + 49297) % 233280 / 233280;
+        particle.x = random * (canvasWidth + 200) - 100;
       }
 
       if (particle.x > canvasWidth + 100) {
@@ -1075,8 +1090,13 @@ export default function GameWorld2D() {
           
           for (let i = 0; i < droplets; i++) {
             const angle = (Math.PI * 2 * i) / droplets + (splash.startTime * 0.001); // Pequena rotação baseada no tempo
-            const distance = dropletDistance * (0.7 + Math.random() * 0.3);
-            const dropletSize = currentSize * (0.2 + Math.random() * 0.3);
+            // Usar seed determinístico para gerar variações consistentes
+            const dropletSeed = i * 1000 + currentTime;
+            const random1 = (dropletSeed * 9301 + 49297) % 233280 / 233280;
+            const random2 = ((dropletSeed + 1) * 9301 + 49297) % 233280 / 233280;
+            
+            const distance = dropletDistance * (0.7 + random1 * 0.3);
+            const dropletSize = currentSize * (0.2 + random2 * 0.3);
             
             const dropletX = splash.x + Math.cos(angle) * distance;
             const dropletY = splash.y + Math.sin(angle) * distance * 0.5; // Achatado verticalmente

@@ -24,6 +24,7 @@ export class NPCManager {
   private npcSchedules = new Map<string, NPCSchedule>();
   private npcCurrentTasks = new Map<string, WorkTask>();
   private lastUpdateTime = Date.now();
+  private updateInterval: ReturnType<typeof setInterval> | null = null;
 
   // Configuração padrão de horário
   private defaultSchedule: NPCSchedule = {
@@ -250,20 +251,31 @@ export class NPCManager {
 
   // Loop de atualização principal
   private startUpdateLoop(): void {
-    setInterval(() => {
+    this.updateInterval = setInterval(() => {
       const now = Date.now();
       const deltaTime = now - this.lastUpdateTime;
       
       // Atualizar tempo trabalhado para NPCs em estado de trabalho
       this.npcStatistics.forEach((stats, npcId) => {
         const task = this.npcCurrentTasks.get(npcId);
-        if (task && (task.type === 'cut_tree' || task.type === 'harvest' || task.type === 'mine')) {
+        if (task && (task.type === 'cut_tree' || task.type === 'harvest' || task.type === 'mine_stone')) {
           stats.timeWorked += deltaTime;
         }
       });
       
       this.lastUpdateTime = now;
     }, 1000); // Atualizar a cada segundo
+  }
+
+  // Método para limpar recursos e evitar vazamentos de memória
+  public cleanup(): void {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+    this.npcStatistics.clear();
+    this.npcSchedules.clear();
+    this.npcCurrentTasks.clear();
   }
 
   // Limpar dados do NPC quando removido

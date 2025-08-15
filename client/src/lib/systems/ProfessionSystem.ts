@@ -2,6 +2,7 @@ import { NPC, NPCProfession, NPCState, Position } from '../types';
 import { useTreeStore } from '../stores/useTreeStore';
 import { useStoneStore } from '../stores/useStoneStore';
 import { useHouseStore } from '../stores/useHouseStore';
+import { getDistanceToPosition } from '../utils/distance';
 import { LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION } from '../constants';
 
 // Miner constants
@@ -65,7 +66,7 @@ export class BaseProfessionSystem {
   }
 
   protected getDistanceToPosition(from: Position, to: Position): number {
-    return Math.abs(to.x - from.x) + Math.abs(to.z - from.z);
+    return getDistanceToPosition(from, to);
   }
 }
 
