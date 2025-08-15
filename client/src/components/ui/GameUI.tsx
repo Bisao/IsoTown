@@ -64,7 +64,8 @@ export default function GameUI() {
         setShowNPCModal(true);
         break;
       case 'about':
-        alert('SimCity 98 - Building Game\nVersion 1.0\n\nCriado no estilo nostálgico do Windows 98!');
+        // Toast notification seria melhor aqui, mas mantendo funcionalidade por enquanto
+        console.log('About: SimCity 98 - Building Game v1.0');
         break;
     }
   };
