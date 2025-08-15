@@ -43,11 +43,29 @@ export const CHOPPING_ANIMATION_DURATION = 1200; // ms (aumentado de 800 para 12
 export const TREE_FALL_DURATION = 1000; // ms
 export const TREE_DESPAWN_DELAY = 3000; // ms after falling
 export const TOC_TEXT_DURATION = 1000; // ms for TOC text effect
+export const MINING_ANIMATION_DURATION = 1800; // ms
 
 // Lumberjack behavior
 export const LUMBERJACK_WORK_RANGE = 5; // How far lumberjack will search for trees
 export const LUMBERJACK_CHOP_INTERVAL = 4500; // ms between chops (increased for more realistic pacing)
 export const CONTROLLED_CHOP_COOLDOWN = 2000; // ms cooldown for controlled NPCs
+
+// NPC Manager constants
+export const DEFAULT_WORK_START_HOUR = 8;
+export const DEFAULT_WORK_END_HOUR = 18;
+export const DEFAULT_REST_START_HOUR = 18;
+export const DEFAULT_REST_END_HOUR = 8;
+export const DEFAULT_BREAK_DURATION = 15; // minutes
+export const DEFAULT_WORK_DURATION = 120; // minutes
+
+// UI constants
+export const MODAL_MIN_WIDTH = 400;
+export const MODAL_MAX_WIDTH = 600;
+
+// Statistics constants
+export const MAX_HEALTH = 100;
+export const MAX_ENERGY = 100;
+export const MAX_SKILL_LEVEL = 10;
 
 // Stone constants
 export const STONE_COLOR = '#808080';
@@ -57,7 +75,6 @@ export const STONE_MAX_HEALTH = 5; // Number of hits to break a stone
 // Miner behavior
 export const MINER_WORK_RANGE = 5; // How far miner will search for stones
 export const MINER_MINE_INTERVAL = 3800; // ms between mining hits (increased for more realistic pacing)
-export const MINING_ANIMATION_DURATION = 1800; // ms
 export const STONE_BREAK_DURATION = 800; // ms
 export const STONE_DESPAWN_DELAY = 2000; // ms after breaking
 

@@ -15,9 +15,9 @@ export function useDraggable(initialPosition?: DraggablePosition) {
   const dragStart = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
+    if (!isDragging) return;
 
+    const handleMouseMove = (e: MouseEvent) => {
       const newX = e.clientX - dragStart.current.x;
       const newY = e.clientY - dragStart.current.y;
 
@@ -39,11 +39,9 @@ export function useDraggable(initialPosition?: DraggablePosition) {
       setIsDragging(false);
     };
 
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = 'none';
-    }
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.userSelect = 'none';
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);

@@ -2,6 +2,7 @@ import { NPC, NPCState, NPCControlMode, Position } from '../types';
 import { ProfessionSystemFactory, WorkTask } from './ProfessionSystem';
 import { getRandomDirection } from '../utils/pathfinding';
 import { isValidGridPosition } from '../utils/grid';
+import { DEFAULT_WORK_START_HOUR, DEFAULT_WORK_END_HOUR, DEFAULT_REST_START_HOUR, DEFAULT_REST_END_HOUR, DEFAULT_BREAK_DURATION, DEFAULT_WORK_DURATION } from '../constants';
 
 export interface NPCStatistics {
   workCompleted: number;
@@ -26,12 +27,12 @@ export class NPCManager {
   private lastUpdateTime = Date.now();
   private updateInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Configuração padrão de horário
+  // Configuração padrão de horário usando constantes
   private defaultSchedule: NPCSchedule = {
-    workHours: { start: 8, end: 18 }, // 8h às 18h
-    restHours: { start: 18, end: 8 }, // 18h às 8h
-    breakDuration: 15, // 15 minutos de pausa
-    workDuration: 120 // 2 horas de trabalho seguido
+    workHours: { start: DEFAULT_WORK_START_HOUR, end: DEFAULT_WORK_END_HOUR },
+    restHours: { start: DEFAULT_REST_START_HOUR, end: DEFAULT_REST_END_HOUR },
+    breakDuration: DEFAULT_BREAK_DURATION,
+    workDuration: DEFAULT_WORK_DURATION
   };
 
   constructor() {

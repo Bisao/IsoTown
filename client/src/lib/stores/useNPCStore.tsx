@@ -3,11 +3,8 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { NPC, Position, NPCControlMode, NPCProfession, NPCState, NPCAnimation } from '../types';
 import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPING_ANIMATION_DURATION, GAME_ITEMS, STARTING_INVENTORIES, INVENTORY_MAX_SLOTS, MAX_CARRY_WEIGHT } from '../constants';
 
-// Miner constants
-const MINER_WORK_RANGE = 5; // How far miner will search for stones
-const MINER_MINE_INTERVAL = 1200; // ms between mining hits
-const MINING_ANIMATION_DURATION = 900; // ms
 import { nanoid } from 'nanoid';
+import { MINER_WORK_RANGE, MINER_MINE_INTERVAL, MINING_ANIMATION_DURATION } from '../constants';
 import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid';
 import { getRandomDirection, findPath } from '../utils/pathfinding';
 import { NPCActionSystem } from '../systems/NPCActionSystem';

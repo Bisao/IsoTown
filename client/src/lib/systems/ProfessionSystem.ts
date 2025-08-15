@@ -5,9 +5,7 @@ import { useHouseStore } from '../stores/useHouseStore';
 import { getDistanceToPosition } from '../utils/distance';
 import { LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION } from '../constants';
 
-// Miner constants
-const MINER_WORK_RANGE = 5; // How far miner will search for stones
-const MINER_MINE_INTERVAL = 1200; // ms between mining hits (slightly slower than chopping)
+import { MINER_WORK_RANGE, MINER_MINE_INTERVAL } from '../constants';
 const MINING_ANIMATION_DURATION = 900; // ms
 
 // Interface para definir comportamentos de profissão

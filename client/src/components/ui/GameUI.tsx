@@ -101,7 +101,7 @@ export default function GameUI() {
     const treeAtPosition = getTreeAt(npc.position);
 
     if (treeAtPosition && !treeAtPosition.isFalling) {
-      console.log('TOC! Cortando árvore manualmente:', treeAtPosition.id, 'na posição:', treeAtPosition.position);
+      // Tree cutting action
 
       // Damage the tree
       const treeDestroyed = damageTree(treeAtPosition.id, 1);
@@ -116,11 +116,9 @@ export default function GameUI() {
       // Add visual effect at tree position (trunk of the tree) - not player position
       addTextEffect(treeAtPosition.position, 'TOC!', 1000);
 
-      console.log(treeDestroyed ? 'Árvore cortada e destruída!' : 'Árvore danificada!');
+      // Tree processing completed
     } else {
-      console.log('Nenhuma árvore adjacente encontrada para cortar');
-
-      // Add visual feedback at player position
+      // No adjacent trees found
       addTextEffect(npc.position, 'Sem árvores!', 1000);
     }
   };
