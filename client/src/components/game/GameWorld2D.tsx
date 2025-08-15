@@ -378,14 +378,10 @@ export default function GameWorld2D() {
       const spriteMap = {
         [HouseType.FARMER]: '/sprites/houses/farmer_house.png',
         [HouseType.LUMBERJACK]: '/sprites/houses/lumberjack_house.png',
-        [HouseType.MINER]: '/sprites/houses/medium_house.png', // Usar medium_house como placeholder para miner
-        'road_horizontal': '/sprites/roads/road_horizontal.png',
-        'road_vertical': '/sprites/roads/road_vertical.png',
-        'road_cross': '/sprites/roads/road_cross.png',
-        'npc_frame_W': '/attached_assets/frame_W_1754723339782.png',
-        'npc_frame_A': '/attached_assets/frame_A_1754723339781.png',
-        'npc_frame_S': '/attached_assets/frame_S_1754723339782.png',
-        'npc_frame_D': '/attached_assets/frame_D_1754723339781.png'
+        [HouseType.MINER]: '/sprites/houses/medium_house.png',
+        'road_horizontal': '/sprites/roads/road_horizontal.svg',
+        'road_vertical': '/sprites/roads/road_vertical.svg',
+        'road_cross': '/sprites/roads/road_cross.svg'
       };
 
       const loadPromises = Object.entries(spriteMap).map(([type, path]) => {
@@ -534,7 +530,7 @@ export default function GameWorld2D() {
       case NPCState.IDLE: {
         // Check if inventory is full
         const inventory = npc.inventory || {};
-        const totalItems = Object.values(inventory).reduce((sum: number, count: number) => sum + count, 0);
+        const totalItems = Object.values(inventory).reduce((sum: number, count: unknown) => sum + (count as number), 0);
         const maxInventorySize = 10; // Assuming a max inventory size
 
         if (totalItems >= maxInventorySize) {

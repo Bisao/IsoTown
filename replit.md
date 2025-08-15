@@ -4,6 +4,7 @@ This is a 2D isometric simulation game built with HTML5 Canvas where players can
 
 ## Recent Updates (January 2025)
 - **Replit Migration Completed**: Successfully migrated from Replit Agent to standard Replit environment with improved security practices and client/server separation
+- **Critical Bug Fixes (Aug 15)**: Fixed road sprite loading issues by converting to SVG format, enabled farmer profession system, resolved TypeScript errors in reduce functions
 - **Enhanced Village Generation**: Improved village spacing system with significantly increased spacing (45 units) and polar coordinate distribution for more natural, realistic village placement
 - **Isometric House Positioning**: Fixed house orientation to properly occupy 100% of tiles with diamond-shaped rendering for true isometric camera perspective
 - **Clustered Tree Generation**: Replaced uniform tree distribution with clustered random generation system featuring tree clusters (3-7 tile radius) with varying density (60-100%) plus sparse trees for natural forest appearance

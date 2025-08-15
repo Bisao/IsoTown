@@ -1,0 +1,18 @@
+<svg width="64" height="32" viewBox="0 0 64 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cross road for isometric view -->
+  <defs>
+    <pattern id="asphalt" patternUnits="userSpaceOnUse" width="4" height="4">
+      <rect width="4" height="4" fill="#444444"/>
+      <circle cx="2" cy="2" r="0.5" fill="#333333"/>
+    </pattern>
+  </defs>
+  <!-- Road surface -->
+  <polygon points="0,16 32,0 64,16 32,32" fill="url(#asphalt)"/>
+  <polygon points="32,0 64,16 32,32 0,16" fill="url(#asphalt)"/>
+  <!-- Road edges -->
+  <polygon points="0,16 32,0 64,16 32,32" fill="none" stroke="#222222" stroke-width="1"/>
+  <polygon points="32,0 64,16 32,32 0,16" fill="none" stroke="#222222" stroke-width="1"/>
+  <!-- Center lines -->
+  <line x1="16" y1="8" x2="48" y2="24" stroke="#FFFF00" stroke-width="1" stroke-dasharray="4,2"/>
+  <line x1="48" y1="8" x2="16" y2="24" stroke="#FFFF00" stroke-width="1" stroke-dasharray="4,2"/>
+</svg>

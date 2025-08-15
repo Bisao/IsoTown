@@ -57,9 +57,7 @@ export const useHouseStore = create<HouseStore>()(
                 if (type === 'LUMBERJACK') {
                   profession = NPCProfession.LUMBERJACK;
                 } else if (type === 'FARMER') {
-                  // TODO: Implementar sistema de farming antes de habilitar
-                  console.log('Casa de fazendeiro criada, mas NPC farmer desabilitado');
-                  profession = NPCProfession.NONE; // Temporariamente desabilitado
+                  profession = NPCProfession.FARMER;
                 } else if (type === 'MINER') {
                   profession = NPCProfession.MINER;
                 }
