@@ -6,6 +6,7 @@ import { HOUSE_NAMES } from '../../lib/constants';
 import { NPC, House, NPCControlMode } from '../../lib/types';
 import { useDraggable } from '../../hooks/use-draggable';
 import NPCInventoryModal from './NPCInventoryModal';
+import { logger } from '../../lib/utils/logger';
 
 interface NPCConfigModalProps {
   open: boolean;
@@ -64,7 +65,7 @@ export default function NPCConfigModal({ open }: NPCConfigModalProps) {
   if (!open) return null;
   
   if (!currentNPC && !currentHouse) {
-    console.warn('NPCConfigModal opened but no NPC or house selected');
+    logger.warn('NPCConfigModal opened but no NPC or house selected');
     return null;
   }
 

@@ -4,6 +4,8 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { Position } from '../types';
 import { HouseType } from '../constants';
 import { nanoid } from 'nanoid';
+import { renderRandom } from '../utils/deterministicRandom';
+import { logger } from '../utils/logger';
 
 export interface Road {
   id: string;
@@ -242,11 +244,14 @@ export const useVillageStore = create<VillageStore>()(
         // Determinar número de casas para esta vila (3-7)
         const minHouses = 3;
         const maxHouses = 7;
-        const targetHouses = Math.floor(Math.random() * (maxHouses - minHouses + 1)) + minHouses;
+        // Use deterministic generation based on village center position
+        const positionSeed = village.centerPosition.x * 1000 + village.centerPosition.z;
+        renderRandom.setSeed(positionSeed);
+        const targetHouses = Math.floor(renderRandom.between(minHouses, maxHouses + 1));
         
         // Selecionar posições aleatórias até atingir o número desejado
         const selectedPositions = [];
-        const shuffledPositions = [...candidatePositions].sort(() => Math.random() - 0.5);
+        const shuffledPositions = [...candidatePositions].sort(() => renderRandom.next() - 0.5);
         
         for (let i = 0; i < Math.min(targetHouses, shuffledPositions.length); i++) {
           selectedPositions.push(shuffledPositions[i]);
@@ -254,14 +259,14 @@ export const useVillageStore = create<VillageStore>()(
         
         // Adicionar casas
         selectedPositions.forEach(position => {
-          const randomType = houseTypes[Math.floor(Math.random() * houseTypes.length)];
-          const rotation = Math.floor(Math.random() * 4) * 90;
+          const randomType = renderRandom.pick(houseTypes);
+          const rotation = renderRandom.int(0, 4) * 90;
           addHouse(randomType, position, rotation);
         });
         
-        console.log(`Vilarejo ${village.name} criado com ${selectedPositions.length} casas`);
+        logger.log(`Vilarejo ${village.name} criado com ${selectedPositions.length} casas`);
       }).catch(error => {
-        console.error('Erro ao importar useHouseStore:', error);
+        logger.error('Erro ao importar useHouseStore:', error);
       });
     },
 

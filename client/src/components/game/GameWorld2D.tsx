@@ -1955,8 +1955,9 @@ export default function GameWorld2D() {
       const easeInQuad = (t: number) => t * t;
       const easedProgress = easeInQuad(fallProgress);
 
-      // Random fall direction
-      const fallDirection = tree.fallDirection || (Math.random() > 0.5 ? 1 : -1);
+      // Deterministic fall direction based on tree ID
+      const treeIdHash = tree.id.split('').reduce((a: number, b: string) => (a * 31 + b.charCodeAt(0)) % 1000, 0);
+      const fallDirection = tree.fallDirection || (treeIdHash % 2 === 0 ? 1 : -1);
       if (!tree.fallDirection) {
         // Store fall direction for consistency
         useTreeStore.getState().updateTree(tree.id, { fallDirection });

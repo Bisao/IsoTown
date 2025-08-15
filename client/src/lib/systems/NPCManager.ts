@@ -3,6 +3,8 @@ import { ProfessionSystemFactory, WorkTask } from './ProfessionSystem';
 import { getRandomDirection } from '../utils/pathfinding';
 import { isValidGridPosition } from '../utils/grid';
 import { DEFAULT_WORK_START_HOUR, DEFAULT_WORK_END_HOUR, DEFAULT_REST_START_HOUR, DEFAULT_REST_END_HOUR, DEFAULT_BREAK_DURATION, DEFAULT_WORK_DURATION } from '../constants';
+import { gameRandom } from '../utils/deterministicRandom';
+import { logger } from '../utils/logger';
 
 export interface NPCStatistics {
   workCompleted: number;
@@ -181,7 +183,7 @@ export class NPCManager {
 
     const currentTime = Date.now();
     if (!npc.lastMovement || currentTime - npc.lastMovement > 3000) {
-      if (Math.random() < 0.3) { // 30% chance de movimento aleatório
+      if (gameRandom.chance(0.3)) { // 30% chance de movimento aleatório
         const direction = getRandomDirection();
         const newPosition = {
           x: npc.position.x + direction.x,

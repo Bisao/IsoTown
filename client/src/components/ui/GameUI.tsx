@@ -115,12 +115,12 @@ export default function GameUI() {
       });
 
       // Add visual effect at tree position (trunk of the tree) - not player position
-      addTextEffect(treeAtPosition.position, 'TOC!', 1000);
+      addTextEffect(treeAtPosition.position, 'TOC!', '1000');
 
       // Tree processing completed
     } else {
       // No adjacent trees found
-      addTextEffect(npc.position, 'Sem árvores!', 1000);
+      addTextEffect(npc.position, 'Sem árvores!', '1000');
     }
   };
 
