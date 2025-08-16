@@ -9,6 +9,7 @@ import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useTreeStore } from '../../lib/stores/useTreeStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
 import { useTimeStore } from '../../lib/stores/useTimeStore';
+import { useWeatherStore } from '../../lib/stores/useWeatherStore';
 import { HouseType, HOUSE_NAMES, CHOPPING_ANIMATION_DURATION } from '../../lib/constants';
 import { NPCControlMode, NPCProfession } from '../../lib/types';
 
@@ -33,8 +34,31 @@ export default function GameUI() {
   const { getTreeAt, damageTree } = useTreeStore();
   const { addTextEffect } = useEffectsStore();
   const { formatGameTime, getTimeOfDay, isDay, dayCount } = useTimeStore();
+  const { currentWeather, weatherEnabled } = useWeatherStore();
 
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Function to get weather emoji based on current weather
+  const getWeatherEmoji = () => {
+    if (!weatherEnabled) return '☀️'; // Default sunny if weather is disabled
+    
+    switch (currentWeather.type) {
+      case 'sunny':
+        return '☀️';
+      case 'cloudy':
+        return '☁️';
+      case 'light_rain':
+        return '🌦️';
+      case 'heavy_rain':
+        return '🌧️';
+      case 'storm':
+        return '⛈️';
+      case 'snow':
+        return '❄️';
+      default:
+        return '☀️';
+    }
+  };
 
   // Close start menu when clicking outside
   useEffect(() => {
@@ -184,7 +208,10 @@ export default function GameUI() {
           fontSize: isMobile ? '9px' : '11px',
           padding: '2px 8px'
         }}>
-          <div style={{ fontWeight: 'bold' }}>{formatGameTime()}</div>
+          <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: isMobile ? '12px' : '14px' }}>{getWeatherEmoji()}</span>
+            {formatGameTime()}
+          </div>
           <div style={{ 
             fontSize: isMobile ? '8px' : '9px', 
             color: isDay ? '#0066cc' : '#4a4a4a',
