@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { NPC, Position, NPCControlMode, NPCProfession, NPCState, NPCAnimation } from '../types';
+import { NPC, Position, NPCControlMode, NPCProfession, NPCState, NPCAnimation, ResourceInventory } from '../types';
 import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPING_ANIMATION_DURATION, GAME_ITEMS, STARTING_INVENTORIES, INVENTORY_MAX_SLOTS, MAX_CARRY_WEIGHT } from '../constants';
 
 import { nanoid } from 'nanoid';
@@ -9,12 +9,7 @@ import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid
 import { getRandomDirection, findPath } from '../utils/pathfinding';
 import { NPCActionSystem } from '../systems/NPCActionSystem';
 
-// Mock stores for dependencies (replace with actual imports when available)
-// These are placeholders to allow the code to compile and run without immediate circular dependency issues.
-// In a real scenario, these would be imported properly or dependencies managed.
-const useHouseStore = { getState: () => ({ getHouseAt: () => null }) };
-const useTreeStore = { getState: () => ({ getTreeAt: () => null }) };
-const useStoneStore = { getState: () => ({ getStoneAt: () => null }) };
+// Dynamic imports to prevent circular dependencies
 
 interface NPCStore {
   npcs: Record<string, NPC>;
@@ -122,7 +117,7 @@ export const useNPCStore = create<NPCStore>()(
         z: npc.position.z + direction.z
       };
 
-      console.log('Tentando mover NPC:', npcId, 'de', npc.position, 'para', newPosition);
+      // console.log('Tentando mover NPC:', npcId, 'de', npc.position, 'para', newPosition);
 
       // Verificar se a nova posição é válida no grid
       if (!isValidGridPosition(newPosition)) {
@@ -310,7 +305,7 @@ export const useNPCStore = create<NPCStore>()(
 
       const currentTime = Date.now();
 
-      console.log('Atualizando lenhador - estado atual:', npc.state);
+      // console.log('Atualizando lenhador - estado atual:', npc.state);
 
       switch (npc.state) {
         case NPCState.IDLE: {

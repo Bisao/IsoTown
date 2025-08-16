@@ -264,7 +264,7 @@ export const useVillageStore = create<VillageStore>()(
           addHouse(randomType, position, rotation);
         });
         
-        logger.log(`Vilarejo ${village.name} criado com ${selectedPositions.length} casas`);
+        // logger.log(`Vilarejo ${village.name} criado com ${selectedPositions.length} casas`);
       }).catch(error => {
         logger.error('Erro ao importar useHouseStore:', error);
       });

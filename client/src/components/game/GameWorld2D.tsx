@@ -465,7 +465,7 @@ export default function GameWorld2D() {
       useTreeStore.getState().generateTreesInChunk(chunkX, chunkZ, CHUNK_SIZE);
       useStoneStore.getState().generateStonesInChunk(chunkX, chunkZ, CHUNK_SIZE);
       generatedChunksRef.current.add(chunkKey);
-      console.log(`Chunk gerado: ${chunkKey}`);
+      // console.log(`Chunk gerado: ${chunkKey}`);
     }
   }, []);
 

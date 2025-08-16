@@ -53,7 +53,7 @@ export const useHouseStore = create<HouseStore>()(
               // Verificar se esta casa já tem um NPC assignado
               const currentHouse = get().houses[id];
               if (currentHouse && currentHouse.npcId) {
-                console.log('Casa', id, 'já tem NPC assignado:', currentHouse.npcId);
+                // console.log('Casa', id, 'já tem NPC assignado:', currentHouse.npcId);
                 return;
               }
               
@@ -62,7 +62,7 @@ export const useHouseStore = create<HouseStore>()(
                 npc.position.x === position.x && npc.position.z === position.z
               );
               if (existingNPC) {
-                console.log('Já existe NPC na posição', position, '- NPC ID:', existingNPC.id);
+                // console.log('Já existe NPC na posição', position, '- NPC ID:', existingNPC.id);
                 return;
               }
               
@@ -91,9 +91,9 @@ export const useHouseStore = create<HouseStore>()(
                     }
                   }));
                   
-                  console.log('NPC', profession, 'spawnou na casa', id, 'na posição', position);
+                  // console.log('NPC', profession, 'spawnou na casa', id, 'na posição', position);
                 } else {
-                  console.log('Casa criada sem NPC devido à profissão desabilitada');
+                  // console.log('Casa criada sem NPC devido à profissão desabilitada');
                 }
               }
             });

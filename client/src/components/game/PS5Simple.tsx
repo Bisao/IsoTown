@@ -28,7 +28,7 @@ export function PS5SimpleController() {
   useEffect(() => {
     if (!isPS5Browser()) return;
 
-    console.log('PlayStation 5 browser detected');
+    // console.log('PlayStation 5 browser detected');
 
     let animationFrame: number;
     
@@ -133,7 +133,7 @@ export function PS5SimpleController() {
         detail: { action: 'chop', source: 'ps5-r2' }
       }));
       
-      console.log('PS5 R2: Cortar madeira ativado');
+      // console.log('PS5 R2: Cortar madeira ativado');
     }
 
     // Haptic feedback simulation

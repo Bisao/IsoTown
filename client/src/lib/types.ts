@@ -68,6 +68,10 @@ export interface NPC {
   currentTreeId?: string;
   currentStoneId?: string;
   lastMoveDirection?: { x: number; z: number }; // Última direção de movimento para sprites
+  moveStartTime?: number; // Timestamp do início do movimento
+  lastActionTime?: number; // Timestamp da última ação de trabalho
+  inventory: ResourceInventory; // Inventário do NPC
+  currentCarriedWeight: number; // Peso atual carregado
 
   // Sistema avançado
   statistics?: {
