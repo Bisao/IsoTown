@@ -6,7 +6,8 @@ export const CELL_SIZE = 32;
 export enum HouseType {
   FARMER = 'FARMER',
   LUMBERJACK = 'LUMBERJACK',
-  MINER = 'MINER'
+  MINER = 'MINER',
+  HUNTER = 'HUNTER'
 }
 
 // NPCControlMode moved to types.ts to avoid circular imports
@@ -14,13 +15,15 @@ export enum HouseType {
 export const HOUSE_COLORS = {
   [HouseType.FARMER]: '#FFFFFF',
   [HouseType.LUMBERJACK]: '#F5F5DC',
-  [HouseType.MINER]: '#8B4513'
+  [HouseType.MINER]: '#8B4513',
+  [HouseType.HUNTER]: '#8B6914'
 };
 
 export const HOUSE_NAMES = {
   [HouseType.FARMER]: 'Farmer House',
   [HouseType.LUMBERJACK]: 'Lumberjack House',
-  [HouseType.MINER]: 'Miner House'
+  [HouseType.MINER]: 'Miner House',
+  [HouseType.HUNTER]: 'Hunter House'
 };
 
 export const NPC_COLOR = '#FF6B6B';
@@ -30,7 +33,8 @@ export const MOVEMENT_SPEED = 200; // ms between tile movements
 export const PROFESSION_TOOL_EMOJIS = {
   FARMER: '🚜',
   LUMBERJACK: '🪓', 
-  MINER: '⛏️'
+  MINER: '⛏️',
+  HUNTER: '🏹'
 } as const;
 
 // Tree constants
@@ -77,6 +81,12 @@ export const MINER_WORK_RANGE = 5; // How far miner will search for stones
 export const MINER_MINE_INTERVAL = 3800; // ms between mining hits (increased for more realistic pacing)
 export const STONE_BREAK_DURATION = 800; // ms
 export const STONE_DESPAWN_DELAY = 2000; // ms after breaking
+
+// Hunter behavior
+export const HUNTER_WORK_RANGE = 8; // How far hunter will search for animals
+export const HUNTER_HUNT_INTERVAL = 2500; // ms between hunting attempts
+export const HUNTING_ANIMATION_DURATION = 1200; // ms
+export const ANIMAL_FLEE_DISTANCE = 3; // How far animals run when scared
 
 // Resource carrying system
 export const DEFAULT_CARRY_CAPACITY = 20; // Default max items an NPC can carry
@@ -249,6 +259,10 @@ export const STARTING_INVENTORIES = {
     PICKAXE: 1,
     STONE: 5,
     IRON_ORE: 3
+  },
+  [NPCProfession.HUNTER]: {
+    SWORD: 1,
+    MEAT: 2
   },
   [NPCProfession.NONE]: {}
 } as const;

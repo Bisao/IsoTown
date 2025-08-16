@@ -28,7 +28,8 @@ export enum NPCProfession {
   NONE = 'NONE',
   LUMBERJACK = 'LUMBERJACK',
   FARMER = 'FARMER',
-  MINER = 'MINER'
+  MINER = 'MINER',
+  HUNTER = 'HUNTER'
 }
 
 export enum NPCState {
@@ -39,7 +40,7 @@ export enum NPCState {
 }
 
 export interface NPCTask {
-  type: 'cut_tree' | 'harvest' | 'mine_stone';
+  type: 'cut_tree' | 'harvest' | 'mine_stone' | 'hunt_animal';
   targetId: string;
   targetPosition: Position;
   progress: number;
@@ -47,7 +48,7 @@ export interface NPCTask {
 }
 
 export interface NPCAnimation {
-  type: 'chopping' | 'mining' | 'walking' | 'idle';
+  type: 'chopping' | 'mining' | 'walking' | 'idle' | 'hunting';
   startTime: number;
   duration: number;
 }
@@ -67,11 +68,10 @@ export interface NPC {
   animation?: NPCAnimation;
   currentTreeId?: string;
   currentStoneId?: string;
+  currentAnimalId?: string;
   lastMoveDirection?: { x: number; z: number }; // Última direção de movimento para sprites
   moveStartTime?: number; // Timestamp do início do movimento
   lastActionTime?: number; // Timestamp da última ação de trabalho
-  inventory: ResourceInventory; // Inventário do NPC
-  currentCarriedWeight: number; // Peso atual carregado
 
   // Sistema avançado
   statistics?: {
@@ -186,4 +186,19 @@ export interface Quest {
     items: { [itemId: string]: number };
   };
   completed: boolean;
+}
+
+export interface Animal {
+  id: string;
+  position: Position;
+  type: 'rabbit' | 'deer' | 'boar';
+  health: number;
+  maxHealth: number;
+  isBeingHunted?: boolean;
+  huntStartTime?: number;
+  isRunning?: boolean;
+  runDirection?: { x: number; z: number };
+  lastMoveTime?: number;
+  movementSpeed: number;
+  meatValue: number; // Quantidade de carne que dará quando caçado
 }

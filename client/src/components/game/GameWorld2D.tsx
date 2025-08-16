@@ -4,12 +4,13 @@ import { useHouseStore } from '../../lib/stores/useHouseStore';
 import { useNPCStore } from '../../lib/stores/useNPCStore';
 import { useTreeStore } from '../../lib/stores/useTreeStore';
 import { useStoneStore } from '../../lib/stores/useStoneStore';
+import { useAnimalStore } from '../../lib/stores/useAnimalStore';
 import { useGameStore } from '../../lib/stores/useGameStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
 import { useVillageStore } from '../../lib/stores/useVillageStore';
 import { useTimeStore } from '../../lib/stores/useTimeStore';
 import { useWeatherStore } from '../../lib/stores/useWeatherStore';
-import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN } from '../../lib/constants';
+import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN, HUNTER_WORK_RANGE } from '../../lib/constants';
 import { NPCControlMode, NPCProfession, NPCState } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
 
@@ -30,6 +31,7 @@ export default function GameWorld2D() {
   const npcs = useNPCStore(state => state.npcs);
   const trees = useTreeStore(state => state.trees);
   const stones = useStoneStore(state => state.stones);
+  const animals = useAnimalStore(state => state.animals);
   const textEffects = useEffectsStore(state => state.effects);
   const villages = useVillageStore(state => state.villages);
   const roads = useVillageStore(state => state.roads);
@@ -38,6 +40,7 @@ export default function GameWorld2D() {
   const { addHouse, getHouseAt, rotateHouse } = useHouseStore();
   const { getTreeAt, updateTree, removeTree } = useTreeStore();
   const { generateRandomStones, getStoneAt, updateStone, damageStone, removeStone } = useStoneStore();
+  const { getAnimalAt, updateAnimal, damageAnimal, removeAnimal } = useAnimalStore();
   const { updateEffects, addTextEffect } = useEffectsStore();
   const { createVillage, getRoadAt } = useVillageStore();
   const { getSkyColor, getAmbientLight, getCurrentGameHour } = useTimeStore();
@@ -253,6 +256,128 @@ export default function GameWorld2D() {
           console.log('Nenhuma árvore adjacente encontrada');
         }
       }
+      // Handle manual animal hunting
+      else if (npc.profession === NPCProfession.HUNTER) {
+        // Verificar cooldown
+        if (useNPCStore.getState().isNPCOnCooldown(npcId)) {
+          console.log('NPC em cooldown, aguarde para próxima caçada');
+          addTextEffect(npc.position, 'Aguarde!', '#FFB347', 600);
+          return;
+        }
+
+        // If already hunting an animal, process a manual hunt
+        if (npc.currentAnimalId && npc.state === NPCState.WORKING) {
+          const targetAnimal = animals[npc.currentAnimalId];
+          if (targetAnimal && !targetAnimal.isBeingHunted && targetAnimal.health > 0) {
+            console.log('Continuando caça manual do animal:', npc.currentAnimalId);
+
+            // Marcar animal como sendo caçado
+            updateAnimal(npc.currentAnimalId, { isBeingHunted: true, huntStartTime: Date.now() });
+
+            // Reduzir vida do animal
+            const animalKilled = damageAnimal(npc.currentAnimalId, 1);
+
+            // Adicionar efeito visual
+            addTextEffect(targetAnimal.position, 'HUNT!', '#8B0000', 800);
+
+            // Aplicar cooldown
+            useNPCStore.getState().setNPCCooldown(npcId, 2000);
+
+            console.log('HUNT! Caçando animal manualmente - morto:', animalKilled);
+
+            if (animalKilled) {
+              // Animal caçado com sucesso - adicionar carne ao inventário
+              console.log('Animal caçado com sucesso pelo NPC controlado!');
+              const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
+              const meatAdded = addResourceToNPC(npc.id, 'food', targetAnimal.meatValue || 2);
+              if (meatAdded) {
+                addTextEffect(targetAnimal.position, `+${targetAnimal.meatValue || 2} Carne`, '#8B0000', 1200);
+                if (shouldReturnHome(npc.id)) {
+                  console.log('Caçador deve voltar para casa - capacidade quase cheia');
+                  setNPCState(npc.id, NPCState.RETURNING_HOME);
+                } else {
+                  setNPCState(npc.id, NPCState.IDLE);
+                }
+              } else {
+                addTextEffect(targetAnimal.position, 'Inventário cheio! Voltando para casa', '#FF0000', 1200);
+                setNPCState(npc.id, NPCState.RETURNING_HOME);
+              }
+            } else {
+              useNPCStore.getState().updateNPCTask(npc.id, { ...npc.currentTask, progress: (npc.currentTask?.progress || 0) + 1 });
+            }
+            return;
+          }
+        }
+
+        // Buscar animal prioritário adjacente para começar nova caça
+        const adjacentPositions = [
+          { x: npc.position.x + 1, z: npc.position.z },
+          { x: npc.position.x - 1, z: npc.position.z },
+          { x: npc.position.x, z: npc.position.z + 1 },
+          { x: npc.position.x, z: npc.position.z - 1 }
+        ];
+
+        let priorityAnimal = null;
+        for (const pos of adjacentPositions) {
+          const animal = Object.values(animals).find(a => 
+            a.position.x === pos.x && 
+            a.position.z === pos.z && 
+            !a.isBeingHunted && 
+            a.health > 0
+          );
+          if (animal) {
+            priorityAnimal = animal;
+            break;
+          }
+        }
+
+        if (priorityAnimal) {
+          console.log('Animal encontrado para caça manual:', priorityAnimal.id);
+          // Iniciar caça manual
+          setNPCState(npc.id, NPCState.WORKING, { 
+            type: 'hunt_animal',
+            targetId: priorityAnimal.id, 
+            targetPosition: priorityAnimal.position,
+            progress: 0,
+            maxProgress: priorityAnimal.health
+          });
+
+          // Marcar animal como sendo caçado
+          updateAnimal(priorityAnimal.id, { isBeingHunted: true, huntStartTime: Date.now() });
+
+          // Processar primeiro ataque
+          const animalKilled = damageAnimal(priorityAnimal.id, 1);
+
+          // Adicionar efeito visual
+          addTextEffect(priorityAnimal.position, 'HUNT!', '#8B0000', 800);
+
+          // Aplicar cooldown
+          useNPCStore.getState().setNPCCooldown(npcId, 2000);
+
+          console.log('HUNT! Caçando animal manualmente - morto:', animalKilled);
+
+          if (animalKilled) {
+            console.log('Animal caçado com sucesso pelo NPC controlado!');
+            // Adicionar carne ao inventário
+            const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
+            const meatAdded = addResourceToNPC(npc.id, 'food', priorityAnimal.meatValue || 2);
+            if (meatAdded) {
+              addTextEffect(priorityAnimal.position, `+${priorityAnimal.meatValue || 2} Carne`, '#8B0000', 1200);
+              if (shouldReturnHome(npc.id)) {
+                console.log('Caçador deve voltar para casa - capacidade quase cheia');
+                setNPCState(npc.id, NPCState.RETURNING_HOME);
+              } else {
+                setNPCState(npc.id, NPCState.IDLE);
+              }
+            } else {
+              addTextEffect(priorityAnimal.position, 'Inventário cheio! Voltando para casa', '#FF0000', 1200);
+              setNPCState(npc.id, NPCState.RETURNING_HOME);
+            }
+          }
+        } else {
+          console.log('Nenhum animal adjacente encontrado');
+        }
+      }
       // Handle manual stone mining
       else if (npc.profession === NPCProfession.MINER) {
         // Verificar cooldown
@@ -461,9 +586,10 @@ export default function GameWorld2D() {
     const chunkKey = `${chunkX},${chunkZ}`;
 
     if (!generatedChunksRef.current.has(chunkKey)) {
-      // Gerar árvores e pedras neste chunk
+      // Gerar árvores, pedras e animais neste chunk
       useTreeStore.getState().generateTreesInChunk(chunkX, chunkZ, CHUNK_SIZE);
       useStoneStore.getState().generateStonesInChunk(chunkX, chunkZ, CHUNK_SIZE);
+      useAnimalStore.getState().generateAnimalsInChunk(chunkX, chunkZ, CHUNK_SIZE);
       generatedChunksRef.current.add(chunkKey);
       // console.log(`Chunk gerado: ${chunkKey}`);
     }
@@ -487,7 +613,7 @@ export default function GameWorld2D() {
         generateChunkIfNeeded(chunkX, chunkZ);
       }
     }
-  }, [panRef.current.x, panRef.current.y, zoomRef.current, generateChunkIfNeeded]);
+  }, [generateChunkIfNeeded]);
 
   // Gerar chunk inicial ao redor do spawn (0,0) e criar mapa procedural
   useEffect(() => {
@@ -1817,6 +1943,82 @@ export default function GameWorld2D() {
     ctx.restore();
   }, [gridToScreen]);
 
+  // Desenhar animal (memoizado)
+  const drawAnimal = useCallback((ctx: CanvasRenderingContext2D, animal: any, canvasWidth: number, canvasHeight: number) => {
+    const screen = gridToScreen(animal.position.x, animal.position.z, canvasWidth, canvasHeight);
+    const size = CELL_SIZE * zoomRef.current;
+
+    // Skip se muito longe da tela
+    if (screen.x < -size || screen.x > canvasWidth + size || screen.y < -size || screen.y > canvasHeight + size) {
+      return;
+    }
+
+    ctx.save();
+
+    // Cor do animal baseada no tipo
+    let animalColor = '#8B4513'; // marrom padrão
+    let animalEmoji = '🐰';
+    
+    switch (animal.type) {
+      case 'rabbit':
+        animalColor = '#D2B48C';
+        animalEmoji = '🐰';
+        break;
+      case 'deer':
+        animalColor = '#8B4513';
+        animalEmoji = '🦌';
+        break;
+      case 'boar':
+        animalColor = '#4A4A4A';
+        animalEmoji = '🐗';
+        break;
+    }
+
+    // Desenhar sombra do animal
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    const shadowOffset = 2 * zoomRef.current;
+    ctx.fillRect(screen.x + shadowOffset, screen.y + shadowOffset, size * 0.8, size * 0.8);
+
+    // Desenhar corpo do animal
+    ctx.fillStyle = animalColor;
+    ctx.fillRect(screen.x, screen.y, size * 0.8, size * 0.8);
+
+    // Desenhar emoji do animal
+    if (zoomRef.current >= 1.0) {
+      ctx.font = `${Math.floor(size * 0.6)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(animalEmoji, screen.x + size * 0.4, screen.y + size * 0.4);
+    }
+
+    // Indicador de vida se ferido
+    if (animal.health < animal.maxHealth) {
+      const healthRatio = animal.health / animal.maxHealth;
+      const barWidth = size * 0.8;
+      const barHeight = size * 0.1;
+      const barY = screen.y - barHeight - 2;
+      
+      // Fundo da barra de vida
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+      ctx.fillRect(screen.x, barY, barWidth, barHeight);
+      
+      // Vida atual
+      ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
+      ctx.fillRect(screen.x, barY, barWidth * healthRatio, barHeight);
+    }
+
+    // Indicador se está sendo caçado
+    if (animal.isBeingHunted) {
+      ctx.strokeStyle = '#FF4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(screen.x + size * 0.4, screen.y + size * 0.4, size * 0.5, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }, [gridToScreen]);
+
   // Desenhar árvore (memoizado)
   const drawTree = useCallback((ctx: CanvasRenderingContext2D, tree: any, canvasWidth: number, canvasHeight: number) => {
     const screen = gridToScreen(tree.position.x, tree.position.z, canvasWidth, canvasHeight);
@@ -2127,6 +2329,13 @@ export default function GameWorld2D() {
       }
     });
 
+    // Desenhar animais - apenas os visíveis
+    Object.values(animals).forEach(animal => {
+      if (isObjectVisible(animal.position, canvas.width, canvas.height)) {
+        drawAnimal(ctx, animal, canvas.width, canvas.height);
+      }
+    });
+
     // Desenhar árvores - apenas as visíveis
     Object.values(trees).forEach(tree => {
       if (isObjectVisible(tree.position, canvas.width, canvas.height)) {
@@ -2156,7 +2365,7 @@ export default function GameWorld2D() {
     drawWeather(ctx, canvas.width, canvas.height);
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, trees, stones, roads, drawGrid, drawHouse, drawNPC, drawTree, drawStone, drawRoad, drawTextEffects, updateWeatherEffects, drawWeather, getWeatherSkyColor]);
+  }, [houses, npcs, trees, stones, animals, roads, drawGrid, drawHouse, drawNPC, drawTree, drawStone, drawAnimal, drawRoad, drawTextEffects, updateWeatherEffects, drawWeather, getWeatherSkyColor]);
 
   // Manipular cliques no canvas
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {

@@ -2,11 +2,14 @@ import { NPC, NPCProfession, NPCState, Position } from '../types';
 import { useTreeStore } from '../stores/useTreeStore';
 import { useStoneStore } from '../stores/useStoneStore';
 import { useHouseStore } from '../stores/useHouseStore';
+import { useAnimalStore } from '../stores/useAnimalStore';
 import { getDistanceToPosition } from '../utils/distance';
 import { LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION } from '../constants';
 
 import { MINER_WORK_RANGE, MINER_MINE_INTERVAL } from '../constants';
 const MINING_ANIMATION_DURATION = 900; // ms
+const HUNTER_WORK_RANGE = 8; // Alcance do caçador
+const HUNTING_ANIMATION_DURATION = 1200; // ms
 
 // Interface para definir comportamentos de profissão
 export interface ProfessionBehavior {
@@ -17,7 +20,7 @@ export interface ProfessionBehavior {
 }
 
 export interface WorkTask {
-  type: 'cut_tree' | 'harvest' | 'mine_stone';
+  type: 'cut_tree' | 'harvest' | 'mine_stone' | 'hunt_animal';
   targetId: string;
   targetPosition: Position;
   progress: number;
@@ -29,7 +32,7 @@ export interface WorkResult {
   success: boolean;
   completed: boolean;
   animation?: {
-    type: 'chopping' | 'mining' | 'walking' | 'idle';
+    type: 'chopping' | 'mining' | 'walking' | 'idle' | 'hunting';
     startTime: number;
     duration: number;
   };
@@ -314,6 +317,112 @@ export class MinerSystem extends BaseProfessionSystem implements ProfessionBehav
   }
 }
 
+// Sistema específico para Caçadores
+export class HunterSystem extends BaseProfessionSystem implements ProfessionBehavior {
+  
+  findWork(npc: NPC): WorkTask | null {
+    const animalStore = useAnimalStore.getState();
+    const animals = Object.values(animalStore.animals);
+    
+    // Filtrar animais disponíveis (não sendo caçados)
+    const availableAnimals = animals.filter(animal => !animal.isBeingHunted && animal.health > 0);
+    
+    // Encontrar animal mais próximo
+    const nearestAnimal = this.findNearestResource(
+      npc.position,
+      availableAnimals,
+      HUNTER_WORK_RANGE
+    );
+
+    if (nearestAnimal) {
+      const distance = this.getDistanceToPosition(npc.position, nearestAnimal.position);
+      
+      if (distance === 1) {
+        // Adjacente ao animal - começar caça
+        return {
+          type: 'hunt_animal',
+          targetId: nearestAnimal.id,
+          targetPosition: nearestAnimal.position,
+          progress: 0,
+          maxProgress: nearestAnimal.health,
+          priority: 7
+        };
+      } else {
+        // Precisa se mover para o animal
+        return {
+          type: 'hunt_animal',
+          targetId: nearestAnimal.id,
+          targetPosition: nearestAnimal.position,
+          progress: 0,
+          maxProgress: nearestAnimal.health,
+          priority: 5
+        };
+      }
+    }
+
+    // Se não há animais próximos, não há trabalho
+    return null;
+  }
+
+  doWork(npc: NPC, task: WorkTask): WorkResult {
+    const animalStore = useAnimalStore.getState();
+    
+    if (task.type === 'hunt_animal' && task.targetId) {
+      const animal = animalStore.animals[task.targetId];
+      if (!animal || animal.isBeingHunted) {
+        return { success: false, completed: true, progressMade: 0 };
+      }
+
+      const distance = this.getDistanceToPosition(npc.position, animal.position);
+      
+      if (distance === 1) {
+        // Adjacente - caçar
+        const damage = 1;
+        const animalKilled = animalStore.damageAnimal(animal.id, damage);
+        
+        return {
+          success: true,
+          completed: animalKilled,
+          animation: {
+            type: 'hunting',
+            startTime: Date.now(),
+            duration: HUNTING_ANIMATION_DURATION
+          },
+          newState: NPCState.WORKING,
+          progressMade: damage
+        };
+      } else {
+        // Mover em direção ao animal
+        return {
+          success: true,
+          completed: false,
+          newState: NPCState.MOVING,
+          progressMade: 0
+        };
+      }
+    }
+
+    return { success: false, completed: false, progressMade: 0 };
+  }
+
+  isWorkDone(npc: NPC, task: WorkTask): boolean {
+    if (task.type === 'hunt_animal' && task.targetId) {
+      const animalStore = useAnimalStore.getState();
+      const animal = animalStore.animals[task.targetId];
+      return !animal || animal.health <= 0;
+    }
+    return task.progress >= task.maxProgress;
+  }
+
+  getHomePosition(npc: NPC): Position | null {
+    if (!npc.houseId) return null;
+    
+    const houseStore = useHouseStore.getState();
+    const house = houseStore.houses[npc.houseId];
+    return house ? house.position : null;
+  }
+}
+
 // Factory para criar sistemas de profissão
 export class ProfessionSystemFactory {
   private static systems = new Map<NPCProfession, ProfessionBehavior>();
@@ -329,6 +438,9 @@ export class ProfessionSystemFactory {
           break;
         case NPCProfession.MINER:
           this.systems.set(profession, new MinerSystem());
+          break;
+        case NPCProfession.HUNTER:
+          this.systems.set(profession, new HunterSystem());
           break;
         default:
           return null;
