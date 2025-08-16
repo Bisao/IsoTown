@@ -3,6 +3,7 @@ import { useTreeStore } from '../stores/useTreeStore';
 import { useStoneStore } from '../stores/useStoneStore';
 import { useHouseStore } from '../stores/useHouseStore';
 import { useAnimalStore } from '../stores/useAnimalStore';
+import { useNPCStore } from '../stores/useNPCStore';
 import { getDistanceToPosition } from '../utils/distance';
 import { LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION } from '../constants';
 
@@ -183,18 +184,64 @@ export class LumberjackSystem extends BaseProfessionSystem implements Profession
 export class FarmerSystem extends BaseProfessionSystem implements ProfessionBehavior {
   
   findWork(npc: NPC): WorkTask | null {
-    // TODO: Implementar lógica de farming
-    // Por enquanto, não há trabalho específico de fazendeiro
+    // Fazendeiros produzem comida automaticamente em intervalos
+    // Verificar se já está trabalhando ou se precisa de tempo para produzir
+    const now = Date.now();
+    const lastWork = npc.lastWorkTime || 0;
+    const FARMING_INTERVAL = 8000; // 8 segundos para produzir comida
+    
+    if (now - lastWork >= FARMING_INTERVAL) {
+      return {
+        type: 'harvest',
+        targetId: 'farming_work',
+        targetPosition: npc.position, // Trabalha na posição atual
+        progress: 0,
+        maxProgress: 1,
+        priority: 5
+      };
+    }
+    
+    // Se ainda não é hora de trabalhar, ficar idle
     return null;
   }
 
   doWork(npc: NPC, task: WorkTask): WorkResult {
-    // TODO: Implementar lógica de trabalho do fazendeiro
+    if (task.type === 'harvest') {
+      // Fazendeiro produz comida (bread)
+      const npcStore = useNPCStore.getState();
+      const success = npcStore.addItemToInventory(npc.id, 'BREAD', 2);
+        
+      if (success) {
+        // Atualizar último tempo de trabalho
+        npcStore.updateNPC(npc.id, { lastWorkTime: Date.now() });
+        
+        return {
+          success: true,
+          completed: true,
+          newState: NPCState.IDLE,
+          progressMade: 1,
+          animation: {
+            type: 'farming',
+            startTime: Date.now(),
+            duration: 2000
+          }
+        };
+      } else {
+        // Inventário cheio - ir para casa
+        return {
+          success: false,
+          completed: true,
+          newState: NPCState.RETURNING_HOME,
+          progressMade: 0
+        };
+      }
+    }
+    
     return {
-      success: true,
+      success: false,
       completed: true,
       newState: NPCState.IDLE,
-      progressMade: 1
+      progressMade: 0
     };
   }
 

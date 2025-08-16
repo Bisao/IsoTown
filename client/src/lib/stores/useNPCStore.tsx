@@ -341,18 +341,14 @@ export const useNPCStore = create<NPCStore>()(
           // For now, let's use a simpler approach - access trees through the component
           // We'll modify the GameWorld2D to pass tree data to the lumberjack behavior
 
-          // Find nearest tree within range using mock data for testing
-          // This will be replaced with real tree data
-          const mockTrees = [
-            { id: 'tree1', position: { x: 5, z: 5 }, health: 3, maxHealth: 3 },
-            { id: 'tree2', position: { x: 3, z: 7 }, health: 3, maxHealth: 3 },
-            { id: 'tree3', position: { x: 8, z: 2 }, health: 3, maxHealth: 3 }
-          ];
+          // Find nearest tree within range using real TreeStore data
+          const treeStore = getTreeStore();
+          const trees = treeStore ? Object.values(treeStore.trees).filter(tree => !tree.isChopping && tree.health > 0) : [];
 
           let nearestTree = null;
           let nearestDistance = Infinity;
 
-          for (const tree of mockTrees) {
+          for (const tree of trees) {
             const distance = Math.abs(tree.position.x - npc.position.x) +
                            Math.abs(tree.position.z - npc.position.z);
 
@@ -1266,18 +1262,23 @@ export const useNPCStore = create<NPCStore>()(
 
       switch (npc.state) {
         case NPCState.IDLE: {
-          // Encontrar pedra mais próxima usando dados mock para teste
-          // Isto será substituído por dados reais de pedra
-          const mockStones = [
-            { id: 'stone1', position: { x: 5, z: 5 }, health: 5, maxHealth: 5 },
-            { id: 'stone2', position: { x: 3, z: 7 }, health: 5, maxHealth: 5 },
-            { id: 'stone3', position: { x: 8, z: 2 }, health: 5, maxHealth: 5 }
-          ];
+          // Encontrar pedra mais próxima usando dados reais do StoneStore
+          const getStoneStore = () => {
+            try {
+              const { useStoneStore } = require('./useStoneStore');
+              return useStoneStore.getState();
+            } catch {
+              return null;
+            }
+          };
+
+          const stoneStore = getStoneStore();
+          const stones = stoneStore ? Object.values(stoneStore.stones).filter(stone => !stone.isBreaking && stone.health > 0) : [];
 
           let nearestStone = null;
           let nearestDistance = Infinity;
 
-          for (const stone of mockStones) {
+          for (const stone of stones) {
             const distance = Math.abs(stone.position.x - npc.position.x) +
                            Math.abs(stone.position.z - npc.position.z);
 
@@ -1287,7 +1288,7 @@ export const useNPCStore = create<NPCStore>()(
             }
           }
 
-          console.log('Pedras disponíveis:', mockStones.length, 'mais próxima:', nearestStone ? nearestStone.id : null, 'distância:', nearestDistance === Infinity ? null : nearestDistance);
+          console.log('Pedras disponíveis:', stones.length, 'mais próxima:', nearestStone ? nearestStone.id : null, 'distância:', nearestDistance === Infinity ? null : nearestDistance);
 
           if (nearestStone) {
             // Check if adjacent to stone (distance = 1)

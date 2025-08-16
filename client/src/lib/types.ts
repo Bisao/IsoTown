@@ -48,7 +48,7 @@ export interface NPCTask {
 }
 
 export interface NPCAnimation {
-  type: 'chopping' | 'mining' | 'walking' | 'idle' | 'hunting';
+  type: 'chopping' | 'mining' | 'walking' | 'idle' | 'hunting' | 'farming';
   startTime: number;
   duration: number;
 }
@@ -72,6 +72,7 @@ export interface NPC {
   lastMoveDirection?: { x: number; z: number }; // Última direção de movimento para sprites
   moveStartTime?: number; // Timestamp do início do movimento
   lastActionTime?: number; // Timestamp da última ação de trabalho
+  lastWorkTime?: number; // Timestamp do último trabalho realizado
 
   // Sistema avançado
   statistics?: {

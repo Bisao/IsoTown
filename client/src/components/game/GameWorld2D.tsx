@@ -10,6 +10,7 @@ import { useEffectsStore } from '../../lib/stores/useEffectsStore';
 import { useVillageStore } from '../../lib/stores/useVillageStore';
 import { useTimeStore } from '../../lib/stores/useTimeStore';
 import { useWeatherStore } from '../../lib/stores/useWeatherStore';
+import { npcManager } from '../../lib/systems/NPCManager';
 import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN, HUNTER_WORK_RANGE, HUNTING_ANIMATION_DURATION } from '../../lib/constants';
 import { NPCControlMode, NPCProfession, NPCState } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
@@ -502,16 +503,7 @@ export default function GameWorld2D() {
         'road_horizontal': '/sprites/roads/road_horizontal.svg',
         'road_vertical': '/sprites/roads/road_vertical.svg',
         'road_cross': '/sprites/roads/road_cross.svg',
-        'npc_frame_S': '/sprites/npcs/npc_frame_s.png',
-        'npc_frame_W': '/sprites/npcs/npc_frame_w.png',
-        'npc_frame_N': '/sprites/npcs/npc_frame_n.png',
-        'npc_frame_E': '/sprites/npcs/npc_frame_e.png',
-        'npc_frame_SW': '/sprites/npcs/npc_frame_sw.png',
-        'npc_frame_SE': '/sprites/npcs/npc_frame_se.png',
-        'npc_frame_NW': '/sprites/npcs/npc_frame_nw.png',
-        'npc_frame_NE': '/sprites/npcs/npc_frame_ne.png',
-        'npc_frame_A': '/sprites/npcs/npc_frame_a.png', // Left
-        'npc_frame_D': '/sprites/npcs/npc_frame_d.png', // Right
+        // NPCs agora usam círculos com olhinhos ao invés de sprites
       };
 
       const loadPromises = Object.entries(spriteMap).map(([type, path]) => {
@@ -1334,9 +1326,10 @@ export default function GameWorld2D() {
     return { x: gridX, z: gridZ };
   }, []);
 
-  // Função para verificar se um objeto está visível na tela
+  // Função otimizada para verificar se um objeto está visível na tela
   const isObjectVisible = useCallback((position: { x: number, z: number }, canvasWidth: number, canvasHeight: number, margin: number = 100) => {
     const screen = gridToScreen(position.x, position.z, canvasWidth, canvasHeight);
+    // Otimização: verificação rápida dos limites da tela
     return screen.x >= -margin && screen.x <= canvasWidth + margin && 
            screen.y >= -margin && screen.y <= canvasHeight + margin;
   }, [gridToScreen]);
@@ -1802,18 +1795,7 @@ export default function GameWorld2D() {
 
     ctx.save();
 
-    // Determinar sprite baseada na direção ou estado
-    let spriteKey = 'npc_frame_S'; // Default facing down
-
-    // Se o NPC tem direção de movimento, usar sprite apropriada
-    if (npc.lastMoveDirection) {
-      if (npc.lastMoveDirection.x > 0) spriteKey = 'npc_frame_D'; // Moving right
-      else if (npc.lastMoveDirection.x < 0) spriteKey = 'npc_frame_A'; // Moving left
-      else if (npc.lastMoveDirection.z < 0) spriteKey = 'npc_frame_W'; // Moving up
-      else if (npc.lastMoveDirection.z > 0) spriteKey = 'npc_frame_S'; // Moving down
-    }
-
-    const npcSprite = spritesRef.current[spriteKey];
+    // NPCs agora usam apenas círculos com olhinhos - sem sprites
 
     // Handle chopping animation - apenas aplicar escala suave
     if (npc.animation && npc.animation.type === 'chopping') {
@@ -1841,48 +1823,59 @@ export default function GameWorld2D() {
       }
     }
 
-    if (npcSprite && spritesLoadedRef.current) {
-      // Usar sprite do NPC
-      const spriteSize = size * 0.8;
-
-      // Destacar NPC selecionado com borda
-      if (isSelected) {
-        ctx.strokeStyle = '#FF0000';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(
-          screen.x - spriteSize / 2 - 2,
-          npcY - spriteSize / 2 - 2,
-          spriteSize + 4,
-          spriteSize + 4
-        );
-      }
-
-      ctx.drawImage(
-        npcSprite,
-        screen.x - spriteSize / 2,
-        npcY - spriteSize / 2,
-        spriteSize,
-        spriteSize
-      );
-    } else {
-      // Fallback: círculo colorido baseado na profissão
-      let npcColor = '#FF6B6B'; // Default farmer color
-      if (npc.profession === NPCProfession.LUMBERJACK) {
-        npcColor = '#8B4513'; // Brown for lumberjack
-      } else if (npc.profession === NPCProfession.MINER) {
-        npcColor = '#696969'; // Dark gray for miner
-      }
-
-      const radius = size * 0.3;
-      ctx.fillStyle = isSelected ? '#FF4444' : npcColor;
-      ctx.beginPath();
-      ctx.arc(screen.x, npcY, radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = isSelected ? '#FF0000' : '#000000';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+    // Desenhar círculo com olhinhos baseado na profissão
+    let npcColor = '#FF6B6B'; // Default farmer color
+    if (npc.profession === NPCProfession.LUMBERJACK) {
+      npcColor = '#8B4513'; // Brown for lumberjack
+    } else if (npc.profession === NPCProfession.MINER) {
+      npcColor = '#696969'; // Dark gray for miner
     }
+
+    const radius = size * 0.3;
+    
+    // Corpo do NPC (círculo)
+    ctx.fillStyle = isSelected ? '#FF4444' : npcColor;
+    ctx.beginPath();
+    ctx.arc(screen.x, npcY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isSelected ? '#FF0000' : '#000000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Desenhar olhinhos
+    const eyeSize = radius * 0.15;
+    const eyeOffset = radius * 0.35;
+    
+    // Olho esquerdo
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(screen.x - eyeOffset, npcY - eyeOffset * 0.7, eyeSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Pupila esquerda
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(screen.x - eyeOffset, npcY - eyeOffset * 0.7, eyeSize * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Olho direito  
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(screen.x + eyeOffset, npcY - eyeOffset * 0.7, eyeSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Pupila direita
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(screen.x + eyeOffset, npcY - eyeOffset * 0.7, eyeSize * 0.5, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore(); // Restaurar contexto após animações
 
@@ -2577,8 +2570,10 @@ export default function GameWorld2D() {
       }
     }
 
-    // Atualizar sistema climático
-    updateWeatherEffects(canvas.width, canvas.height, deltaTime);
+    // Atualizar sistema climático apenas se habilitado
+    if (weatherEnabled) {
+      updateWeatherEffects(canvas.width, canvas.height, deltaTime);
+    }
 
     // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2625,10 +2620,10 @@ export default function GameWorld2D() {
       }
     });
 
-    // Desenhar NPCs - sempre renderizar (são poucos e móveis)
+    // Desenhar NPCs - aplicar culling também (otimização)
     Object.values(npcs).forEach(npc => {
-      // Verificação para não spawnar fazendeiros
-      if (npc.profession !== NPCProfession.FARMER) {
+      // Verificação para não spawnar fazendeiros e aplicar culling
+      if (npc.profession !== NPCProfession.FARMER && isObjectVisible(npc.position, canvas.width, canvas.height, 50)) {
         drawNPC(ctx, npc, canvas.width, canvas.height);
       }
     });
@@ -2865,6 +2860,8 @@ export default function GameWorld2D() {
         cancelAnimationFrame(animationRef.current);
       }
       window.removeEventListener('resize', handleResize);
+      // Limpar NPCManager para evitar vazamentos de memória
+      npcManager.cleanup();
     };
   }, [animate, handleResize]);
 
