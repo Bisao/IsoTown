@@ -73,14 +73,14 @@ const WEATHER_TRANSITIONS: Record<WeatherType, Record<WeatherType, number>> = {
   snow: { cloudy: 0.4, sunny: 0.2, light_rain: 0.1, heavy_rain: 0.05, storm: 0.02, snow: 0.23 }
 };
 
-// Weather durations in game minutes
+// Weather durations in milliseconds (longer durations)
 const WEATHER_DURATIONS: Record<WeatherType, [number, number]> = {
-  sunny: [30, 90],
-  cloudy: [20, 60], 
-  light_rain: [15, 45],
-  heavy_rain: [10, 30],
-  storm: [5, 15],
-  snow: [20, 50]
+  sunny: [30000, 90000],    // 30-90 seconds
+  cloudy: [20000, 60000],   // 20-60 seconds
+  light_rain: [15000, 45000], // 15-45 seconds
+  heavy_rain: [10000, 30000], // 10-30 seconds
+  storm: [5000, 15000],      // 5-15 seconds
+  snow: [20000, 50000]       // 20-50 seconds
 };
 
 export const useWeatherStore = create<WeatherStore>()(
@@ -91,8 +91,8 @@ export const useWeatherStore = create<WeatherStore>()(
       intensity: 0.7,
       transitionProgress: 1,
       isTransitioning: false,
-      duration: 60,
-      startTime: 0
+      duration: 60000, // 60 seconds in milliseconds
+      startTime: Date.now()
     },
     nextWeather: null,
     
@@ -125,10 +125,12 @@ export const useWeatherStore = create<WeatherStore>()(
       const { currentWeather } = state;
       const elapsed = gameTime - currentWeather.startTime;
       
-      // Check if current weather should change
-      if (elapsed >= currentWeather.duration) {
+      // Check if current weather should change (with throttling)
+      if (elapsed >= currentWeather.duration && elapsed > 1000) { // At least 1 second between changes
         const nextWeather = state.generateNextWeather(gameTime);
-        state.setWeatherType(nextWeather);
+        if (nextWeather !== currentWeather.type) { // Only change if different
+          state.setWeatherType(nextWeather);
+        }
       }
     },
     
@@ -136,8 +138,8 @@ export const useWeatherStore = create<WeatherStore>()(
       const { currentWeather } = get();
       const transitions = WEATHER_TRANSITIONS[currentWeather.type];
       
-      // Use time-based seed for deterministic but varied weather
-      const timeSeed = Math.floor(currentTime / 1000);
+      // Use time-based seed for deterministic but varied weather (less frequent changes)
+      const timeSeed = Math.floor(currentTime / 10000); // Change seed every 10 seconds
       renderRandom.setSeed(timeSeed);
       
       const random = renderRandom.next();

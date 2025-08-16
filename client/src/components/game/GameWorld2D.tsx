@@ -1047,12 +1047,21 @@ export default function GameWorld2D() {
     }
   }, [currentWeather.type, weatherEnabled]);
 
-  // Atualizar sistema climático
+  // Referência para throttling de atualizações climáticas
+  const lastWeatherUpdateRef = useRef<number>(0);
+  
+  // Atualizar sistema climático (throttled)
   const updateWeatherEffects = useCallback((canvasWidth: number, canvasHeight: number, deltaTime: number) => {
     if (!weatherEnabled) return;
     
     updateParticles(canvasWidth, canvasHeight, deltaTime);
-    updateWeather(Date.now());
+    
+    // Throttle weather updates to every 2 seconds
+    const now = Date.now();
+    if (now - lastWeatherUpdateRef.current > 2000) {
+      updateWeather(now);
+      lastWeatherUpdateRef.current = now;
+    }
   }, [weatherEnabled, updateParticles, updateWeather]);
 
   // Desenhar tiles com sprite de grama simples
