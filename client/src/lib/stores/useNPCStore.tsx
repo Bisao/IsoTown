@@ -867,7 +867,7 @@ export const useNPCStore = create<NPCStore>()(
       const npc = get().npcs[npcId];
       if (!npc || npc.inventory[resource] < amount) return false;
 
-      const resourceWeight = amount * (resource === 'WOOD' ? 1 : resource === 'STONE' ? 2 : resource === 'BREAD' ? 0.5 : 0); // Example weights
+      const itemWeight = GAME_ITEMS[resource as keyof typeof GAME_ITEMS]?.weight || 0; // Corrigido para GAME_ITEMS
 
       set((state) => ({
         npcs: {
@@ -878,7 +878,7 @@ export const useNPCStore = create<NPCStore>()(
               ...state.npcs[npcId].inventory,
               [resource]: Math.max(0, state.npcs[npcId].inventory[resource] - amount)
             },
-            currentCarriedWeight: Math.max(0, state.npcs[npcId].currentCarriedWeight - resourceWeight)
+            currentCarriedWeight: Math.max(0, state.npcs[npcId].currentCarriedWeight - (itemWeight * amount))
           }
         }
       }));
@@ -955,7 +955,7 @@ export const useNPCStore = create<NPCStore>()(
 
         // Validate itemId exists in ITEMS constant
         const validItemId = itemId.toUpperCase();
-        if (!ITEMS[validItemId as keyof typeof ITEMS]) {
+        if (!GAME_ITEMS[validItemId as keyof typeof GAME_ITEMS]) { // Corrigido para GAME_ITEMS
           console.warn(`Item ID inválido: ${itemId}`);
           return state;
         }
@@ -985,7 +985,7 @@ export const useNPCStore = create<NPCStore>()(
       const validItemId = itemId.toUpperCase();
       if (npc.inventory[validItemId] < quantity) return false;
 
-      const itemWeight = ITEMS[validItemId as keyof typeof ITEMS]?.weight || 0;
+      const itemWeight = GAME_ITEMS[validItemId as keyof typeof GAME_ITEMS]?.weight || 0; // Corrigido para GAME_ITEMS
 
       set((state) => ({
         npcs: {
@@ -1035,7 +1035,7 @@ export const useNPCStore = create<NPCStore>()(
         return { success: false, message: 'NPC de destino não pode carregar mais itens!' };
       }
 
-      const itemWeight = ITEMS[validItemId as keyof typeof ITEMS]?.weight || 0;
+      const itemWeight = GAME_ITEMS[validItemId as keyof typeof GAME_ITEMS]?.weight || 0; // Corrigido para GAME_ITEMS
 
       // Perform the transfer
       set((state) => {
@@ -1081,7 +1081,7 @@ export const useNPCStore = create<NPCStore>()(
       const items = [];
       for (const itemId in npc.inventory) {
         if (npc.inventory[itemId] > 0) {
-          const itemDetails = ITEMS[itemId as keyof typeof ITEMS];
+          const itemDetails = GAME_ITEMS[itemId as keyof typeof GAME_ITEMS]; // Corrigido para GAME_ITEMS
           items.push({
             id: itemId,
             quantity: npc.inventory[itemId],
@@ -1107,7 +1107,7 @@ export const useNPCStore = create<NPCStore>()(
       const npc = get().npcs[npcId];
       if (!npc) return false;
 
-      const itemWeight = ITEMS[itemId.toUpperCase() as keyof typeof ITEMS]?.weight || 0;
+      const itemWeight = GAME_ITEMS[itemId.toUpperCase() as keyof typeof GAME_ITEMS]?.weight || 0; // Corrigido para GAME_ITEMS
       const newWeight = npc.currentCarriedWeight + (itemWeight * quantity);
 
       return newWeight <= npc.maxCarryCapacity;
@@ -1339,7 +1339,7 @@ export const useNPCStore = create<NPCStore>()(
             if (stoneDestroyed) {
               console.log('Pedra destruída! Minerador coletou recursos');
               // Adicionar pedra ao inventário do NPC
-              get().addItemToInventory(npc.id, 'STONE', 2);
+              const stoneAdded = get().addItemToInventory(npc.id, 'STONE', 2);
               if (stoneAdded) {
                 console.log('2 pedras adicionadas ao inventário do minerador', npc.id);
 

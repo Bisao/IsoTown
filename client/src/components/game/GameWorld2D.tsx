@@ -411,9 +411,9 @@ export default function GameWorld2D() {
             if (completed) {
               // Pedra destruída com sucesso - adicionar recurso ao inventário
               console.log('Pedra destruída com sucesso pelo NPC controlado!');
-              const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
-              const stoneAdded = addResourceToNPC(npc.id, 'stone', 2);
-              if (stoneAdded) {
+              const { addItemToInventory, shouldReturnHome } = useNPCStore.getState();
+              const stoneAddResult = addItemToInventory(npc.id, 'STONE', 2);
+              if (stoneAddResult.success) {
                 addTextEffect(targetStone.position, '+2 Pedra', '#808080', 1200);
                 if (shouldReturnHome(npc.id)) {
                   console.log('Minerador deve voltar para casa - capacidade quase cheia');
@@ -463,9 +463,9 @@ export default function GameWorld2D() {
           if (newHealth <= 0) {
             console.log('Pedra destruída com sucesso pelo NPC controlado!');
             // Adicionar recurso ao inventário
-            const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
-            const stoneAdded = addResourceToNPC(npc.id, 'stone', 2);
-            if (stoneAdded) {
+            const { addItemToInventory, shouldReturnHome } = useNPCStore.getState();
+            const stoneAddResult = addItemToInventory(npc.id, 'STONE', 2);
+            if (stoneAddResult.success) {
               addTextEffect(priorityStone.position, '+2 Pedra', '#808080', 1200);
               if (shouldReturnHome(npc.id)) {
                 console.log('Minerador deve voltar para casa - capacidade quase cheia');
@@ -935,9 +935,9 @@ export default function GameWorld2D() {
           if (stoneDestroyed) {
             console.log('Pedra destruída! Minerador coletou recursos');
             // Adicionar pedra ao inventário do NPC autônomo
-            const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
-            const stoneAdded = addResourceToNPC(npc.id, 'stone', 2);
-            if (stoneAdded) {
+            const { addItemToInventory, shouldReturnHome } = useNPCStore.getState();
+            const stoneAddResult = addItemToInventory(npc.id, 'STONE', 2);
+            if (stoneAddResult.success) {
               addTextEffect(stone.position, '+2 Pedra', '#808080', 1200);
               if (shouldReturnHome(npc.id)) {
                 console.log('Minerador deve voltar para casa - capacidade quase cheia');
@@ -2135,7 +2135,7 @@ export default function GameWorld2D() {
       const seed = stone.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
       for (let i = 0; i < sides; i++) {
         const angle = (Math.PI * 2 * i) / sides;
-        // Variação determinística baseada no seed + índice
+        // Variação baseada no seed + índice
         const variationSeed = Math.sin(seed * 0.001 + i * 0.7) * 0.5 + 0.5;
         const variation = 0.8 + variationSeed * 0.4;
         const radius = stoneSize * variation;
