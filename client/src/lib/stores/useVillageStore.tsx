@@ -194,7 +194,7 @@ export const useVillageStore = create<VillageStore>()(
         addRoadToVillage(villageId, road);
       });
       
-      console.log(`Grade de ruas criada para vila ${villageId}: sistema estruturado como na imagem de referência`);
+      // console.log(`Grade de ruas criada para vila ${villageId}: sistema estruturado como na imagem de referência`);
 
       // Gerar casas automaticamente ao redor das ruas
       setTimeout(() => {
@@ -306,14 +306,14 @@ export const useVillageStore = create<VillageStore>()(
         get().createVillage(villageCenter, villageSize, 'Vila');
       }
       
-      console.log(`Mapa procedural gerado com ${villageCount} vilas espalhadas`);
+      // console.log(`Mapa procedural gerado com ${villageCount} vilas espalhadas`);
       return mapId;
     },
 
     generateHousesConnectedToRoads: (centerPosition: Position, mapSize: number) => {
-      console.log(`Iniciando geração de casas conectadas às ruas em ${centerPosition.x}, ${centerPosition.z}`);
+      // console.log(`Iniciando geração de casas conectadas às ruas em ${centerPosition.x}, ${centerPosition.z}`);
       import('./useHouseStore').then(({ useHouseStore }) => {
-        console.log('useHouseStore importado para geração de casas conectadas');
+        // console.log('useHouseStore importado para geração de casas conectadas');
         const { addHouse, getHouseAt } = useHouseStore.getState();
         const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER];
         
@@ -357,7 +357,7 @@ export const useVillageStore = create<VillageStore>()(
           }
         }
         
-        console.log(`Geradas ${housesGenerated} casas conectadas às ruas`);
+        // console.log(`Geradas ${housesGenerated} casas conectadas às ruas`);
       }).catch(error => {
         console.error('Erro ao gerar casas:', error);
       });

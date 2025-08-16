@@ -519,7 +519,7 @@ export default function GameWorld2D() {
     const { addTextEffect } = useEffectsStore.getState();
     const MOVEMENT_SPEED = 300; // Define MOVEMENT_SPEED (ajuste conforme necessário)
 
-    console.log('Lenhador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
+    // console.log('Lenhador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
 
     switch (npc.state) {
       case NPCState.IDLE: {
@@ -549,7 +549,7 @@ export default function GameWorld2D() {
           }
         }
 
-        console.log('Árvores disponíveis:', treesArray.length, 'mais próxima:', nearestTree?.id, 'distância:', nearestDistance);
+        // console.log('Árvores disponíveis:', treesArray.length, 'mais próxima:', nearestTree?.id, 'distância:', nearestDistance);
 
         if (nearestTree) {
           // Check if adjacent to tree (distance = 1)
@@ -565,7 +565,7 @@ export default function GameWorld2D() {
             });
           } else {
             // Move towards tree
-            console.log('Movendo lenhador em direção à árvore', nearestTree.id);
+            // console.log('Movendo lenhador em direção à árvore', nearestTree.id);
 
             const dx = nearestTree.position.x - npc.position.x;
             const dz = nearestTree.position.z - npc.position.z;
@@ -603,7 +603,7 @@ export default function GameWorld2D() {
 
         // Check if enough time has passed since last chop
         if (currentTime - (npc.lastActionTime || 0) >= LUMBERJACK_CHOP_INTERVAL) {
-          console.log('TOC! Cortando árvore', tree.id);
+          // console.log('TOC! Cortando árvore', tree.id);
 
           // Damage the tree
           const treeDestroyed = damageTree(tree.id, 1);
@@ -712,7 +712,7 @@ export default function GameWorld2D() {
     const { damageStone, removeStone } = useStoneStore.getState();
     const { addTextEffect } = useEffectsStore.getState();
 
-    console.log('Minerador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
+    // console.log('Minerador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
 
     switch (npc.state) {
       case NPCState.IDLE: {
@@ -731,7 +731,7 @@ export default function GameWorld2D() {
           }
         }
 
-        console.log('Pedras disponíveis:', stonesArray.length, 'mais próxima:', nearestStone?.id, 'distância:', nearestDistance);
+        // console.log('Pedras disponíveis:', stonesArray.length, 'mais próxima:', nearestStone?.id, 'distância:', nearestDistance);
 
         if (nearestStone) {
           // Check if adjacent to stone (distance = 1)
@@ -747,7 +747,7 @@ export default function GameWorld2D() {
             });
           } else {
             // Move towards stone
-            console.log('Movendo minerador em direção à pedra', nearestStone.id);
+            // console.log('Movendo minerador em direção à pedra', nearestStone.id);
 
             const dx = nearestStone.position.x - npc.position.x;
             const dz = nearestStone.position.z - npc.position.z;
@@ -785,7 +785,7 @@ export default function GameWorld2D() {
 
         // Check if enough time has passed since last mine
         if (currentTime - (npc.lastActionTime || 0) >= MINER_MINE_INTERVAL) {
-          console.log('CLANG! Minerando pedra', stone.id);
+          // console.log('CLANG! Minerando pedra', stone.id);
 
           // Damage the stone
           const stoneDestroyed = damageStone(stone.id, 1);
@@ -845,18 +845,18 @@ export default function GameWorld2D() {
       // Update lumberjack and miner behavior for each NPC
       Object.values(npcs).forEach((npc) => {
         if (npc.profession === 'LUMBERJACK' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
-          console.log('Atualizando comportamento do lenhador:', npc.id, 'estado:', npc.state);
+          // console.log('Atualizando comportamento do lenhador:', npc.id, 'estado:', npc.state);
           try {
             updateLumberjackBehaviorWithTrees(npc, trees);
           } catch (error) {
-            console.error('Erro ao atualizar comportamento do lenhador:', error);
+            // console.error('Erro ao atualizar comportamento do lenhador:', error);
           }
         } else if (npc.profession === 'MINER' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
-          console.log('Atualizando comportamento do minerador:', npc.id, 'estado:', npc.state);
+          // console.log('Atualizando comportamento do minerador:', npc.id, 'estado:', npc.state);
           try {
             updateMinerBehaviorWithStones(npc, stones);
           } catch (error) {
-            console.error('Erro ao atualizar comportamento do minerador:', error);
+            // console.error('Erro ao atualizar comportamento do minerador:', error);
           }
         }
       });

@@ -345,7 +345,7 @@ export const useNPCStore = create<NPCStore>()(
             }
           }
 
-          console.log('Procurando árvore próxima de:', npc.position, 'encontrou:', nearestTree ? nearestTree.id : 'nenhuma');
+          // console.log('Procurando árvore próxima de:', npc.position, 'encontrou:', nearestTree ? nearestTree.id : 'nenhuma');
 
           if (nearestTree) {
             // Check if adjacent to tree (distance = 1)
@@ -354,7 +354,7 @@ export const useNPCStore = create<NPCStore>()(
 
             if (distance === 1) {
               // Adjacent to tree - start working
-              console.log('Lenhador adjacente à árvore, começando trabalho');
+              // console.log('Lenhador adjacente à árvore, começando trabalho');
               set((state) => ({
                 npcs: {
                   ...state.npcs,
@@ -374,7 +374,7 @@ export const useNPCStore = create<NPCStore>()(
               }));
             } else {
               // Move towards tree one step at a time
-              console.log('Movendo lenhador em direção à árvore');
+              // console.log('Movendo lenhador em direção à árvore');
 
               const dx = nearestTree.position.x - npc.position.x;
               const dz = nearestTree.position.z - npc.position.z;
@@ -393,7 +393,7 @@ export const useNPCStore = create<NPCStore>()(
                 z: npc.position.z + direction.z
               };
 
-              console.log('Nova posição calculada:', newPosition);
+              // console.log('Nova posição calculada:', newPosition);
 
               if (isValidGridPosition(newPosition)) {
                 set((state) => ({
@@ -428,7 +428,7 @@ export const useNPCStore = create<NPCStore>()(
                   }
                 }, MOVEMENT_SPEED);
               } else {
-                console.log('Posição inválida para movimento:', newPosition);
+                // console.log('Posição inválida para movimento:', newPosition);
                 // Try a different direction next time
                 set((state) => ({
                   npcs: {
@@ -442,7 +442,7 @@ export const useNPCStore = create<NPCStore>()(
               }
             }
           } else {
-            console.log('Nenhuma árvore encontrada no alcance');
+            // console.log('Nenhuma árvore encontrada no alcance');
           }
           break;
         }
@@ -463,14 +463,14 @@ export const useNPCStore = create<NPCStore>()(
             return;
           }
 
-          console.log('Lenhador trabalhando - progresso:', npc.currentTask.progress, 'de', npc.currentTask.maxProgress);
+          // console.log('Lenhador trabalhando - progresso:', npc.currentTask.progress, 'de', npc.currentTask.maxProgress);
 
           // Check if enough time has passed since last chop
           if (currentTime - (npc.lastActionTime || 0) >= LUMBERJACK_CHOP_INTERVAL) {
             const newProgress = npc.currentTask.progress + 1;
             const treeDestroyed = newProgress >= npc.currentTask.maxProgress;
 
-            console.log('TOC! Cortando árvore - progresso:', newProgress, 'destruída:', treeDestroyed);
+            // console.log('TOC! Cortando árvore - progresso:', newProgress, 'destruída:', treeDestroyed);
 
             // Add chopping animation and update progress
             set((state) => ({
@@ -499,7 +499,7 @@ export const useNPCStore = create<NPCStore>()(
             // TODO: Actually damage the tree in the tree store
             // This will be implemented when we integrate with the real tree store
             if (treeDestroyed) {
-              console.log('Árvore destruída! Lenhador volta ao modo idle.');
+              // console.log('Árvore destruída! Lenhador volta ao modo idle.');
             }
           }
           break;
@@ -614,7 +614,7 @@ export const useNPCStore = create<NPCStore>()(
         { x: npc.position.x, z: npc.position.z - 1 }
       ];
 
-      console.log('Tentativa de corte manual, posições adjacentes:', adjacentPositions);
+      // console.log('Tentativa de corte manual, posições adjacentes:', adjacentPositions);
 
       return {
         success: true,
@@ -635,7 +635,7 @@ export const useNPCStore = create<NPCStore>()(
           }
         }
       }));
-      console.log('Lenhador começou a cortar árvore:', treeId);
+      // console.log('Lenhador começou a cortar árvore:', treeId);
     },
 
     stopWork: (id) => {
@@ -670,7 +670,7 @@ export const useNPCStore = create<NPCStore>()(
         const newProgress = npc.currentTask.progress + 1;
         const treeDestroyed = newProgress >= npc.currentTask.maxProgress;
 
-        console.log('TOC! Cortando árvore manualmente - progresso:', newProgress, 'completo:', treeDestroyed);
+        // console.log('TOC! Cortando árvore manualmente - progresso:', newProgress, 'completo:', treeDestroyed);
 
         set((state) => ({
           npcs: {
