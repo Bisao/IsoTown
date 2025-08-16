@@ -959,11 +959,245 @@ export default function GameWorld2D() {
     }
   }, []); // Dependencies to be added
 
+  // Enhanced hunter behavior with animal hunting
+  const updateHunterBehaviorWithAnimals = useCallback((npc: any, availableAnimals: Record<string, any>) => {
+    if (npc.profession !== 'HUNTER' || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
+      return;
+    }
+
+    const currentTime = Date.now();
+    const { moveNPC, setNPCState, updateNPCTask, transferResourcesToHouse } = useNPCStore.getState();
+    const { damageAnimal, removeAnimal } = useAnimalStore.getState();
+    const { addTextEffect } = useEffectsStore.getState();
+
+    // console.log('Caçador', npc.id, 'estado:', npc.state, 'posição:', npc.position);
+
+    switch (npc.state) {
+      case NPCState.IDLE: {
+        // Check if inventory is full
+        const inventory = npc.inventory || {};
+        const totalItems = Object.values(inventory).reduce((sum: number, count: unknown) => sum + (count as number), 0);
+        const maxInventorySize = 10;
+
+        if (totalItems >= maxInventorySize) {
+          console.log('Inventário cheio, caçador retornando para casa.');
+          setNPCState(npc.id, NPCState.RETURNING_HOME);
+          return;
+        }
+
+        // Find nearest animal within range
+        const animalsArray = Object.values(availableAnimals).filter(animal => animal.health > 0);
+        let nearestAnimal = null;
+        let nearestDistance = Infinity;
+
+        for (const animal of animalsArray) {
+          const distance = Math.abs(animal.position.x - npc.position.x) + 
+                         Math.abs(animal.position.z - npc.position.z);
+
+          if (distance <= HUNTER_WORK_RANGE && distance < nearestDistance) {
+            nearestAnimal = animal;
+            nearestDistance = distance;
+          }
+        }
+
+        // console.log('Animais disponíveis:', animalsArray.length, 'mais próximo:', nearestAnimal?.id, 'distância:', nearestDistance);
+
+        if (nearestAnimal) {
+          // Check if adjacent to animal (distance = 1)
+          if (nearestDistance === 1) {
+            // Adjacent to animal - start hunting
+            console.log('Caçador adjacente ao animal', nearestAnimal.id, 'começando caça');
+            setNPCState(npc.id, NPCState.WORKING, {
+              type: 'hunt_animal',
+              targetId: nearestAnimal.id,
+              targetPosition: nearestAnimal.position,
+              progress: 0,
+              maxProgress: nearestAnimal.health
+            });
+          } else {
+            // Move towards animal
+            // console.log('Movendo caçador em direção ao animal', nearestAnimal.id);
+
+            const dx = nearestAnimal.position.x - npc.position.x;
+            const dz = nearestAnimal.position.z - npc.position.z;
+
+            let direction = { x: 0, z: 0 };
+
+            // Choose direction - prioritize getting closer
+            if (Math.abs(dx) > Math.abs(dz)) {
+              direction.x = dx > 0 ? 1 : -1;
+            } else {
+              direction.z = dz > 0 ? 1 : -1;
+            }
+
+            moveNPC(npc.id, direction);
+          }
+        }
+        break;
+      }
+
+      case NPCState.WORKING: {
+        if (!npc.currentTask || npc.currentTask.type !== 'hunt_animal') {
+          console.log('Tarefa inválida, voltando ao idle');
+          setNPCState(npc.id, NPCState.IDLE);
+          return;
+        }
+
+        // Check if animal still exists
+        const animal = availableAnimals[npc.currentTask.targetId];
+        if (!animal || animal.health <= 0) {
+          console.log('Animal não existe ou foi morto, voltando ao idle');
+          setNPCState(npc.id, NPCState.IDLE);
+          return;
+        }
+
+        // Check if enough time has passed since last hunt attempt
+        const HUNTER_HUNT_INTERVAL = 2500; // ms between hunting attempts
+        if (currentTime - (npc.lastActionTime || 0) >= HUNTER_HUNT_INTERVAL) {
+          // console.log('SWISH! Caçando animal', animal.id);
+
+          // Damage the animal
+          const animalKilled = damageAnimal(animal.id, 1);
+
+          // Update NPC animation and progress
+          const newProgress = (npc.currentTask.progress || 0) + 1;
+
+          if (animalKilled) {
+            console.log('Animal morto! Caçador coletou carne');
+            // Adicionar carne ao inventário do NPC autônomo
+            const { addResourceToNPC, shouldReturnHome } = useNPCStore.getState();
+            const meatAdded = addResourceToNPC(npc.id, 'meat', animal.meatValue || 1);
+
+            if (meatAdded) {
+              addTextEffect(animal.position, `+${animal.meatValue || 1} Carne`, '#8B0000', 1200);
+              // Verificar se deve voltar para casa
+              if (shouldReturnHome(npc.id)) {
+                console.log('Caçador deve voltar para casa - capacidade quase cheia');
+                setNPCState(npc.id, NPCState.RETURNING_HOME);
+              } else {
+                setNPCState(npc.id, NPCState.IDLE);
+              }
+            } else {
+              addTextEffect(animal.position, 'Inventário cheio! Voltando para casa', '#FF0000', 1200);
+              setNPCState(npc.id, NPCState.RETURNING_HOME);
+            }
+            removeAnimal(animal.id);
+          } else {
+            // Continue hunting
+            updateNPCTask(npc.id, {
+              ...npc.currentTask,
+              progress: newProgress
+            });
+          }
+
+          // Add hunting animation
+          setNPCState(npc.id, NPCState.WORKING, { ...npc.currentTask, progress: newProgress, lastActionTime: currentTime});
+          useNPCStore.getState().setNPCAnimation(npc.id, {
+            type: 'hunting',
+            startTime: currentTime,
+            duration: HUNTING_ANIMATION_DURATION
+          });
+        }
+        break;
+      }
+
+      case NPCState.RETURNING_HOME: {
+        if (!npc.houseId) {
+          console.log('Caçador sem casa atribuída - voltando ao estado IDLE');
+          setNPCState(npc.id, NPCState.IDLE);
+          return;
+        }
+
+        import('../../lib/stores/useHouseStore').then(({ useHouseStore }) => {
+          const house = useHouseStore.getState().houses[npc.houseId!];
+          if (!house) {
+            console.log('Casa não encontrada para o caçador:', npc.id, 'Voltando ao IDLE.');
+            setNPCState(npc.id, NPCState.IDLE);
+            return;
+          }
+
+          const distanceToHome = Math.abs(house.position.x - npc.position.x) + 
+                               Math.abs(house.position.z - npc.position.z);
+
+          if (distanceToHome === 0) {
+            // At home - transfer resources
+            console.log('Caçador chegou em casa - transferindo recursos');
+            transferResourcesToHouse(npc.id, npc.houseId!);
+            setNPCState(npc.id, NPCState.IDLE);
+          } else {
+            // Move towards home
+            const direction = {
+              x: house.position.x > npc.position.x ? 1 : house.position.x < npc.position.x ? -1 : 0,
+              z: house.position.z > npc.position.z ? 1 : house.position.z < npc.position.z ? -1 : 0
+            };
+
+            if (direction.x !== 0 || direction.z !== 0) {
+              setNPCState(npc.id, NPCState.MOVING);
+              moveNPC(npc.id, direction);
+            } else {
+              console.log('Caçador está em casa, mas distanceToHome > 0. Forçando IDLE.');
+              setNPCState(npc.id, NPCState.IDLE);
+            }
+          }
+        }).catch(error => {
+          console.error("Failed to import useHouseStore:", error);
+          setNPCState(npc.id, NPCState.IDLE);
+        });
+        break;
+      }
+    }
+  }, []);
+
+  // Animal movement AI
+  const updateAnimalMovement = useCallback(() => {
+    const currentTime = Date.now();
+    const { moveAnimal } = useAnimalStore.getState();
+    
+    Object.values(animals).forEach((animal) => {
+      // Check if enough time has passed for movement
+      const timeSinceLastMove = currentTime - (animal.lastMoveTime || 0);
+      if (timeSinceLastMove < animal.movementSpeed) return;
+      
+      // 30% chance to move each time
+      if (Math.random() < 0.3) {
+        // Choose a random direction
+        const directions = [
+          { x: 1, z: 0 },   // right
+          { x: -1, z: 0 },  // left  
+          { x: 0, z: 1 },   // down
+          { x: 0, z: -1 },  // up
+          { x: 1, z: 1 },   // diagonal down-right
+          { x: -1, z: 1 },  // diagonal down-left
+          { x: 1, z: -1 },  // diagonal up-right
+          { x: -1, z: -1 }  // diagonal up-left
+        ];
+        
+        const direction = directions[Math.floor(Math.random() * directions.length)];
+        const newPosition = {
+          x: animal.position.x + direction.x,
+          z: animal.position.z + direction.z
+        };
+        
+        // Check if new position is valid (within grid bounds)
+        if (isValidGridPosition(newPosition.x, newPosition.z)) {
+          // Check if there's already an animal at the new position
+          const { getAnimalAt } = useAnimalStore.getState();
+          if (!getAnimalAt(newPosition)) {
+            moveAnimal(animal.id, newPosition);
+          }
+        }
+      }
+    });
+  }, [animals]);
+
   // Game loop for NPC behavior and effects
   useEffect(() => {
     const gameLoop = setInterval(() => {
       // Update NPC movement
       updateNPCMovement();
+
+      // Update animal movement
+      updateAnimalMovement();
 
       // Update cooldowns
       useNPCStore.getState().updateCooldowns();
@@ -984,6 +1218,13 @@ export default function GameWorld2D() {
           } catch (error) {
             // console.error('Erro ao atualizar comportamento do minerador:', error);
           }
+        } else if (npc.profession === 'HUNTER' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
+          // console.log('Atualizando comportamento do caçador:', npc.id, 'estado:', npc.state);
+          try {
+            updateHunterBehaviorWithAnimals(npc, animals);
+          } catch (error) {
+            // console.error('Erro ao atualizar comportamento do caçador:', error);
+          }
         }
       });
 
@@ -1000,7 +1241,7 @@ export default function GameWorld2D() {
     }, 100); // Run every 100ms for smooth updates
 
     return () => clearInterval(gameLoop);
-  }, [npcs, trees, stones, updateNPCMovement, updateEffects, updateLumberjackBehaviorWithTrees, updateMinerBehaviorWithStones]);
+  }, [npcs, trees, stones, animals, updateNPCMovement, updateAnimalMovement, updateEffects, updateLumberjackBehaviorWithTrees, updateMinerBehaviorWithStones, updateHunterBehaviorWithAnimals]);
 
   // Manual tree cutting for controlled NPCs
   const handleManualTreeCutting = useCallback((npcId: string) => {

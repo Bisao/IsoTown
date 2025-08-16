@@ -212,7 +212,8 @@ export const useVillageStore = create<VillageStore>()(
       import('./useHouseStore').then(({ useHouseStore }) => {
         console.log('useHouseStore importado com sucesso');
         const { addHouse, getHouseAt } = useHouseStore.getState();
-        const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER];
+        // Incluir HUNTER nas casas disponíveis e limitar a 1 casa de cada classe
+        const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER, HouseType.HUNTER];
         
         // Gerar casas em posições estratégicas ao redor das ruas
         const candidatePositions = [];
@@ -241,30 +242,38 @@ export const useVillageStore = create<VillageStore>()(
           }
         }
         
-        // Determinar número de casas para esta vila (3-7)
-        const minHouses = 3;
-        const maxHouses = 7;
-        // Use deterministic generation based on village center position
+        // Embaralhar posições candidatas para distribuição aleatória
         const positionSeed = village.centerPosition.x * 1000 + village.centerPosition.z;
         renderRandom.setSeed(positionSeed);
-        const targetHouses = Math.floor(renderRandom.between(minHouses, maxHouses + 1));
-        
-        // Selecionar posições aleatórias até atingir o número desejado
-        const selectedPositions = [];
         const shuffledPositions = [...candidatePositions].sort(() => renderRandom.next() - 0.5);
         
-        for (let i = 0; i < Math.min(targetHouses, shuffledPositions.length); i++) {
-          selectedPositions.push(shuffledPositions[i]);
+        // Criar no máximo 1 casa de cada classe (máximo 4 casas por vila)
+        const usedHouseTypes = new Set();
+        const selectedHousesData = [];
+        
+        // Embaralhar tipos de casa para ordem aleatória
+        const shuffledHouseTypes = [...houseTypes].sort(() => renderRandom.next() - 0.5);
+        
+        for (let i = 0; i < shuffledPositions.length && selectedHousesData.length < shuffledHouseTypes.length; i++) {
+          const position = shuffledPositions[i];
+          
+          // Encontrar o próximo tipo de casa disponível
+          for (const houseType of shuffledHouseTypes) {
+            if (!usedHouseTypes.has(houseType)) {
+              usedHouseTypes.add(houseType);
+              const rotation = renderRandom.int(0, 4) * 90;
+              selectedHousesData.push({ type: houseType, position, rotation });
+              break;
+            }
+          }
         }
         
         // Adicionar casas
-        selectedPositions.forEach(position => {
-          const randomType = renderRandom.pick(houseTypes);
-          const rotation = renderRandom.int(0, 4) * 90;
-          addHouse(randomType, position, rotation);
+        selectedHousesData.forEach(houseData => {
+          addHouse(houseData.type, houseData.position, houseData.rotation);
         });
         
-        // logger.log(`Vilarejo ${village.name} criado com ${selectedPositions.length} casas`);
+        // logger.log(`Vilarejo ${village.name} criado com ${selectedHousesData.length} casas (1 de cada classe máximo)`);
       }).catch(error => {
         logger.error('Erro ao importar useHouseStore:', error);
       });
@@ -315,9 +324,10 @@ export const useVillageStore = create<VillageStore>()(
       import('./useHouseStore').then(({ useHouseStore }) => {
         // console.log('useHouseStore importado para geração de casas conectadas');
         const { addHouse, getHouseAt } = useHouseStore.getState();
-        const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER];
+        const houseTypes = [HouseType.FARMER, HouseType.LUMBERJACK, HouseType.MINER, HouseType.HUNTER];
         
-        let housesGenerated = 0;
+        // Coletar todas as posições candidatas primeiro
+        const candidatePositions = [];
         
         // Gerar casas em lotes adjacentes às ruas
         for (let x = centerPosition.x - mapSize; x <= centerPosition.x + mapSize; x++) {
@@ -348,16 +358,32 @@ export const useVillageStore = create<VillageStore>()(
               const density = Math.max(0.2, 0.8 - (distanceFromCenter / maxDistance) * 0.6);
               
               if (Math.random() < density) {
-                const randomType = houseTypes[Math.floor(Math.random() * houseTypes.length)];
-                const rotation = Math.floor(Math.random() * 4) * 90;
-                addHouse(randomType, position, rotation);
-                housesGenerated++;
+                candidatePositions.push(position);
               }
             }
           }
         }
         
-        // console.log(`Geradas ${housesGenerated} casas conectadas às ruas`);
+        // Limitar a no máximo 1 casa de cada tipo por área
+        const usedHouseTypes = new Set();
+        const shuffledPositions = candidatePositions.sort(() => Math.random() - 0.5);
+        let housesGenerated = 0;
+        
+        for (let i = 0; i < shuffledPositions.length && usedHouseTypes.size < houseTypes.length; i++) {
+          const position = shuffledPositions[i];
+          
+          // Encontrar tipo de casa ainda não usado
+          const availableTypes = houseTypes.filter(type => !usedHouseTypes.has(type));
+          if (availableTypes.length > 0) {
+            const randomType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+            const rotation = Math.floor(Math.random() * 4) * 90;
+            addHouse(randomType, position, rotation);
+            usedHouseTypes.add(randomType);
+            housesGenerated++;
+          }
+        }
+        
+        // console.log(`Geradas ${housesGenerated} casas conectadas às ruas (1 de cada classe máximo)`);
       }).catch(error => {
         console.error('Erro ao gerar casas:', error);
       });
