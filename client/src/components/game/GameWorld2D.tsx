@@ -2302,6 +2302,27 @@ export default function GameWorld2D() {
     const deltaTime = currentTime - lastFrameTimeRef.current;
     lastFrameTimeRef.current = currentTime;
 
+    // Gerenciar partículas de clima baseado no tipo atual
+    if (weatherEnabled) {
+      const weatherStore = useWeatherStore.getState();
+      const needsRain = currentWeather.type === 'light_rain' || currentWeather.type === 'heavy_rain' || currentWeather.type === 'storm';
+      const needsClouds = currentWeather.type === 'cloudy' || currentWeather.type === 'storm';
+      
+      // Limpar partículas desnecessárias
+      if (!needsRain && rainParticles.length > 0) {
+        weatherStore.rainParticles = [];
+        weatherStore.rainSplashes = [];
+      }
+      if (!needsClouds && cloudParticles.length > 0) {
+        weatherStore.cloudParticles = [];
+      }
+      
+      // Inicializar partículas necessárias
+      if ((needsRain && rainParticles.length === 0) || (needsClouds && cloudParticles.length === 0)) {
+        weatherStore.initializeParticles(canvas.width, canvas.height);
+      }
+    }
+
     // Atualizar sistema climático
     updateWeatherEffects(canvas.width, canvas.height, deltaTime);
 
@@ -2566,7 +2587,7 @@ export default function GameWorld2D() {
     if (weatherEnabled) {
       initializeParticles(canvas.width, canvas.height);
     }
-  }, [weatherEnabled, initializeParticles]);
+  }, []);  // Removido initializeParticles para evitar loops infinitos
 
   // Inicializar canvas e iniciar animação
   useEffect(() => {
@@ -2591,7 +2612,7 @@ export default function GameWorld2D() {
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, [animate, handleResize, weatherEnabled, initializeParticles]);
+  }, [animate, handleResize]);  // Removido weatherEnabled e initializeParticles para evitar loops infinitos
 
 
 
