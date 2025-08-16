@@ -8,6 +8,7 @@ import { useGameStore } from '../../lib/stores/useGameStore';
 import { useEffectsStore } from '../../lib/stores/useEffectsStore';
 import { useVillageStore } from '../../lib/stores/useVillageStore';
 import { useTimeStore } from '../../lib/stores/useTimeStore';
+import { useWeatherStore } from '../../lib/stores/useWeatherStore';
 import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN } from '../../lib/constants';
 import { NPCControlMode, NPCProfession, NPCState } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
@@ -22,25 +23,8 @@ export default function GameWorld2D() {
 
   const cameraTargetRef = useRef<{ x: number, y: number } | null>(null);
 
-  // Sistema de chuva
-  const rainParticlesRef = useRef<Array<{
-    x: number;
-    y: number;
-    speed: number;
-    length: number;
-    opacity: number;
-  }>>([]);
-  
-  // Sistema de respingos de chuva
-  const rainSplashesRef = useRef<Array<{
-    x: number;
-    y: number;
-    startTime: number;
-    duration: number;
-    size: number;
-  }>>([]);
-  
-  const isRainingRef = useRef(true); // Ativar chuva por padrão
+  // Referência para controle de animação
+  const lastFrameTimeRef = useRef<number>(0);
 
   const houses = useHouseStore(state => state.houses);
   const npcs = useNPCStore(state => state.npcs);
@@ -57,6 +41,17 @@ export default function GameWorld2D() {
   const { updateEffects, addTextEffect } = useEffectsStore();
   const { createVillage, getRoadAt } = useVillageStore();
   const { getSkyColor, getAmbientLight, getCurrentGameHour } = useTimeStore();
+  const { 
+    currentWeather, 
+    rainParticles, 
+    rainSplashes, 
+    cloudParticles, 
+    weatherEnabled,
+    updateWeather, 
+    initializeParticles, 
+    updateParticles, 
+    toggleWeather 
+  } = useWeatherStore();
 
   // Adicionar hooks de teclado para ações
   useKeyboardActions();
@@ -966,160 +961,99 @@ export default function GameWorld2D() {
            screen.y >= -margin && screen.y <= canvasHeight + margin;
   }, [gridToScreen]);
 
-  // Inicializar sistema de chuva
-  const initRainParticles = useCallback((canvasWidth: number, canvasHeight: number) => {
-    const particles = [];
-    const particleCount = 150; // Número de gotas de chuva
-
-    for (let i = 0; i < particleCount; i++) {
-      // Usar geração determinística baseada no índice para consistência
-      const seed = i * 1000 + Date.now();
-      const random1 = (seed * 9301 + 49297) % 233280 / 233280;
-      const random2 = ((seed + 1) * 9301 + 49297) % 233280 / 233280;
-      const random3 = ((seed + 2) * 9301 + 49297) % 233280 / 233280;
-      const random4 = ((seed + 3) * 9301 + 49297) % 233280 / 233280;
-      const random5 = ((seed + 4) * 9301 + 49297) % 233280 / 233280;
-      
-      particles.push({
-        x: random1 * (canvasWidth + 200) - 100, // Espalhar além das bordas
-        y: random2 * (canvasHeight + 200) - 100,
-        speed: random3 * 3 + 2, // Velocidade entre 2-5
-        length: random4 * 15 + 10, // Comprimento da gota entre 10-25
-        opacity: random5 * 0.6 + 0.2 // Opacidade entre 0.2-0.8
-      });
-    }
-
-    rainParticlesRef.current = particles;
-  }, []);
-
-  // Atualizar partículas de chuva
-  const updateRainParticles = useCallback((canvasWidth: number, canvasHeight: number) => {
-    if (!isRainingRef.current) return;
-
-    const currentTime = Date.now();
-
-    rainParticlesRef.current.forEach(particle => {
-      // Mover partícula para baixo e ligeiramente para a direita (efeito de vento)
-      const oldY = particle.y;
-      particle.y += particle.speed;
-      particle.x += particle.speed * 0.3;
-
-      // Verificar se a gota tocou o chão (parte inferior da tela)
-      if (oldY < canvasHeight && particle.y >= canvasHeight) {
-        // Criar respingo no ponto de impacto
-        // Usar seed baseado na posição para geração determinística
-        const seed = Math.floor(particle.x) * 1000 + Math.floor(particle.y);
-        const random1 = (seed * 9301 + 49297) % 233280 / 233280;
-        const random2 = ((seed + 1) * 9301 + 49297) % 233280 / 233280;
-        
-        rainSplashesRef.current.push({
-          x: particle.x,
-          y: canvasHeight,
-          startTime: currentTime,
-          duration: 400 + random1 * 200, // Duração entre 400-600ms
-          size: random2 * 8 + 4 // Tamanho entre 4-12
-        });
-      }
-
-      // Reset particle quando sair da tela usando seed determinístico
-      if (particle.y > canvasHeight + 50) {
-        particle.y = -50;
-        const seed = Date.now() + Math.floor(particle.x);
-        const random = (seed * 9301 + 49297) % 233280 / 233280;
-        particle.x = random * (canvasWidth + 200) - 100;
-      }
-
-      if (particle.x > canvasWidth + 100) {
-        particle.x = -100;
-      }
-    });
-
-    // Remover respingos expirados
-    rainSplashesRef.current = rainSplashesRef.current.filter(splash => {
-      const elapsed = currentTime - splash.startTime;
-      return elapsed < splash.duration;
-    });
-  }, []);
-
-  // Desenhar chuva
-  const drawRain = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
-    if (!isRainingRef.current) return;
+  // Desenhar sistema climático dinâmico
+  const drawWeather = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
+    if (!weatherEnabled) return;
 
     ctx.save();
     
-    // Desenhar gotas de chuva
-    rainParticlesRef.current.forEach(particle => {
-      ctx.globalAlpha = particle.opacity;
-      ctx.strokeStyle = '#87CEEB'; // Cor azul claro da chuva
-      ctx.lineWidth = 1;
-      ctx.lineCap = 'round';
+    // Desenhar nuvens
+    if (currentWeather.type === 'cloudy' || currentWeather.type === 'storm') {
+      cloudParticles.forEach(cloud => {
+        ctx.globalAlpha = cloud.alpha;
+        ctx.fillStyle = currentWeather.type === 'storm' ? '#555' : '#888';
+        ctx.fillRect(cloud.x, cloud.y, cloud.width, cloud.height);
+      });
+    }
+    
+    // Desenhar chuva
+    if (currentWeather.type === 'light_rain' || currentWeather.type === 'heavy_rain' || currentWeather.type === 'storm') {
+      ctx.globalAlpha = currentWeather.intensity;
       
-      ctx.beginPath();
-      ctx.moveTo(particle.x, particle.y);
-      ctx.lineTo(particle.x + particle.length * 0.3, particle.y + particle.length);
-      ctx.stroke();
-    });
-
-    // Desenhar respingos de chuva
-    const currentTime = Date.now();
-    rainSplashesRef.current.forEach(splash => {
-      const elapsed = currentTime - splash.startTime;
-      const progress = elapsed / splash.duration;
-      
-      if (progress < 1) {
-        // Efeito de expansão e fade do respingo
-        const expandProgress = Math.min(progress * 3, 1); // Expande rapidamente nos primeiros 33%
-        const fadeProgress = Math.max(0, (progress - 0.3) / 0.7); // Fade nos últimos 70%
+      // Desenhar gotas de chuva
+      rainParticles.forEach(particle => {
+        ctx.globalAlpha = particle.alpha * currentWeather.intensity;
         
-        const currentSize = splash.size * expandProgress;
-        const alpha = (1 - fadeProgress) * 0.6; // Máximo 60% de opacidade
+        const rainColor = currentWeather.type === 'storm' ? '#4A90E2' : '#87CEEB';
+        ctx.strokeStyle = rainColor;
+        ctx.lineWidth = currentWeather.type === 'heavy_rain' ? 2 : 1;
         
-        ctx.globalAlpha = alpha;
-        
-        // Desenhar círculo de respingo principal
-        ctx.fillStyle = '#B0E0E6'; // Azul claro mais opaco
         ctx.beginPath();
-        ctx.arc(splash.x, splash.y, currentSize, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Desenhar gotas menores ao redor (efeito de salpicos)
-        if (expandProgress > 0.5) {
-          ctx.fillStyle = '#87CEEB';
-          const droplets = 6;
-          const dropletDistance = currentSize * 1.5;
-          
-          for (let i = 0; i < droplets; i++) {
-            const angle = (Math.PI * 2 * i) / droplets + (splash.startTime * 0.001); // Pequena rotação baseada no tempo
-            // Usar seed determinístico para gerar variações consistentes
-            const dropletSeed = i * 1000 + currentTime;
-            const random1 = (dropletSeed * 9301 + 49297) % 233280 / 233280;
-            const random2 = ((dropletSeed + 1) * 9301 + 49297) % 233280 / 233280;
-            
-            const distance = dropletDistance * (0.7 + random1 * 0.3);
-            const dropletSize = currentSize * (0.2 + random2 * 0.3);
-            
-            const dropletX = splash.x + Math.cos(angle) * distance;
-            const dropletY = splash.y + Math.sin(angle) * distance * 0.5; // Achatado verticalmente
-            
-            ctx.globalAlpha = alpha * 0.7;
-            ctx.beginPath();
-            ctx.arc(dropletX, dropletY, dropletSize, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        
-        // Anel exterior do respingo
-        ctx.globalAlpha = alpha * 0.3;
-        ctx.strokeStyle = '#87CEEB';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(splash.x, splash.y, currentSize * 1.2, 0, Math.PI * 2);
+        ctx.moveTo(particle.x, particle.y);
+        ctx.lineTo(particle.x + particle.speedX * 0.5, particle.y + particle.length);
         ctx.stroke();
-      }
-    });
-
+      });
+      
+      // Desenhar respingos de chuva
+      rainSplashes.forEach(splash => {
+        const progress = splash.life / splash.maxLife;
+        const alpha = 1 - progress;
+        
+        ctx.globalAlpha = alpha * currentWeather.intensity;
+        ctx.strokeStyle = '#B0E0E6';
+        ctx.lineWidth = 1;
+        
+        const size = 3 * (1 - progress);
+        ctx.beginPath();
+        ctx.arc(splash.x, splash.y, size, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+    }
+    
+    // Desenhar neve
+    if (currentWeather.type === 'snow') {
+      ctx.globalAlpha = currentWeather.intensity;
+      ctx.fillStyle = '#FFFFFF';
+      
+      rainParticles.forEach(particle => {
+        ctx.globalAlpha = particle.alpha * currentWeather.intensity;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+    
     ctx.restore();
-  }, []);
+  }, [currentWeather, rainParticles, rainSplashes, cloudParticles, weatherEnabled]);
+
+  // Função para obter cor do céu baseada no clima
+  const getWeatherSkyColor = useCallback(() => {
+    if (!weatherEnabled) return '#1E88E5';
+    
+    switch (currentWeather.type) {
+      case 'storm':
+        return '#1A237E';
+      case 'heavy_rain':
+        return '#1565C0';
+      case 'light_rain':
+        return '#1976D2';
+      case 'cloudy':
+        return '#424242';
+      case 'snow':
+        return '#E3F2FD';
+      case 'sunny':
+      default:
+        return '#1E88E5';
+    }
+  }, [currentWeather.type, weatherEnabled]);
+
+  // Atualizar sistema climático
+  const updateWeatherEffects = useCallback((canvasWidth: number, canvasHeight: number, deltaTime: number) => {
+    if (!weatherEnabled) return;
+    
+    updateParticles(canvasWidth, canvasHeight, deltaTime);
+    updateWeather(Date.now());
+  }, [weatherEnabled, updateParticles, updateWeather]);
 
   // Desenhar tiles com sprite de grama simples
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
@@ -2153,14 +2087,18 @@ export default function GameWorld2D() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Atualizar partículas de chuva
-    updateRainParticles(canvas.width, canvas.height);
+    const currentTime = Date.now();
+    const deltaTime = currentTime - lastFrameTimeRef.current;
+    lastFrameTimeRef.current = currentTime;
+
+    // Atualizar sistema climático
+    updateWeatherEffects(canvas.width, canvas.height, deltaTime);
 
     // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fundo mais escuro quando está chovendo
-    ctx.fillStyle = isRainingRef.current ? '#1565C0' : '#1E88E5';
+    // Fundo baseado no clima atual
+    ctx.fillStyle = getWeatherSkyColor();
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Desenhar elementos
@@ -2205,11 +2143,11 @@ export default function GameWorld2D() {
     // Draw text effects on top
     drawTextEffects(ctx, canvas.width, canvas.height);
 
-    // Desenhar chuva por último (sobre todos os elementos)
-    drawRain(ctx, canvas.width, canvas.height);
+    // Desenhar clima por último (sobre todos os elementos)
+    drawWeather(ctx, canvas.width, canvas.height);
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [houses, npcs, trees, stones, roads, drawGrid, drawHouse, drawNPC, drawTree, drawStone, drawRoad, drawTextEffects, updateRainParticles, drawRain]);
+  }, [houses, npcs, trees, stones, roads, drawGrid, drawHouse, drawNPC, drawTree, drawStone, drawRoad, drawTextEffects, updateWeatherEffects, drawWeather, getWeatherSkyColor]);
 
   // Manipular cliques no canvas
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -2341,8 +2279,8 @@ export default function GameWorld2D() {
       // Controle de chuva com tecla T
       if (event.key === 't' || event.key === 'T') {
         event.preventDefault();
-        isRainingRef.current = !isRainingRef.current;
-        console.log('Chuva:', isRainingRef.current ? 'Ativada' : 'Desativada');
+        toggleWeather();
+        console.log('Sistema climático alternado');
         return;
       }
 
@@ -2406,19 +2344,21 @@ export default function GameWorld2D() {
     canvas.width = parent.clientWidth;
     canvas.height = parent.clientHeight;
     
-    // Reinicializar partículas de chuva com novo tamanho
-    initRainParticles(canvas.width, canvas.height);
-  }, [initRainParticles]);
+    // Reinicializar sistema climático com novo tamanho
+    if (weatherEnabled) {
+      initializeParticles(canvas.width, canvas.height);
+    }
+  }, [weatherEnabled, initializeParticles]);
 
   // Inicializar canvas e iniciar animação
   useEffect(() => {
     handleResize();
     window.addEventListener('resize', handleResize);
 
-    // Inicializar sistema de chuva
+    // Inicializar sistema climático
     const canvas = canvasRef.current;
-    if (canvas) {
-      initRainParticles(canvas.width, canvas.height);
+    if (canvas && weatherEnabled) {
+      initializeParticles(canvas.width, canvas.height);
     }
 
     // Iniciar o loop de animação
@@ -2433,7 +2373,7 @@ export default function GameWorld2D() {
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, [animate, handleResize, initRainParticles]);
+  }, [animate, handleResize, weatherEnabled, initializeParticles]);
 
 
 
