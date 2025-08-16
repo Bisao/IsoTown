@@ -1,14 +1,14 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { NPC, Position, NPCControlMode, NPCProfession, NPCState, NPCAnimation, ResourceInventory } from '../types';
-import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPING_ANIMATION_DURATION, GAME_ITEMS, STARTING_INVENTORIES, INVENTORY_MAX_SLOTS, MAX_CARRY_WEIGHT } from '../constants';
+import { MOVEMENT_SPEED, LUMBERJACK_CHOP_INTERVAL, LUMBERJACK_WORK_RANGE, CHOPPING_ANIMATION_DURATION, GAME_ITEMS, STARTING_INVENTORIES, INVENTORY_MAX_SLOTS, MAX_CARRY_WEIGHT, ItemType } from '../constants';
 
 import { nanoid } from 'nanoid';
 import { MINER_WORK_RANGE, MINER_MINE_INTERVAL, MINING_ANIMATION_DURATION } from '../constants';
 import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid';
 import { getRandomDirection, findPath } from '../utils/pathfinding';
 import { NPCActionSystem } from '../systems/NPCActionSystem';
-import { ITEMS } from '../constants';
+
 
 // Dynamic imports to prevent circular dependencies
 
@@ -79,7 +79,11 @@ export const useNPCStore = create<NPCStore>()(
         isMoving: false,
         lastMovement: Date.now(),
         houseId,
-        inventory: {}, // Initialize as empty, will be populated by initializeInventory
+        inventory: {
+          wood: 0,
+          stone: 0,
+          food: 0
+        },
         maxCarryCapacity: 20, // Default capacity
         currentCarriedWeight: 0
       };
@@ -105,7 +109,7 @@ export const useNPCStore = create<NPCStore>()(
       // This function can be expanded later for NPC selection behavior
     },
 
-    moveNPC: (npcId: string, direction: { x: number; z: number }) => {
+    moveNPC: async (npcId: string, direction: { x: number; z: number }) => {
       const npc = get().npcs[npcId];
       if (!npc || npc.isMoving) return;
 
@@ -122,24 +126,40 @@ export const useNPCStore = create<NPCStore>()(
         return;
       }
 
-      // Verificar se há alguma casa na nova posição
-      const { getHouseAt } = useHouseStore.getState();
-      if (getHouseAt(newPosition)) {
-        console.log('Posição ocupada por casa:', newPosition);
-        return;
+      // Check for obstacles (houses, trees, stones) - Dynamic imports to avoid circular dependencies
+      let isBlocked = false;
+      
+      try {
+        const { useHouseStore } = await import('./useHouseStore');
+        const { getHouseAt } = useHouseStore.getState();
+        if (getHouseAt(newPosition)) {
+          isBlocked = true;
+        }
+      } catch (e) {
+        // House store not available, skip check
       }
 
-      // Verificar se há alguma árvore na nova posição
-      const { getTreeAt } = useTreeStore.getState();
-      if (getTreeAt(newPosition)) {
-        console.log('Posição ocupada por árvore:', newPosition);
-        return;
+      try {
+        const { useTreeStore } = await import('./useTreeStore');
+        const { getTreeAt } = useTreeStore.getState();
+        if (getTreeAt(newPosition)) {
+          isBlocked = true;
+        }
+      } catch (e) {
+        // Tree store not available, skip check
       }
 
-      // Verificar se há alguma pedra na nova posição
-      const { getStoneAt } = useStoneStore.getState();
-      if (getStoneAt(newPosition)) {
-        console.log('Posição ocupada por pedra:', newPosition);
+      try {
+        const { useStoneStore } = await import('./useStoneStore');
+        const { getStoneAt } = useStoneStore.getState();
+        if (getStoneAt(newPosition)) {
+          isBlocked = true;
+        }
+      } catch (e) {
+        // Stone store not available, skip check
+      }
+
+      if (isBlocked) {
         return;
       }
 
@@ -677,10 +697,11 @@ export const useNPCStore = create<NPCStore>()(
               ...state.npcs[npcId],
               animation: { type: 'chopping', startTime: currentTime, duration: CHOPPING_ANIMATION_DURATION },
               lastActionTime: currentTime,
-              currentTask: treeDestroyed ? undefined : {
+              currentTask: treeDestroyed ? undefined : (npc.currentTask ? {
                 ...npc.currentTask,
-                progress: newProgress
-              },
+                progress: newProgress,
+                type: npc.currentTask.type as 'cut_tree' | 'harvest' | 'mine_stone' | 'hunt_animal'
+              } : undefined),
               state: treeDestroyed ? NPCState.IDLE : NPCState.WORKING
             }
           }
@@ -820,7 +841,11 @@ export const useNPCStore = create<NPCStore>()(
           ...state.npcs,
           [npcId]: {
             ...state.npcs[npcId],
-            inventory: startingInventory,
+            inventory: {
+              wood: startingInventory['WOOD'] || 0,
+              stone: startingInventory['STONE'] || 0,
+              food: startingInventory['BREAD'] || 0
+            },
             currentCarriedWeight: startingInventory.wood + (startingInventory.stone * 2) + (startingInventory.food * 0.5) // This calculation needs to be updated to use correct item weights
           }
         }
@@ -838,7 +863,7 @@ export const useNPCStore = create<NPCStore>()(
       }
 
       const currentWeight = npc.currentCarriedWeight || 0;
-      const resourceWeight = amount * (resource === 'WOOD' ? 1 : resource === 'STONE' ? 2 : resource === 'BREAD' ? 0.5 : 0); // Example weights
+      const resourceWeight = amount * (resource === 'wood' ? 1 : resource === 'stone' ? 2 : resource === 'food' ? 0.5 : 0);
 
       if (currentWeight + resourceWeight > npc.maxCarryCapacity) {
         console.log('Capacidade excedida para NPC', npcId, 'peso atual:', currentWeight, 'peso adicional:', resourceWeight, 'capacidade:', npc.maxCarryCapacity);
@@ -852,7 +877,7 @@ export const useNPCStore = create<NPCStore>()(
             ...state.npcs[npcId],
             inventory: {
               ...state.npcs[npcId].inventory,
-              [resource]: state.npcs[npcId].inventory[resource] + amount
+              [resource]: (state.npcs[npcId].inventory[resource] || 0) + amount
             },
             currentCarriedWeight: currentWeight + resourceWeight
           }
@@ -865,9 +890,10 @@ export const useNPCStore = create<NPCStore>()(
 
     removeResourceFromNPC: (npcId: string, resource: keyof ResourceInventory, amount: number) => {
       const npc = get().npcs[npcId];
-      if (!npc || npc.inventory[resource] < amount) return false;
+      if (!npc || (npc.inventory[resource] || 0) < amount) return false;
 
-      const itemWeight = GAME_ITEMS[resource as keyof typeof GAME_ITEMS]?.weight || 0; // Corrigido para GAME_ITEMS
+      const resourceWeights = { wood: 1, stone: 2, food: 0.5 };
+      const itemWeight = resourceWeights[resource] || 0;
 
       set((state) => ({
         npcs: {
@@ -876,9 +902,9 @@ export const useNPCStore = create<NPCStore>()(
             ...state.npcs[npcId],
             inventory: {
               ...state.npcs[npcId].inventory,
-              [resource]: Math.max(0, state.npcs[npcId].inventory[resource] - amount)
+              [resource]: Math.max(0, (state.npcs[npcId].inventory[resource] || 0) - amount)
             },
-            currentCarriedWeight: Math.max(0, state.npcs[npcId].currentCarriedWeight - (itemWeight * amount))
+            currentCarriedWeight: Math.max(0, (state.npcs[npcId].currentCarriedWeight || 0) - (itemWeight * amount))
           }
         }
       }));
@@ -960,8 +986,22 @@ export const useNPCStore = create<NPCStore>()(
           return state;
         }
 
+        // Map validItemId to ResourceInventory key
+        const resourceMap: { [key: string]: keyof ResourceInventory } = {
+          'WOOD': 'wood',
+          'STONE': 'stone', 
+          'BREAD': 'food',
+          'FOOD': 'food'
+        };
+        
+        const resource = resourceMap[validItemId];
+        if (!resource) {
+          console.warn(`Item ID não mapeado para recurso: ${validItemId}`);
+          return state;
+        }
+        
         const newInventory = { ...npc.inventory };
-        newInventory[validItemId] = (newInventory[validItemId] || 0) + quantity;
+        newInventory[resource] = (newInventory[resource] || 0) + quantity;
 
         console.log(`Adicionado ${quantity} ${validItemId} ao inventário do NPC ${npcId}`);
 
@@ -982,10 +1022,21 @@ export const useNPCStore = create<NPCStore>()(
       const npc = get().npcs[npcId];
       if (!npc) return false;
 
+      // Map item to resource type
+      const resourceMap: { [key: string]: keyof ResourceInventory } = {
+        'WOOD': 'wood',
+        'STONE': 'stone', 
+        'BREAD': 'food',
+        'FOOD': 'food'
+      };
+      
       const validItemId = itemId.toUpperCase();
-      if (npc.inventory[validItemId] < quantity) return false;
+      const resource = resourceMap[validItemId];
+      
+      if (!resource || (npc.inventory[resource] || 0) < quantity) return false;
 
-      const itemWeight = GAME_ITEMS[validItemId as keyof typeof GAME_ITEMS]?.weight || 0; // Corrigido para GAME_ITEMS
+      const resourceWeights = { wood: 1, stone: 2, food: 0.5 };
+      const itemWeight = resourceWeights[resource] || 0;
 
       set((state) => ({
         npcs: {
@@ -994,9 +1045,9 @@ export const useNPCStore = create<NPCStore>()(
             ...state.npcs[npcId],
             inventory: {
               ...state.npcs[npcId].inventory,
-              [validItemId]: state.npcs[npcId].inventory[validItemId] - quantity
+              [resource]: (state.npcs[npcId].inventory[resource] || 0) - quantity
             },
-            currentCarriedWeight: state.npcs[npcId].currentCarriedWeight - (itemWeight * quantity)
+            currentCarriedWeight: (state.npcs[npcId].currentCarriedWeight || 0) - (itemWeight * quantity)
           }
         }
       }));
@@ -1007,15 +1058,25 @@ export const useNPCStore = create<NPCStore>()(
       const npc = get().npcs[npcId];
       if (!npc) return 0;
 
+      // Map itemId to ResourceInventory key
+      const resourceMap: { [key: string]: keyof ResourceInventory } = {
+        'WOOD': 'wood',
+        'STONE': 'stone', 
+        'BREAD': 'food',
+        'FOOD': 'food'
+      };
+      
       const validItemId = itemId.toUpperCase();
-      return npc.inventory[validItemId] || 0;
+      const resource = resourceMap[validItemId];
+      
+      return resource ? (npc.inventory[resource] || 0) : 0;
     },
 
     getInventoryCount: (npcId: string) => {
       const npc = get().npcs[npcId];
       if (!npc) return 0;
 
-      return Object.values(npc.inventory).reduce((sum, count) => sum + count, 0);
+      return (npc.inventory.wood || 0) + (npc.inventory.stone || 0) + (npc.inventory.food || 0);
     },
 
     transferItem: (fromNpcId: string, toNpcId: string, itemId: string, quantity: number) => {
@@ -1024,35 +1085,54 @@ export const useNPCStore = create<NPCStore>()(
 
       if (!fromNpc || !toNpc) return { success: false, message: 'Um ou ambos os NPCs não encontrados!' };
 
+      // Map item to resource type
+      const resourceMap: { [key: string]: keyof ResourceInventory } = {
+        'WOOD': 'wood',
+        'STONE': 'stone', 
+        'BREAD': 'food',
+        'FOOD': 'food'
+      };
+      
       const validItemId = itemId.toUpperCase();
-      if (!fromNpc.inventory[validItemId] || fromNpc.inventory[validItemId] < quantity) {
+      const resource = resourceMap[validItemId];
+      
+      if (!resource || !fromNpc.inventory[resource] || fromNpc.inventory[resource] < quantity) {
         return { success: false, message: 'Item insuficiente no inventário do NPC de origem!' };
       }
 
       // Check if the target NPC can carry the items
-      const canCarry = get().canCarryItem(toNpcId, validItemId, quantity);
-      if (!canCarry) {
+      const resourceWeights = { wood: 1, stone: 2, food: 0.5 };
+      const itemWeight = resourceWeights[resource] || 0;
+      const newWeight = toNpc.currentCarriedWeight + (itemWeight * quantity);
+      
+      if (newWeight > toNpc.maxCarryCapacity) {
         return { success: false, message: 'NPC de destino não pode carregar mais itens!' };
       }
 
-      const itemWeight = GAME_ITEMS[validItemId as keyof typeof GAME_ITEMS]?.weight || 0; // Corrigido para GAME_ITEMS
-
       // Perform the transfer
       set((state) => {
-        const newFromNpcInventory = { ...fromNpc.inventory };
-        newFromNpcInventory[validItemId] -= quantity;
-
-        const newToNpcInventory = { ...toNpc.inventory };
-        newToNpcInventory[validItemId] = (newToNpcInventory[validItemId] || 0) + quantity;
-
         const newFromNpcWeight = fromNpc.currentCarriedWeight - (itemWeight * quantity);
         const newToNpcWeight = toNpc.currentCarriedWeight + (itemWeight * quantity);
 
         return {
           npcs: {
             ...state.npcs,
-            [fromNpcId]: { ...fromNpc, inventory: newFromNpcInventory, currentCarriedWeight: newFromNpcWeight },
-            [toNpcId]: { ...toNpc, inventory: newToNpcInventory, currentCarriedWeight: newToNpcWeight }
+            [fromNpcId]: { 
+              ...fromNpc, 
+              inventory: {
+                ...fromNpc.inventory,
+                [resource]: fromNpc.inventory[resource] - quantity
+              },
+              currentCarriedWeight: newFromNpcWeight 
+            },
+            [toNpcId]: { 
+              ...toNpc, 
+              inventory: {
+                ...toNpc.inventory,
+                [resource]: (toNpc.inventory[resource] || 0) + quantity
+              },
+              currentCarriedWeight: newToNpcWeight 
+            }
           }
         };
       });
@@ -1067,7 +1147,11 @@ export const useNPCStore = create<NPCStore>()(
           ...state.npcs,
           [npcId]: {
             ...state.npcs[npcId],
-            inventory: {},
+            inventory: {
+              wood: 0,
+              stone: 0,
+              food: 0
+            },
             currentCarriedWeight: 0
           }
         }
@@ -1079,14 +1163,19 @@ export const useNPCStore = create<NPCStore>()(
       if (!npc) return [];
 
       const items = [];
-      for (const itemId in npc.inventory) {
-        if (npc.inventory[itemId] > 0) {
-          const itemDetails = GAME_ITEMS[itemId as keyof typeof GAME_ITEMS]; // Corrigido para GAME_ITEMS
+      const resourceNames = { wood: 'Madeira', stone: 'Pedra', food: 'Comida' };
+      const resourceWeights = { wood: 1, stone: 2, food: 0.5 };
+      
+      for (const resource in npc.inventory) {
+        const quantity = npc.inventory[resource as keyof ResourceInventory];
+        if (quantity > 0) {
           items.push({
-            id: itemId,
-            quantity: npc.inventory[itemId],
-            name: itemDetails?.name || itemId, // Use name from ITEMS or fallback to ID
-            weight: itemDetails?.weight || 0
+            id: resource,
+            quantity: quantity,
+            item: {
+              name: resourceNames[resource as keyof ResourceInventory] || resource,
+              weight: resourceWeights[resource as keyof ResourceInventory] || 0
+            }
           });
         }
       }
@@ -1107,7 +1196,17 @@ export const useNPCStore = create<NPCStore>()(
       const npc = get().npcs[npcId];
       if (!npc) return false;
 
-      const itemWeight = GAME_ITEMS[itemId.toUpperCase() as keyof typeof GAME_ITEMS]?.weight || 0; // Corrigido para GAME_ITEMS
+      // Map item to resource weights
+      const resourceMap: { [key: string]: keyof ResourceInventory } = {
+        'WOOD': 'wood',
+        'STONE': 'stone', 
+        'BREAD': 'food',
+        'FOOD': 'food'
+      };
+      const resourceWeights = { wood: 1, stone: 2, food: 0.5 };
+      
+      const resource = resourceMap[itemId.toUpperCase()];
+      const itemWeight = resource ? resourceWeights[resource] : 0;
       const newWeight = npc.currentCarriedWeight + (itemWeight * quantity);
 
       return newWeight <= npc.maxCarryCapacity;

@@ -28,6 +28,7 @@ This is a 2D isometric simulation game built with HTML5 Canvas where players can
 - **Complete Day/Night Cycle Integration**: Implemented game time system with 5-minute day cycles and NPC work schedules (6 AM - 6 PM work hours)
 - **Game Time Display**: Added comprehensive time display in taskbar showing current game time, day count, and time period (dawn, morning, noon, afternoon, dusk, night, midnight)
 - **Simplified Background**: Removed sky gradient effects for cleaner visual appearance per user preference
+- **Complete NPCStore System Audit (Aug 16)**: ✅ CONCLUÍDA - Successfully resolved all 23 TypeScript errors in NPCStore including inventory type inconsistencies, circular dependency issues between stores, resource management system unification, and proper type safety for NPC tasks and animations. System now operates with unified ResourceInventory interface (wood, stone, food) and proper item-to-resource mapping. All NPCs working correctly with autonomous resource collection and storage.
 
 # User Preferences
 
