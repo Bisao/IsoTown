@@ -8,6 +8,7 @@ import { MINER_WORK_RANGE, MINER_MINE_INTERVAL, MINING_ANIMATION_DURATION } from
 import { isValidGridPosition, getNeighbors, positionsEqual } from '../utils/grid';
 import { getRandomDirection, findPath } from '../utils/pathfinding';
 import { NPCActionSystem } from '../systems/NPCActionSystem';
+import { ITEMS } from '../constants';
 
 // Dynamic imports to prevent circular dependencies
 
@@ -56,8 +57,8 @@ interface NPCStore {
   startMiningStone: (npcId: string, stoneId: string) => void;
 
   // Resource management functions
-  addResourceToNPC: (npcId: string, resource: string, amount: number) => boolean;
-  removeResourceFromNPC: (npcId: string, resource: string, amount: number) => void;
+  addResourceToNPC: (npcId: string, resource: keyof ResourceInventory, amount: number) => boolean;
+  removeResourceFromNPC: (npcId: string, resource: keyof ResourceInventory, amount: number) => void;
   shouldReturnHome: (npcId: string) => boolean;
   transferResourcesToHouse: (npcId: string, houseId: string) => boolean;
 }
@@ -78,11 +79,7 @@ export const useNPCStore = create<NPCStore>()(
         isMoving: false,
         lastMovement: Date.now(),
         houseId,
-        inventory: {
-          wood: 0,
-          stone: 0,
-          food: 0
-        },
+        inventory: {}, // Initialize as empty, will be populated by initializeInventory
         maxCarryCapacity: 20, // Default capacity
         currentCarriedWeight: 0
       };
@@ -500,6 +497,7 @@ export const useNPCStore = create<NPCStore>()(
             // This will be implemented when we integrate with the real tree store
             if (treeDestroyed) {
               // console.log('Árvore destruída! Lenhador volta ao modo idle.');
+              get().addItemToInventory(npc.id, 'WOOD', 3); // Add wood to inventory
             }
           }
           break;
@@ -788,18 +786,32 @@ export const useNPCStore = create<NPCStore>()(
     // ===== INVENTORY SYSTEM =====
 
     initializeInventory: (npcId: string, profession: NPCProfession) => {
-      // Simple resource-based starting inventory
-      let startingInventory = { wood: 0, stone: 0, food: 0 };
+      // Initialize starting inventory based on profession using ItemID enum
+      const startingInventory: Record<string, number> = {};
 
       switch (profession) {
+        case NPCProfession.FARMER:
+          startingInventory['WOOD'] = 1;
+          startingInventory['STONE'] = 1;
+          startingInventory['BREAD'] = 5;
+          startingInventory['HOE'] = 1;
+          break;
         case NPCProfession.LUMBERJACK:
-          startingInventory = { wood: 5, stone: 0, food: 2 };
+          startingInventory['WOOD'] = 5;
+          startingInventory['STONE'] = 0;
+          startingInventory['BREAD'] = 2;
+          startingInventory['AXE'] = 1;
           break;
         case NPCProfession.MINER:
-          startingInventory = { wood: 0, stone: 3, food: 2 };
+          startingInventory['WOOD'] = 0;
+          startingInventory['STONE'] = 3;
+          startingInventory['BREAD'] = 2;
+          startingInventory['PICKAXE'] = 1;
           break;
-        case NPCProfession.FARMER:
-          startingInventory = { wood: 1, stone: 1, food: 5 };
+        default:
+          startingInventory['WOOD'] = 1;
+          startingInventory['STONE'] = 1;
+          startingInventory['BREAD'] = 3;
           break;
       }
 
@@ -809,7 +821,7 @@ export const useNPCStore = create<NPCStore>()(
           [npcId]: {
             ...state.npcs[npcId],
             inventory: startingInventory,
-            currentCarriedWeight: startingInventory.wood + (startingInventory.stone * 2) + (startingInventory.food * 0.5)
+            currentCarriedWeight: startingInventory.wood + (startingInventory.stone * 2) + (startingInventory.food * 0.5) // This calculation needs to be updated to use correct item weights
           }
         }
       }));
@@ -826,7 +838,7 @@ export const useNPCStore = create<NPCStore>()(
       }
 
       const currentWeight = npc.currentCarriedWeight || 0;
-      const resourceWeight = amount * (resource === 'wood' ? 1 : resource === 'stone' ? 2 : 0.5);
+      const resourceWeight = amount * (resource === 'WOOD' ? 1 : resource === 'STONE' ? 2 : resource === 'BREAD' ? 0.5 : 0); // Example weights
 
       if (currentWeight + resourceWeight > npc.maxCarryCapacity) {
         console.log('Capacidade excedida para NPC', npcId, 'peso atual:', currentWeight, 'peso adicional:', resourceWeight, 'capacidade:', npc.maxCarryCapacity);
@@ -855,7 +867,7 @@ export const useNPCStore = create<NPCStore>()(
       const npc = get().npcs[npcId];
       if (!npc || npc.inventory[resource] < amount) return false;
 
-      const resourceWeight = amount * (resource === 'wood' ? 1 : resource === 'stone' ? 2 : 0.5);
+      const resourceWeight = amount * (resource === 'WOOD' ? 1 : resource === 'STONE' ? 2 : resource === 'BREAD' ? 0.5 : 0); // Example weights
 
       set((state) => ({
         npcs: {
@@ -937,38 +949,116 @@ export const useNPCStore = create<NPCStore>()(
     },
 
     addItemToInventory: (npcId: string, itemId: string, quantity: number) => {
-      // Simplified version for compatibility
-      console.log('Legacy addItemToInventory called, use addResourceToNPC instead');
-      return { success: false, message: 'Use specific resource functions' };
+      set((state) => {
+        const npc = state.npcs[npcId];
+        if (!npc) return state;
+
+        // Validate itemId exists in ITEMS constant
+        const validItemId = itemId.toUpperCase();
+        if (!ITEMS[validItemId as keyof typeof ITEMS]) {
+          console.warn(`Item ID inválido: ${itemId}`);
+          return state;
+        }
+
+        const newInventory = { ...npc.inventory };
+        newInventory[validItemId] = (newInventory[validItemId] || 0) + quantity;
+
+        console.log(`Adicionado ${quantity} ${validItemId} ao inventário do NPC ${npcId}`);
+
+        return {
+          npcs: {
+            ...state.npcs,
+            [npcId]: {
+              ...npc,
+              inventory: newInventory
+            }
+          }
+        };
+      });
+      return { success: true, message: '' }; // Return success
     },
 
     removeItemFromInventory: (npcId: string, itemId: string, quantity: number) => {
-      console.log('Legacy removeItemFromInventory called, use removeResourceFromNPC instead');
-      return false;
+      const npc = get().npcs[npcId];
+      if (!npc) return false;
+
+      const validItemId = itemId.toUpperCase();
+      if (npc.inventory[validItemId] < quantity) return false;
+
+      const itemWeight = ITEMS[validItemId as keyof typeof ITEMS]?.weight || 0;
+
+      set((state) => ({
+        npcs: {
+          ...state.npcs,
+          [npcId]: {
+            ...state.npcs[npcId],
+            inventory: {
+              ...state.npcs[npcId].inventory,
+              [validItemId]: state.npcs[npcId].inventory[validItemId] - quantity
+            },
+            currentCarriedWeight: state.npcs[npcId].currentCarriedWeight - (itemWeight * quantity)
+          }
+        }
+      }));
+      return true;
     },
 
     getInventoryItem: (npcId: string, itemId: string) => {
       const npc = get().npcs[npcId];
       if (!npc) return 0;
 
-      // Map old item IDs to new resource system
-      if (itemId === 'wood' || itemId === 'WOOD') return npc.inventory.wood;
-      if (itemId === 'stone' || itemId === 'STONE') return npc.inventory.stone;
-      if (itemId === 'food' || itemId === 'FOOD') return npc.inventory.food;
-
-      return 0;
+      const validItemId = itemId.toUpperCase();
+      return npc.inventory[validItemId] || 0;
     },
 
     getInventoryCount: (npcId: string) => {
       const npc = get().npcs[npcId];
       if (!npc) return 0;
 
-      return npc.inventory.wood + npc.inventory.stone + npc.inventory.food;
+      return Object.values(npc.inventory).reduce((sum, count) => sum + count, 0);
     },
 
     transferItem: (fromNpcId: string, toNpcId: string, itemId: string, quantity: number) => {
-      console.log('Legacy transferItem called');
-      return { success: false, message: 'Use resource transfer functions' };
+      const fromNpc = get().npcs[fromNpcId];
+      const toNpc = get().npcs[toNpcId];
+
+      if (!fromNpc || !toNpc) return { success: false, message: 'Um ou ambos os NPCs não encontrados!' };
+
+      const validItemId = itemId.toUpperCase();
+      if (!fromNpc.inventory[validItemId] || fromNpc.inventory[validItemId] < quantity) {
+        return { success: false, message: 'Item insuficiente no inventário do NPC de origem!' };
+      }
+
+      // Check if the target NPC can carry the items
+      const canCarry = get().canCarryItem(toNpcId, validItemId, quantity);
+      if (!canCarry) {
+        return { success: false, message: 'NPC de destino não pode carregar mais itens!' };
+      }
+
+      const itemWeight = ITEMS[validItemId as keyof typeof ITEMS]?.weight || 0;
+
+      // Perform the transfer
+      set((state) => {
+        const newFromNpcInventory = { ...fromNpc.inventory };
+        newFromNpcInventory[validItemId] -= quantity;
+
+        const newToNpcInventory = { ...toNpc.inventory };
+        newToNpcInventory[validItemId] = (newToNpcInventory[validItemId] || 0) + quantity;
+
+        const newFromNpcWeight = fromNpc.currentCarriedWeight - (itemWeight * quantity);
+        const newToNpcWeight = toNpc.currentCarriedWeight + (itemWeight * quantity);
+
+        return {
+          npcs: {
+            ...state.npcs,
+            [fromNpcId]: { ...fromNpc, inventory: newFromNpcInventory, currentCarriedWeight: newFromNpcWeight },
+            [toNpcId]: { ...toNpc, inventory: newToNpcInventory, currentCarriedWeight: newToNpcWeight }
+          }
+        };
+      });
+
+      console.log(`Transferido ${quantity} ${validItemId} de ${fromNpcId} para ${toNpcId}`);
+      return { success: true, message: '' };
     },
 
     clearInventory: (npcId: string) => {
@@ -977,7 +1067,7 @@ export const useNPCStore = create<NPCStore>()(
           ...state.npcs,
           [npcId]: {
             ...state.npcs[npcId],
-            inventory: { wood: 0, stone: 0, food: 0 },
+            inventory: {},
             currentCarriedWeight: 0
           }
         }
@@ -989,10 +1079,17 @@ export const useNPCStore = create<NPCStore>()(
       if (!npc) return [];
 
       const items = [];
-      if (npc.inventory.wood > 0) items.push({ id: 'wood', quantity: npc.inventory.wood, name: 'Madeira' });
-      if (npc.inventory.stone > 0) items.push({ id: 'stone', quantity: npc.inventory.stone, name: 'Pedra' });
-      if (npc.inventory.food > 0) items.push({ id: 'food', quantity: npc.inventory.food, name: 'Comida' });
-
+      for (const itemId in npc.inventory) {
+        if (npc.inventory[itemId] > 0) {
+          const itemDetails = ITEMS[itemId as keyof typeof ITEMS];
+          items.push({
+            id: itemId,
+            quantity: npc.inventory[itemId],
+            name: itemDetails?.name || itemId, // Use name from ITEMS or fallback to ID
+            weight: itemDetails?.weight || 0
+          });
+        }
+      }
       return items;
     },
 
@@ -1010,8 +1107,10 @@ export const useNPCStore = create<NPCStore>()(
       const npc = get().npcs[npcId];
       if (!npc) return false;
 
-      const weight = quantity * (itemId === 'wood' ? 1 : itemId === 'stone' ? 2 : 0.5);
-      return npc.currentCarriedWeight + weight <= npc.maxCarryCapacity;
+      const itemWeight = ITEMS[itemId.toUpperCase() as keyof typeof ITEMS]?.weight || 0;
+      const newWeight = npc.currentCarriedWeight + (itemWeight * quantity);
+
+      return newWeight <= npc.maxCarryCapacity;
     },
 
     // Função específica para mineração manual de pedras
@@ -1240,7 +1339,7 @@ export const useNPCStore = create<NPCStore>()(
             if (stoneDestroyed) {
               console.log('Pedra destruída! Minerador coletou recursos');
               // Adicionar pedra ao inventário do NPC
-              const stoneAdded = get().addResourceToNPC(npc.id, 'stone', 2);
+              get().addItemToInventory(npc.id, 'STONE', 2);
               if (stoneAdded) {
                 console.log('2 pedras adicionadas ao inventário do minerador', npc.id);
 

@@ -43,16 +43,16 @@ interface WeatherStore {
   // Weather state
   currentWeather: WeatherState;
   nextWeather: WeatherType | null;
-  
+
   // Particle systems
   rainParticles: RainParticle[];
   rainSplashes: RainSplash[];
   cloudParticles: CloudParticle[];
-  
+
   // Settings
   weatherEnabled: boolean;
   autoWeatherChange: boolean;
-  
+
   // Actions
   setWeatherType: (type: WeatherType) => void;
   updateWeather: (gameTime: number) => void;
@@ -95,14 +95,14 @@ export const useWeatherStore = create<WeatherStore>()(
       startTime: Date.now()
     },
     nextWeather: null,
-    
+
     rainParticles: [],
     rainSplashes: [],
     cloudParticles: [],
-    
+
     weatherEnabled: true,
     autoWeatherChange: true,
-    
+
     setWeatherType: (type: WeatherType) => set((state) => {
       logger.log(`Mudança climática para: ${type}`);
       return {
@@ -117,14 +117,14 @@ export const useWeatherStore = create<WeatherStore>()(
         nextWeather: null
       };
     }),
-    
+
     updateWeather: (gameTime: number) => {
       const state = get();
       if (!state.weatherEnabled || !state.autoWeatherChange) return;
-      
+
       const { currentWeather } = state;
       const elapsed = gameTime - currentWeather.startTime;
-      
+
       // Check if current weather should change (with throttling)
       if (elapsed >= currentWeather.duration && elapsed > 1000) { // At least 1 second between changes
         const nextWeather = state.generateNextWeather(gameTime);
@@ -133,35 +133,35 @@ export const useWeatherStore = create<WeatherStore>()(
         }
       }
     },
-    
+
     generateNextWeather: (currentTime: number) => {
       const { currentWeather } = get();
       const transitions = WEATHER_TRANSITIONS[currentWeather.type];
-      
+
       // Use time-based seed for deterministic but varied weather (less frequent changes)
       const timeSeed = Math.floor(currentTime / 10000); // Change seed every 10 seconds
       renderRandom.setSeed(timeSeed);
-      
+
       const random = renderRandom.next();
       let cumulativeProbability = 0;
-      
+
       for (const [weather, probability] of Object.entries(transitions)) {
         cumulativeProbability += probability;
         if (random <= cumulativeProbability) {
           return weather as WeatherType;
         }
       }
-      
+
       return 'sunny'; // Fallback
     },
-    
+
     initializeParticles: (canvasWidth: number, canvasHeight: number) => {
       const { currentWeather } = get();
-      
+
       if (currentWeather.type === 'light_rain' || currentWeather.type === 'heavy_rain' || currentWeather.type === 'storm') {
         const particleCount = currentWeather.type === 'light_rain' ? 100 : 
                              currentWeather.type === 'heavy_rain' ? 200 : 300;
-        
+
         const particles: RainParticle[] = [];
         for (let i = 0; i < particleCount; i++) {
           particles.push({
@@ -173,15 +173,15 @@ export const useWeatherStore = create<WeatherStore>()(
             alpha: renderRandom.between(0.3, 0.8)
           });
         }
-        
+
         set({ rainParticles: particles });
       }
-      
+
       // Initialize clouds for cloudy weather
       if (currentWeather.type === 'cloudy' || currentWeather.type === 'storm') {
         const cloudCount = 8;
         const clouds: CloudParticle[] = [];
-        
+
         for (let i = 0; i < cloudCount; i++) {
           clouds.push({
             x: renderRandom.between(-200, canvasWidth + 200),
@@ -192,36 +192,36 @@ export const useWeatherStore = create<WeatherStore>()(
             speed: renderRandom.between(0.2, 0.8)
           });
         }
-        
+
         set({ cloudParticles: clouds });
       }
     },
-    
+
     updateParticles: (canvasWidth: number, canvasHeight: number, deltaTime: number) => {
       const state = get();
       const { currentWeather } = state;
-      
+
       // Update rain particles
       if (currentWeather.type === 'light_rain' || currentWeather.type === 'heavy_rain' || currentWeather.type === 'storm') {
         const updatedRain = state.rainParticles.map(particle => {
           let newX = particle.x + (particle.speedX * deltaTime * 0.01);
           let newY = particle.y + (particle.speedY * deltaTime * 0.01);
-          
+
           // Reset particle if it goes off screen
           if (newX < -100 || newY > canvasHeight + 50) {
             newX = renderRandom.between(canvasWidth, canvasWidth + 100);
             newY = renderRandom.between(-100, -50);
           }
-          
+
           return { ...particle, x: newX, y: newY };
         });
-        
+
         // Update rain splashes
         let updatedSplashes = state.rainSplashes.map(splash => ({
           ...splash,
           life: splash.life + deltaTime
         })).filter(splash => splash.life < splash.maxLife);
-        
+
         // Add new splashes occasionally
         if (renderRandom.chance(0.3 * deltaTime * 0.01)) {
           updatedSplashes.push({
@@ -231,36 +231,36 @@ export const useWeatherStore = create<WeatherStore>()(
             maxLife: 500
           });
         }
-        
+
         set({ 
           rainParticles: updatedRain,
           rainSplashes: updatedSplashes 
         });
       }
-      
+
       // Update cloud particles
       if (currentWeather.type === 'cloudy' || currentWeather.type === 'storm') {
         const updatedClouds = state.cloudParticles.map(cloud => {
           let newX = cloud.x + (cloud.speed * deltaTime * 0.01);
-          
+
           // Reset cloud if it goes off screen
           if (newX > canvasWidth + 200) {
             newX = -200;
           }
-          
+
           return { ...cloud, x: newX };
         });
-        
+
         set({ cloudParticles: updatedClouds });
       }
     },
-    
+
     toggleWeather: () => set((state) => {
       const newEnabled = !state.weatherEnabled;
       logger.log(`Sistema climático: ${newEnabled ? 'Ativado' : 'Desativado'}`);
       return { weatherEnabled: newEnabled };
     }),
-    
+
     setWeatherEnabled: (enabled: boolean) => set({ weatherEnabled: enabled })
   }))
 );

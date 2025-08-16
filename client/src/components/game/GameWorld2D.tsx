@@ -10,7 +10,7 @@ import { useEffectsStore } from '../../lib/stores/useEffectsStore';
 import { useVillageStore } from '../../lib/stores/useVillageStore';
 import { useTimeStore } from '../../lib/stores/useTimeStore';
 import { useWeatherStore } from '../../lib/stores/useWeatherStore';
-import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN, HUNTER_WORK_RANGE } from '../../lib/constants';
+import { GRID_SIZE, CELL_SIZE, HOUSE_COLORS, HouseType, TREE_COLOR, LUMBERJACK_WORK_RANGE, LUMBERJACK_CHOP_INTERVAL, CHOPPING_ANIMATION_DURATION, CONTROLLED_CHOP_COOLDOWN, HUNTER_WORK_RANGE, HUNTING_ANIMATION_DURATION } from '../../lib/constants';
 import { NPCControlMode, NPCProfession, NPCState } from '../../lib/types';
 import { isValidGridPosition } from '../../lib/utils/grid';
 
@@ -493,7 +493,7 @@ export default function GameWorld2D() {
   // Carregar sprites das casas, texturas e ruas
   useEffect(() => {
     const loadSprites = async () => {
-      const sprites: Record<string, HTMLImageElement> = {};
+      const loadedSprites: Record<string, HTMLImageElement> = {};
 
       const spriteMap = {
         [HouseType.FARMER]: '/sprites/houses/farmer_house.png',
@@ -501,15 +501,28 @@ export default function GameWorld2D() {
         [HouseType.MINER]: '/sprites/houses/medium_house.png',
         'road_horizontal': '/sprites/roads/road_horizontal.svg',
         'road_vertical': '/sprites/roads/road_vertical.svg',
-        'road_cross': '/sprites/roads/road_cross.svg'
+        'road_cross': '/sprites/roads/road_cross.svg',
+        'npc_frame_S': '/sprites/npcs/npc_frame_s.png',
+        'npc_frame_W': '/sprites/npcs/npc_frame_w.png',
+        'npc_frame_N': '/sprites/npcs/npc_frame_n.png',
+        'npc_frame_E': '/sprites/npcs/npc_frame_e.png',
+        'npc_frame_SW': '/sprites/npcs/npc_frame_sw.png',
+        'npc_frame_SE': '/sprites/npcs/npc_frame_se.png',
+        'npc_frame_NW': '/sprites/npcs/npc_frame_nw.png',
+        'npc_frame_NE': '/sprites/npcs/npc_frame_ne.png',
+        'npc_frame_A': '/sprites/npcs/npc_frame_a.png', // Left
+        'npc_frame_D': '/sprites/npcs/npc_frame_d.png', // Right
       };
 
       const loadPromises = Object.entries(spriteMap).map(([type, path]) => {
         return new Promise<void>((resolve, reject) => {
           const img = new Image();
           img.onload = () => {
-            sprites[type] = img;
-            console.log(`Sprite ${type} carregada com sucesso!`);
+            loadedSprites[type] = img;
+            // Log apenas uma vez quando todas as sprites estiverem carregadas
+            if (Object.keys(loadedSprites).length >= 6) {
+              console.log('Todas as sprites principais carregadas:', Object.keys(loadedSprites));
+            }
             resolve();
           };
           img.onerror = () => {
@@ -519,7 +532,7 @@ export default function GameWorld2D() {
             if (type.includes('road')) {
               const fallbackImg = new Image();
               fallbackImg.onload = () => {
-                sprites[type] = fallbackImg;
+                loadedSprites[type] = fallbackImg;
                 console.log(`Sprite ${type} carregada do fallback!`);
                 resolve();
               };
@@ -561,9 +574,9 @@ export default function GameWorld2D() {
       });
 
       await Promise.all([...loadPromises, grassPromise]);
-      spritesRef.current = sprites;
+      spritesRef.current = { ...spritesRef.current, ...loadedSprites }; // Merge loaded sprites
       spritesLoadedRef.current = true;
-      console.log('Sprites carregadas:', Object.keys(sprites));
+      console.log('Sprites carregadas:', Object.keys(spritesRef.current));
     };
 
     loadSprites();
@@ -635,7 +648,7 @@ export default function GameWorld2D() {
 
   // Enhanced lumberjack behavior with tree access
   const updateLumberjackBehaviorWithTrees = useCallback((npc: any, availableTrees: Record<string, any>) => {
-    if (npc.profession !== 'LUMBERJACK' || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
+    if (npc.profession !== NPCProfession.LUMBERJACK || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
       return;
     }
 
@@ -827,7 +840,7 @@ export default function GameWorld2D() {
 
   // Enhanced miner behavior with stone access
   const updateMinerBehaviorWithStones = useCallback((npc: any, availableStones: Record<string, any>) => {
-    if (npc.profession !== 'MINER' || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
+    if (npc.profession !== NPCProfession.MINER || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
       return;
     }
 
@@ -961,7 +974,7 @@ export default function GameWorld2D() {
 
   // Enhanced hunter behavior with animal hunting
   const updateHunterBehaviorWithAnimals = useCallback((npc: any, availableAnimals: Record<string, any>) => {
-    if (npc.profession !== 'HUNTER' || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
+    if (npc.profession !== NPCProfession.HUNTER || npc.controlMode !== NPCControlMode.AUTONOMOUS) {
       return;
     }
 
@@ -1152,12 +1165,12 @@ export default function GameWorld2D() {
   const updateAnimalMovement = useCallback(() => {
     const currentTime = Date.now();
     const { moveAnimal } = useAnimalStore.getState();
-    
+
     Object.values(animals).forEach((animal) => {
       // Check if enough time has passed for movement
       const timeSinceLastMove = currentTime - (animal.lastMoveTime || 0);
       if (timeSinceLastMove < animal.movementSpeed) return;
-      
+
       // 30% chance to move each time
       if (Math.random() < 0.3) {
         // Choose a random direction
@@ -1171,13 +1184,13 @@ export default function GameWorld2D() {
           { x: 1, z: -1 },  // diagonal up-right
           { x: -1, z: -1 }  // diagonal up-left
         ];
-        
+
         const direction = directions[Math.floor(Math.random() * directions.length)];
         const newPosition = {
           x: animal.position.x + direction.x,
           z: animal.position.z + direction.z
         };
-        
+
         // Check if new position is valid (within grid bounds)
         if (isValidGridPosition(newPosition.x, newPosition.z)) {
           // Check if there's already an animal at the new position
@@ -1204,21 +1217,21 @@ export default function GameWorld2D() {
 
       // Update lumberjack and miner behavior for each NPC
       Object.values(npcs).forEach((npc) => {
-        if (npc.profession === 'LUMBERJACK' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
+        if (npc.profession === NPCProfession.LUMBERJACK && npc.controlMode === NPCControlMode.AUTONOMOUS) {
           // console.log('Atualizando comportamento do lenhador:', npc.id, 'estado:', npc.state);
           try {
             updateLumberjackBehaviorWithTrees(npc, trees);
           } catch (error) {
             // console.error('Erro ao atualizar comportamento do lenhador:', error);
           }
-        } else if (npc.profession === 'MINER' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
+        } else if (npc.profession === NPCProfession.MINER && npc.controlMode === NPCControlMode.AUTONOMOUS) {
           // console.log('Atualizando comportamento do minerador:', npc.id, 'estado:', npc.state);
           try {
             updateMinerBehaviorWithStones(npc, stones);
           } catch (error) {
             // console.error('Erro ao atualizar comportamento do minerador:', error);
           }
-        } else if (npc.profession === 'HUNTER' && npc.controlMode === NPCControlMode.AUTONOMOUS) {
+        } else if (npc.profession === NPCProfession.HUNTER && npc.controlMode === NPCControlMode.AUTONOMOUS) {
           // console.log('Atualizando comportamento do caçador:', npc.id, 'estado:', npc.state);
           try {
             updateHunterBehaviorWithAnimals(npc, animals);
@@ -1333,7 +1346,7 @@ export default function GameWorld2D() {
     if (!weatherEnabled) return;
 
     ctx.save();
-    
+
     // Desenhar nuvens
     if (currentWeather.type === 'cloudy' || currentWeather.type === 'storm') {
       cloudParticles.forEach(cloud => {
@@ -1342,46 +1355,46 @@ export default function GameWorld2D() {
         ctx.fillRect(cloud.x, cloud.y, cloud.width, cloud.height);
       });
     }
-    
+
     // Desenhar chuva
     if (currentWeather.type === 'light_rain' || currentWeather.type === 'heavy_rain' || currentWeather.type === 'storm') {
       ctx.globalAlpha = currentWeather.intensity;
-      
+
       // Desenhar gotas de chuva
       rainParticles.forEach(particle => {
         ctx.globalAlpha = particle.alpha * currentWeather.intensity;
-        
+
         const rainColor = currentWeather.type === 'storm' ? '#4A90E2' : '#87CEEB';
         ctx.strokeStyle = rainColor;
         ctx.lineWidth = currentWeather.type === 'heavy_rain' ? 2 : 1;
-        
+
         ctx.beginPath();
         ctx.moveTo(particle.x, particle.y);
         ctx.lineTo(particle.x + particle.speedX * 0.5, particle.y + particle.length);
         ctx.stroke();
       });
-      
+
       // Desenhar respingos de chuva
       rainSplashes.forEach(splash => {
         const progress = splash.life / splash.maxLife;
         const alpha = 1 - progress;
-        
+
         ctx.globalAlpha = alpha * currentWeather.intensity;
         ctx.strokeStyle = '#B0E0E6';
         ctx.lineWidth = 1;
-        
+
         const size = 3 * (1 - progress);
         ctx.beginPath();
         ctx.arc(splash.x, splash.y, size, 0, Math.PI * 2);
         ctx.stroke();
       });
     }
-    
+
     // Desenhar neve
     if (currentWeather.type === 'snow') {
       ctx.globalAlpha = currentWeather.intensity;
       ctx.fillStyle = '#FFFFFF';
-      
+
       rainParticles.forEach(particle => {
         ctx.globalAlpha = particle.alpha * currentWeather.intensity;
         ctx.beginPath();
@@ -1389,14 +1402,14 @@ export default function GameWorld2D() {
         ctx.fill();
       });
     }
-    
+
     ctx.restore();
   }, [currentWeather, rainParticles, rainSplashes, cloudParticles, weatherEnabled]);
 
   // Função para obter cor do céu baseada no clima
   const getWeatherSkyColor = useCallback(() => {
     if (!weatherEnabled) return '#1E88E5';
-    
+
     switch (currentWeather.type) {
       case 'storm':
         return '#1A237E';
@@ -1416,13 +1429,13 @@ export default function GameWorld2D() {
 
   // Referência para throttling de atualizações climáticas
   const lastWeatherUpdateRef = useRef<number>(0);
-  
+
   // Atualizar sistema climático (throttled)
   const updateWeatherEffects = useCallback((canvasWidth: number, canvasHeight: number, deltaTime: number) => {
     if (!weatherEnabled) return;
-    
+
     updateParticles(canvasWidth, canvasHeight, deltaTime);
-    
+
     // Throttle weather updates to every 2 seconds
     const now = Date.now();
     if (now - lastWeatherUpdateRef.current > 2000) {
@@ -1791,7 +1804,7 @@ export default function GameWorld2D() {
 
     // Determinar sprite baseada na direção ou estado
     let spriteKey = 'npc_frame_S'; // Default facing down
-    
+
     // Se o NPC tem direção de movimento, usar sprite apropriada
     if (npc.lastMoveDirection) {
       if (npc.lastMoveDirection.x > 0) spriteKey = 'npc_frame_D'; // Moving right
@@ -1831,7 +1844,7 @@ export default function GameWorld2D() {
     if (npcSprite && spritesLoadedRef.current) {
       // Usar sprite do NPC
       const spriteSize = size * 0.8;
-      
+
       // Destacar NPC selecionado com borda
       if (isSelected) {
         ctx.strokeStyle = '#FF0000';
@@ -1843,7 +1856,7 @@ export default function GameWorld2D() {
           spriteSize + 4
         );
       }
-      
+
       ctx.drawImage(
         npcSprite,
         screen.x - spriteSize / 2,
@@ -1854,9 +1867,9 @@ export default function GameWorld2D() {
     } else {
       // Fallback: círculo colorido baseado na profissão
       let npcColor = '#FF6B6B'; // Default farmer color
-      if (npc.profession === 'LUMBERJACK') {
+      if (npc.profession === NPCProfession.LUMBERJACK) {
         npcColor = '#8B4513'; // Brown for lumberjack
-      } else if (npc.profession === 'MINER') {
+      } else if (npc.profession === NPCProfession.MINER) {
         npcColor = '#696969'; // Dark gray for miner
       }
 
@@ -1883,7 +1896,7 @@ export default function GameWorld2D() {
 
         // Definir radius para uso na ferramenta animada
         const radius = size * 0.3;
-        
+
         // Configurar fonte para ferramenta
         ctx.font = `${Math.max(18, radius * 1.4)}px Arial`;
         ctx.textAlign = 'center';
@@ -1939,9 +1952,9 @@ export default function GameWorld2D() {
       ctx.textBaseline = 'middle';
 
       let toolEmoji = '';
-      if (npc.profession === 'LUMBERJACK') {
+      if (npc.profession === NPCProfession.LUMBERJACK) {
         toolEmoji = '🪓'; // Axe emoji
-      } else if (npc.profession === 'MINER') {
+      } else if (npc.profession === NPCProfession.MINER) {
         toolEmoji = '⛏️'; // Pickaxe emoji
       }
 
@@ -1962,7 +1975,7 @@ export default function GameWorld2D() {
     }
 
     // Working indicator
-    if (npc.state === 'WORKING' && npc.currentTask && npc.currentTask.maxProgress > 0) {
+    if (npc.state === NPCState.WORKING && npc.currentTask && npc.currentTask.maxProgress > 0) {
       // Draw progress bar above NPC
       const radius = size * 0.3; // Definir radius para uso na barra de progresso
       const barWidth = radius * 1.5;
@@ -2009,7 +2022,7 @@ export default function GameWorld2D() {
       ctx.stroke();
     }
 
-    
+
 
     ctx.restore();
   }, [gridToScreen, selectedNPC]);
@@ -2199,7 +2212,7 @@ export default function GameWorld2D() {
     // Cor do animal baseada no tipo
     let animalColor = '#8B4513'; // marrom padrão
     let animalEmoji = '🐰';
-    
+
     switch (animal.type) {
       case 'rabbit':
         animalColor = '#D2B48C';
@@ -2238,11 +2251,11 @@ export default function GameWorld2D() {
       const barWidth = size * 0.8;
       const barHeight = size * 0.1;
       const barY = screen.y - barHeight - 2;
-      
+
       // Fundo da barra de vida
       ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
       ctx.fillRect(screen.x, barY, barWidth, barHeight);
-      
+
       // Vida atual
       ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
       ctx.fillRect(screen.x, barY, barWidth * healthRatio, barHeight);
@@ -2548,7 +2561,7 @@ export default function GameWorld2D() {
       const weatherStore = useWeatherStore.getState();
       const needsRain = currentWeather.type === 'light_rain' || currentWeather.type === 'heavy_rain' || currentWeather.type === 'storm';
       const needsClouds = currentWeather.type === 'cloudy' || currentWeather.type === 'storm';
-      
+
       // Limpar partículas desnecessárias
       if (!needsRain && rainParticles.length > 0) {
         weatherStore.rainParticles = [];
@@ -2557,7 +2570,7 @@ export default function GameWorld2D() {
       if (!needsClouds && cloudParticles.length > 0) {
         weatherStore.cloudParticles = [];
       }
-      
+
       // Inicializar partículas necessárias
       if ((needsRain && rainParticles.length === 0) || (needsClouds && cloudParticles.length === 0)) {
         weatherStore.initializeParticles(canvas.width, canvas.height);
@@ -2823,12 +2836,12 @@ export default function GameWorld2D() {
     const parent = canvas.parentElement;
     canvas.width = parent.clientWidth;
     canvas.height = parent.clientHeight;
-    
+
     // Reinicializar sistema climático com novo tamanho
     if (weatherEnabled) {
       initializeParticles(canvas.width, canvas.height);
     }
-  }, []);  // Removido initializeParticles para evitar loops infinitos
+  }, []);
 
   // Inicializar canvas e iniciar animação
   useEffect(() => {
@@ -2853,8 +2866,7 @@ export default function GameWorld2D() {
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, [animate, handleResize]);  // Removido weatherEnabled e initializeParticles para evitar loops infinitos
-
+  }, [animate, handleResize]);
 
 
 
