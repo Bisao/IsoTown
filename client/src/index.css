@@ -484,13 +484,15 @@
   font-family: 'MS Sans Serif', sans-serif;
   font-size: 11px;
   padding: 2px 8px;
-  height: 22px;
+  height: 26px;
   cursor: pointer;
   user-select: none;
   max-width: 120px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
 }
 
 .win98-taskbar-window:hover {
@@ -509,6 +511,11 @@
   background: var(--win98-surface);
   border: 1px inset var(--win98-surface);
   font-size: 10px;
+  height: 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 /* Game Window Styles */

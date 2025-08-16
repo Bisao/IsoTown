@@ -201,19 +201,13 @@ export default function GameUI() {
           </button>
         ))}
 
-        <div className="win98-taskbar-time" style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
-          fontSize: isMobile ? '9px' : '11px',
-          padding: '2px 8px'
-        }}>
+        <div className="win98-taskbar-time">
           <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: isMobile ? '12px' : '14px' }}>{getWeatherEmoji()}</span>
+            <span style={{ fontSize: '14px' }}>{getWeatherEmoji()}</span>
             {formatGameTime()}
           </div>
           <div style={{ 
-            fontSize: isMobile ? '8px' : '9px', 
+            fontSize: '9px', 
             color: isDay ? '#0066cc' : '#4a4a4a',
             textTransform: 'capitalize'
           }}>

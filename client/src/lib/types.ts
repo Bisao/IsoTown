@@ -10,6 +10,7 @@ export interface House {
   rotation: number; // 0, 90, 180, 270 degrees
   inventory: ResourceInventory;
   maxStorageCapacity: number;
+  npcId?: string; // Optional NPC assigned to this house
 }
 
 export interface ResourceInventory {

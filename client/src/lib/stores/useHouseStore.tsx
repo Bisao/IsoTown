@@ -50,6 +50,22 @@ export const useHouseStore = create<HouseStore>()(
         import('./useNPCStore').then(({ useNPCStore }) => {
           import('./useTreeStore').then(({ useTreeStore }) => {
             import('../types').then(({ NPCProfession }) => {
+              // Verificar se esta casa já tem um NPC assignado
+              const currentHouse = get().houses[id];
+              if (currentHouse && currentHouse.npcId) {
+                console.log('Casa', id, 'já tem NPC assignado:', currentHouse.npcId);
+                return;
+              }
+              
+              // Verificar se já existe um NPC nesta posição
+              const existingNPC = Object.values(useNPCStore.getState().npcs).find(npc => 
+                npc.position.x === position.x && npc.position.z === position.z
+              );
+              if (existingNPC) {
+                console.log('Já existe NPC na posição', position, '- NPC ID:', existingNPC.id);
+                return;
+              }
+              
               // Verificar se a posição não tem árvore antes de spawnar NPC
               if (!useTreeStore.getState().getTreeAt(position)) {
                 // Determinar profissão baseada no tipo de casa
